@@ -29,7 +29,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/your-username/Zone-Poker.git
+    git clone [https://github.com/your-username/Zone-Poker.git](https://github.com/your-username/Zone-Poker.git)
     cd zone-poker
     ```
 
@@ -54,32 +54,22 @@ python3 zone-poker.py -f domains.json --all
 python3 zone-poker.py -c my-scan.json
 ```
 
-**Example:**
-```bash
-# Scan a single domain with all modules and export
-python3 zone-poker.py example.com --all --export
+## Analysis Modules
 
-# Scan multiple domains from a JSON file
-python3 zone-poker.py -f domains.json --all
-
-# Use a configuration file to define scan parameters
-python3 zone-poker.py -c my-scan.json
-```
-
-Analysis Modules
 Run specific modules by adding their flags.
 
-Flag	Module	Description
--r, --records	Records	Query all standard DNS record types.
---ptr	PTR Lookups	Perform reverse DNS (PTR) lookups for A/AAAA records.
--z, --zone	Zone Transfer	Attempt a zone transfer (AXFR) against nameservers.
--m, --mail	Email Security	Analyze email security records (SPF, DMARC, DKIM).
--w, --whois	WHOIS	Perform an extended WHOIS lookup on the domain.
--n, --nsinfo	Nameserver Info	Analyze nameserver information and check for DNSSEC.
--p, --propagation	Propagation	Check DNS propagation across public resolvers.
--s, --security	Security Audit	Run a basic audit for DNS security misconfigurations.
--t, --tech	Tech Detection	Detect web technologies, CMS, and security headers.
--o, --osint	OSINT	Enrich data with passive DNS and other OSINT sources.
+| Flag | Module | Description |
+|---|---|---|
+| `-r`, `--records` | Records | Query all standard DNS record types. |
+| `--ptr` | PTR Lookups | Perform reverse DNS (PTR) lookups for A/AAAA records. |
+| `-z`, `--zone` | Zone Transfer | Attempt a zone transfer (AXFR) against nameservers. |
+| `-m`, `--mail` | Email Security | Analyze email security records (SPF, DMARC, DKIM). |
+| `-w`, `--whois` | WHOIS | Perform an extended WHOIS lookup on the domain. |
+| `-n`, `--nsinfo` | Nameserver Info | Analyze nameserver information and check for DNSSEC. |
+| `-p`, `--propagation` | Propagation | Check DNS propagation across public resolvers. |
+| `-s`, `--security` | Security Audit | Run a basic audit for DNS security misconfigurations. |
+| `-t`, `--tech` | Tech Detection | Detect web technologies, CMS, and security headers. |
+| `-o`, `--osint` | OSINT | Enrich data with passive DNS and other OSINT sources. |
 
 ---
 
