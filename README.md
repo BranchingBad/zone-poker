@@ -19,6 +19,8 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 - **Security Audit**: Performs basic security checks for common DNS misconfigurations.
 - **OSINT Enrichment**: Gathers related data from open-source intelligence sources.
 - **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels.
+- **Configuration File**: Use a JSON config file to manage all your scan options for repeatable analysis.
+- **Bulk Analysis**: Scan multiple domains at once by providing a JSON file.
 - **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports on your Desktop.
 
 ---
@@ -40,10 +42,17 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 ## Usage & Options
 
-Run the `zone-poker.py` script against a target domain. If no specific modules are selected, a full scan is performed.
+Run the `zone-poker.py` script against a single target domain or provide a file with a list of domains. If no specific modules are selected, a full scan is performed.
 
 ```bash
+# Scan a single domain
 python3 zone-poker.py <domain> [options]
+
+# Scan multiple domains from a JSON file
+python3 zone-poker.py -f domains.json [options]
+
+# Use a configuration file to define scan parameters
+python3 zone-poker.py -c my-scan.json
 ```
 
 **Example:**
