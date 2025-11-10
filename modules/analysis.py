@@ -145,7 +145,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
             ns_ip = str(ns_answer[0])
 
             # Attempt transfer
-            zone = await dns.zone.from_xfr_async(dns.query.xfr(ns_ip, domain, timeout=timeout))
+            zone = await dns.zone.from_xfr_async(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
             nodes = zone.nodes.keys()
             axfr_results["servers"][ns] = {
                 "status": "Successful",
