@@ -30,6 +30,8 @@ from .display import (
     export_txt_security, export_txt_tech, export_txt_osint
 )
 
+logger = logging.getLogger(__name__)
+
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
 # It maps a module's command-line name (e.g., "records") to its corresponding
 # analysis function, display function, and dependencies.
@@ -150,8 +152,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     Orchestrates the execution of analysis modules, manages data dependencies,
     and calls the corresponding display functions.
     """
-    logging.info(f"Target: {domain}")
-    logging.info(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    logger.info(f"Target: {domain}")
+    logger.info(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     all_data = {
         "domain": domain,
@@ -189,7 +191,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         for dep in module_info.get("dependencies", []):
             await execute_module(dep)
 
-        logging.info(f"» {module_info['description']}")
+        logger.info(f"» {module_info['description']}")
 
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
@@ -221,8 +223,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
             else:
                 result = analysis_func(**func_kwargs)
         except Exception as e:
-            logging.error(f"Error in module '{module_name}': {type(e).__name__} - {e}")
-            logging.debug(e, exc_info=True)
+            logger.error(f"Error in module '{module_name}': {type(e).__name__} - {e}")
+            logger.debug(e, exc_info=True)
             return
         
         all_data[data_key] = result
@@ -238,8 +240,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         await execute_module(module)
 
     display_summary(all_data, args.quiet)
-    logging.info(f"✓ Scan completed for {domain}")
-    logging.info(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    logger.info(f"✓ Scan completed for {domain}")
+    logger.info(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     return all_data
 }

@@ -4,7 +4,7 @@ Zone-Poker - Analysis Module
 Contains all functions for data gathering and processing.
 """
 import json
-import logging
+import logging # Keep for type hinting if needed, but get logger
 import socket
 import re
 import argparse # Added for type hinting
@@ -30,6 +30,8 @@ from bs4 import BeautifulSoup
 from .config import console, RECORD_TYPES, PUBLIC_RESOLVERS
 # --- THIS LINE IS UPDATED ---
 from .utils import join_txt_chunks, get_parent_zone, _format_rdata, _parse_spf_record
+
+logger = logging.getLogger(__name__)
 
 # --- Helper Functions (REMOVED) ---
 # _format_rdata and _parse_spf_record have been moved to utils.py
@@ -59,7 +61,7 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
             records[rtype] = record_list
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout) as e:
             records[rtype] = []
-            logging.debug(f"Query for {rtype} on {domain} failed: {e}")
+            logger.debug(f"Query for {rtype} on {domain} failed: {e}")
 
     # Use the new list to create the asyncio tasks
     await asyncio.gather(*(query_type(rtype) for rtype in types_to_query))
@@ -147,7 +149,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                 axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
                 axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
-                logging.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
+                logger.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
 
     await asyncio.gather(*(try_axfr(ns) for ns in nameservers))
     
@@ -215,7 +217,7 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
         else:
             return {"error": "No WHOIS data returned."}
     except Exception as e:
-        logging.error(f"Error in whois_lookup: {e}")
+        logger.error(f"Error in whois_lookup: {e}")
         return {"error": str(e)}
 
 async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, Any]:
@@ -266,7 +268,7 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
                 info["asn_description"] = ip_whois_data.get("asn_description", "N/A")
         except Exception as e:
             info["error"] = str(e)
-            logging.debug(f"Error analyzing NS {ns_name}: {e}")
+            logger.debug(f"Error analyzing NS {ns_name}: {e}")
         ns_info[ns_name] = info
 
     await asyncio.gather(*(analyze_ns(ns) for ns in ns_records))
@@ -385,10 +387,10 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 return tech_data
             except (httpx.RequestError, httpx.TooManyRedirects) as e:
                 tech_data["error"] = f"Error checking {url}: {e}"
-                logging.debug(f"Tech detection failed for {url}: {e}")
+                logger.debug(f"Tech detection failed for {url}: {e}")
             except Exception as e:
                 tech_data["error"] = f"Unexpected error checking {url}: {e}"
-                logging.debug(f"Tech detection failed for {url}: {e}")
+                logger.debug(f"Tech detection failed for {url}: {e}")
     
     return tech_data
 
@@ -407,7 +409,7 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     otx_key = getattr(args, 'api_keys', {}).get('otx')
     if otx_key:
         headers['X-OTX-API-Key'] = otx_key
-        logging.debug("Using OTX API Key for OSINT enrichment.")
+        logger.debug("Using OTX API Key for OSINT enrichment.")
     
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -433,6 +435,6 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
             osint_data["error"] = f"OTX query failed (Status: {response.status_code})"
     except httpx.RequestError as e:
         osint_data["error"] = f"OTX query failed: {e}"
-        logging.debug(f"Error during OSINT enrichment: {e}")
+        logger.debug(f"Error during OSINT enrichment: {e}")
     
     return osint_data

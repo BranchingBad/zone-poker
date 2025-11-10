@@ -8,6 +8,8 @@ import json
 import logging
 from typing import Dict, Any, Optional
 
+logger = logging.getLogger(__name__)
+
 from .config import console
 
 def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespace) -> argparse.Namespace:
@@ -37,10 +39,10 @@ def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespa
             with open(cli_args.config, 'r') as f:
                 config_data = json.load(f)
         except FileNotFoundError:
-            logging.error(f"Config file '{cli_args.config}' not found.")
+            logger.error(f"Config file '{cli_args.config}' not found.")
             raise
         except json.JSONDecodeError:
-            logging.error(f"Could not decode JSON from config file '{cli_args.config}'.")
+            logger.error(f"Could not decode JSON from config file '{cli_args.config}'.")
             raise
 
     # 3. Merge: Start with defaults, then layer config file

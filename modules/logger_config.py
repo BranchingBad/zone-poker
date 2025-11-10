@@ -41,10 +41,12 @@ def setup_logging(verbose: bool, quiet: bool, log_file: Optional[str] = None):
     # Create console handler using RichHandler for better formatting
     console_handler = RichHandler(
         console=console,
+        level=console_level, # Set the level for the handler
         show_time=False,
         show_path=False,
         markup=True,
-        rich_tracebacks=True
+        rich_tracebacks=True,
+        show_level=verbose # Only show [INFO], [DEBUG] etc. when verbose
     )
     logger.addHandler(console_handler)
 

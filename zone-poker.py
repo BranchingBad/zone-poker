@@ -21,6 +21,8 @@ from modules.config import console
 import dns.resolver
 from rich.progress import Progress # Import Progress
 
+logger = logging.getLogger(__name__)
+
 def setup_parser() -> argparse.ArgumentParser:
     """Creates and configures the argument parser."""
     parser = argparse.ArgumentParser(
@@ -70,14 +72,14 @@ def get_domains_to_scan(args: argparse.Namespace, parser: argparse.ArgumentParse
             with open(file_input, 'r') as f:
                 domains_from_file = json.load(f)
             if not isinstance(domains_from_file, list):
-                logging.error(f"The JSON file '{file_input}' must contain a list of domain strings.")
+                logger.error(f"The JSON file '{file_input}' must contain a list of domain strings.")
                 return []
             domains_to_scan.extend(domains_from_file)
         except FileNotFoundError:
-            logging.error(f"The file '{file_input}' was not found.")
+            logger.error(f"The file '{file_input}' was not found.")
             return []
         except json.JSONDecodeError:
-            logging.error(f"Could not decode JSON from the file '{file_input}'. Please check the format.")
+            logger.error(f"Could not decode JSON from the file '{file_input}'. Please check the format.")
             return []
     elif domain_input:
         domains_to_scan.append(domain_input)
@@ -133,14 +135,14 @@ async def main():
                     export_reports(domain, all_data)
 
             except dns.resolver.NXDOMAIN:
-                logging.error(f"The domain '{domain}' does not exist (NXDOMAIN).")
+                logger.error(f"The domain '{domain}' does not exist (NXDOMAIN).")
             except KeyboardInterrupt:
-                logging.warning("\nScan aborted by user.")
+                logger.warning("\nScan aborted by user.")
                 return # Exit the loop and the script
             except Exception as e:
-                logging.error(f"An unexpected error occurred while scanning '{domain}': {e}")
+                logger.error(f"An unexpected error occurred while scanning '{domain}': {e}")
                 if getattr(args, 'verbose', False):
-                    logging.debug(traceback.format_exc())
+                    logger.debug(traceback.format_exc())
                 console.print(f"Scan for {domain} terminated due to error. Moving to next domain if available.")
             
             progress.advance(scan_task)
