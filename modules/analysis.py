@@ -95,7 +95,8 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     ns_records = records.get("NS", [])
     if not ns_records:
         axfr_results["status"] = "Skipped (No NS records found)"
-        return axaxfr_results
+        # --- THIS IS THE CORRECTED LINE ---
+        return axfr_results
 
     nameservers = [record["value"] for record in ns_records]
     axfr_results["status"] = "Completed"
@@ -334,7 +335,6 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
             except Exception as e:
-                # --- THIS LINE IS UPDATED (Typo fixed) ---
                 tech_data["error"] = f"Unexpected error checking {url}: {e}"
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}")
