@@ -29,7 +29,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 1.  Clone the repository:
     ```bash
-    git clone [https://github.com/your-username/Zone-Poker.git](https://github.com/your-username/Zone-Poker.git)
+    git clone https://github.com/your-username/Zone-Poker.git
     cd zone-poker
     ```
 
