@@ -172,6 +172,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         "domain": domain,
         "resolver": resolver, # Pass the single resolver to all functions
         "all_data": all_data, # Allows functions to access results from other modules
+        "args": args, # --- THIS LINE IS ADDED ---
         **vars(args) # Add timeout, verbose, etc.
     }
 

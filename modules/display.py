@@ -208,12 +208,21 @@ def display_nameserver_analysis(data: dict, quiet: bool):
     for ns, info in data.items():
         if ns == "dnssec": 
             continue
-        if "error" in info:
-            table.add_row(ns, f"[red]{info['error']}[/red]", "")
-        else:
-            ip_list = info.get('ips', [])
-            ip_str = "\n".join(ip_list) if ip_list else "N/A"
-            table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
+            
+        # --- THIS BLOCK IS FIXED ---
+        # Check if info is a dictionary before trying to access it.
+        # This handles the case where the 'records' module fails and
+        # 'nameserver_analysis' returns {"error": "..."}
+        if isinstance(info, dict):
+            if "error" in info:
+                table.add_row(ns, f"[red]{info['error']}[/red]", "")
+            else:
+                ip_list = info.get('ips', [])
+                ip_str = "\n".join(ip_list) if ip_list else "N/A"
+                table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
+        elif ns == "error":
+            # Handle the top-level error from nameserver_analysis
+            table.add_row(f"[red]{ns.title()}[/red]", f"[red]{info}[/red]", "")
             
     console.print(table)
     console.print()

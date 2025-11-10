@@ -4,7 +4,6 @@ Zone-Poker - Analysis Module
 Contains all functions for data gathering and processing.
 """
 import json
-import logging # Keep for type hinting if needed, but get logger
 import socket
 import re
 import argparse # Added for type hinting
@@ -31,8 +30,6 @@ from .config import console, RECORD_TYPES, PUBLIC_RESOLVERS
 # --- THIS LINE IS UPDATED ---
 from .utils import join_txt_chunks, get_parent_zone, _format_rdata, _parse_spf_record
 
-logger = logging.getLogger(__name__)
-
 # --- Helper Functions (REMOVED) ---
 # _format_rdata and _parse_spf_record have been moved to utils.py
 
@@ -53,7 +50,8 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
     async def query_type(rtype: str):
         """Inner function to query a single record type."""
         try:
-            answers = await resolver.resolve_async(domain, rtype)
+            # --- THIS LINE IS FIXED ---
+            answers = await resolver.resolve(domain, rtype)
             record_list = []
             for rdata in answers:
                 record_info = _format_rdata(rtype, rdata, answers.ttl)
@@ -61,7 +59,8 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
             records[rtype] = record_list
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout) as e:
             records[rtype] = []
-            logger.debug(f"Query for {rtype} on {domain} failed: {e}")
+            if verbose:
+                console.print(f"Error querying {rtype} for {domain}: {e}")
 
     # Use the new list to create the asyncio tasks
     await asyncio.gather(*(query_type(rtype) for rtype in types_to_query))
@@ -84,7 +83,8 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
     async def query_ptr(ip):
         try:
             reversed_ip = dns.reversename.from_address(ip)
-            answer = await resolver.resolve_async(reversed_ip, 'PTR')
+            # --- THIS LINE IS FIXED ---
+            answer = await resolver.resolve(reversed_ip, 'PTR')
             ptr_results[ip] = str(answer[0])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
             ptr_results[ip] = "No PTR record found."
@@ -114,14 +114,16 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         ns_ips = []
         try:
             # Get A records
-            a_answers = await resolver.resolve_async(ns, "A")
+            # --- THIS LINE IS FIXED ---
+            a_answers = await resolver.resolve(ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No A records, try AAAA
         
         try:
             # Get AAAA records
-            aaaa_answers = await resolver.resolve_async(ns, "AAAA")
+            # --- THIS LINE IS FIXED ---
+            aaaa_answers = await resolver.resolve(ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No AAAA records
@@ -149,7 +151,8 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                 axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
                 axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
-                logger.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
+                if verbose:
+                    console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
 
     await asyncio.gather(*(try_axfr(ns) for ns in nameservers))
     
@@ -181,9 +184,8 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
          try:
-            # CHANGED: Switched to passed-in async resolver
-            answers = await resolver.resolve_async(dmarc_domain, "TXT")
             # --- THIS LINE IS FIXED ---
+            answers = await resolver.resolve(dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             dmarc_records = []
@@ -217,7 +219,8 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
         else:
             return {"error": "No WHOIS data returned."}
     except Exception as e:
-        logger.error(f"Error in whois_lookup: {e}")
+        if verbose:
+            console.print(f"[bold red]Error in whois_lookup: {e}[/bold red]")
         return {"error": str(e)}
 
 async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, Any]:
@@ -235,14 +238,14 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
         ns_ips = []
         try:
             # Get A records
-            a_answers = await resolver.resolve_async(ns_name, "A")
+            a_answers = await resolver.resolve(ns_name, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No A records
         
         try:
             # Get AAAA records
-            aaaa_answers = await resolver.resolve_async(ns_name, "AAAA")
+            aaaa_answers = await resolver.resolve(ns_name, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No AAAA records
@@ -268,7 +271,8 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
                 info["asn_description"] = ip_whois_data.get("asn_description", "N/A")
         except Exception as e:
             info["error"] = str(e)
-            logger.debug(f"Error analyzing NS {ns_name}: {e}")
+            if verbose:
+                console.print(f"Error analyzing NS {ns_name}: {e}")
         ns_info[ns_name] = info
 
     await asyncio.gather(*(analyze_ns(ns) for ns in ns_records))
@@ -294,7 +298,8 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
         resolver.lifetime = timeout
         resolver.nameservers = [ip]
         try:
-            answers = await resolver.resolve_async(domain, "A")
+            # --- THIS LINE IS FIXED ---
+            answers = await resolver.resolve(domain, "A")
             results[name] = str(answers[0])
         except Exception as e:
             results[name] = f"Error: {type(e).__name__}"
@@ -387,10 +392,12 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 return tech_data
             except (httpx.RequestError, httpx.TooManyRedirects) as e:
                 tech_data["error"] = f"Error checking {url}: {e}"
-                logger.debug(f"Tech detection failed for {url}: {e}")
+                if verbose:
+                    console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
             except Exception as e:
                 tech_data["error"] = f"Unexpected error checking {url}: {e}"
-                logger.debug(f"Tech detection failed for {url}: {e}")
+                if verbose:
+                    console.print(f"[dim]Tech detection failed for {url}: {e}")
     
     return tech_data
 
@@ -409,7 +416,8 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     otx_key = getattr(args, 'api_keys', {}).get('otx')
     if otx_key:
         headers['X-OTX-API-Key'] = otx_key
-        logger.debug("Using OTX API Key for OSINT enrichment.")
+        if verbose:
+            console.print("[dim]Using OTX API Key.[/dim]")
     
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -435,6 +443,7 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
             osint_data["error"] = f"OTX query failed (Status: {response.status_code})"
     except httpx.RequestError as e:
         osint_data["error"] = f"OTX query failed: {e}"
-        logger.debug(f"Error during OSINT enrichment: {e}")
+        if verbose:
+            console.print(f"Error during OSINT enrichment: {e}")
     
     return osint_data
