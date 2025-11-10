@@ -99,7 +99,6 @@ async def main():
         return # Error message is printed by the config manager
 
     setup_logging(args.verbose, args.quiet, args.log_file)
-        return # Error message is printed by the config manager
 
     domains_to_scan = get_domains_to_scan(args, parser)
     if not domains_to_scan:

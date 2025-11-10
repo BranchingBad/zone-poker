@@ -7,6 +7,9 @@ import logging
 import sys
 from typing import Optional
 
+from rich.logging import RichHandler
+from .config import console
+
 def setup_logging(verbose: bool, quiet: bool, log_file: Optional[str] = None):
     """
     Configures the root logger for the application.
@@ -35,11 +38,14 @@ def setup_logging(verbose: bool, quiet: bool, log_file: Optional[str] = None):
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Create console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(console_level)
-    console_formatter = logging.Formatter('%(message)s') # Simple format for console
-    console_handler.setFormatter(console_formatter)
+    # Create console handler using RichHandler for better formatting
+    console_handler = RichHandler(
+        console=console,
+        show_time=False,
+        show_path=False,
+        markup=True,
+        rich_tracebacks=True
+    )
     logger.addHandler(console_handler)
 
     # Create file handler if a path is provided

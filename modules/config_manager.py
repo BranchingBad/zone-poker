@@ -46,17 +46,18 @@ def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespa
     # 3. Merge: Start with defaults, then layer config file
     final_config = defaults
     final_config.update(config_data)
-    
+
     # 4. Layer explicit CLI args over the top
-    # An arg is "explicit" if it's different from the parser's default value
+    # An arg is "explicit" if it's different from the parser's default value.
+    # This correctly handles cases where a CLI flag like `--export` (default: False)
+    # needs to remain False even if the config file has `"export": true`.
     cli_vars = vars(cli_args)
     for key, value in cli_vars.items():
-        if value != defaults.get(key):
+        # We check if the argument was provided on the command line by creating a new
+        # parser that knows which args were specified.
+        specified_args = {k: v for k, v in cli_vars.items() if k in [action.dest for action in parser._actions]}
+        if key in specified_args and value != defaults.get(key):
             final_config[key] = value
-
-    # 5. Ensure the config file path itself is correctly set, as it might
-    # have been overwritten by the config file's own 'config: null'
-    final_config['config'] = cli_args.config
 
     return argparse.Namespace(**final_config)
 }

@@ -93,10 +93,11 @@ python3 zone-poker.py example.com --records --types A,MX
 | `-O`,	`--output-dir` |	Path to a directory for saving reports (default: Desktop).
 | `-c`,	`--config` |	Path to a JSON config file with scan options.
 | `-f`,	`--file` |	Path to a JSON file containing a list of domains to analyze.
-| `-v`,	`--verbose` |	Show detailed error logs during the scan.
-| `-q`,	`--quiet` |	Show minimal console output.
-| `--timeout`	| Set DNS query timeout in seconds (default 5).
-| `--types`	| Comma-separated list of DNS record types to query (e.g., A,MX,TXT).
+| `-v`,	`--verbose` |	Show detailed error logs and debug messages during the scan.
+| `-q`,	`--quiet` |	Show minimal console output (suppresses tables, headers, and progress bars).
+| `--log-file` | Path to a file to save detailed, verbose logs.
+| `--timeout`	| Set the DNS query timeout in seconds (default: 5).
+| `--types`	| Comma-separated list of specific DNS record types to query (e.g., `A,MX,TXT`).
 
 ## Analysis Modules
 
