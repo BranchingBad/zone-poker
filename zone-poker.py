@@ -49,7 +49,7 @@ Examples:
     try:
         # Get the final configuration, merging defaults, config file, and CLI arguments
         # --- THIS LINE IS CHANGED ---
-        args = get_final_config(cli_args)
+        args = get_final_config(parser, cli_args)
     except (FileNotFoundError, json.JSONDecodeError):
         return # Error message is printed by the config manager
 

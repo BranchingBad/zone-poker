@@ -7,6 +7,7 @@ and displaying results.
 import asyncio
 import argparse
 import inspect
+import dns.resolver # Added for centralized resolver
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -18,7 +19,7 @@ from .analysis import (
     detect_technologies, osint_enrichment
 )
 from .display import (
-    display_dns_records_table, display_ptr_table, display_axfr_results,
+    display_dns_records_table, display_axfr_results, # display_ptr_table removed
     display_email_security, display_whois_info, display_nameserver_analysis,
     display_propagation, display_security_audit, display_technology_info, 
     display_osint_results, display_summary, display_ptr_lookups,
@@ -159,9 +160,16 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()}
     }
 
+    # --- Centralized Resolver Added ---
+    resolver = dns.resolver.Resolver()
+    resolver.set_flags(0)
+    resolver.timeout = args.timeout
+    resolver.lifetime = args.timeout
+
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
+        "resolver": resolver, # Pass the single resolver to all functions
         "all_data": all_data, # Allows functions to access results from other modules
         **vars(args) # Add timeout, verbose, etc.
     }
@@ -228,3 +236,4 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     return all_data
+}

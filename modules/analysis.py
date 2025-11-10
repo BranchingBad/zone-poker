@@ -6,6 +6,7 @@ Contains all functions for data gathering and processing.
 import json
 import socket
 import re
+import argparse # Added for type hinting
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Set, Tuple
 import asyncio
@@ -34,14 +35,12 @@ from .utils import join_txt_chunks, get_parent_zone, _format_rdata, _parse_spf_r
 
 # --- Analysis Functions ---
 
-async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str, List[Dict[str, Any]]]:
+async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, List[Dict[str, Any]]]:
     """
     Asynchronously queries for multiple DNS record types for a given domain.
+    Uses the provided centralized resolver.
     """
-    resolver = dns.resolver.Resolver()
-    resolver.set_flags(0)
-    resolver.timeout = timeout
-    resolver.lifetime = timeout
+    # Resolver is now passed in
     records = {}
 
     async def query_type(rtype: str):
@@ -61,9 +60,10 @@ async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str,
     await asyncio.gather(*(query_type(rtype) for rtype in RECORD_TYPES))
     return records
 
-async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
+async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
+    Uses the provided centralized resolver.
     """
     ptr_results = {}
     ips_to_check = []
@@ -72,9 +72,7 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout:
             if record.get("value"):
                 ips_to_check.append(record["value"])
 
-    resolver = dns.resolver.Resolver()
-    resolver.timeout = timeout
-    resolver.lifetime = timeout
+    # Resolver is now passed in
 
     async def query_ptr(ip):
         try:
@@ -89,8 +87,11 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout:
     await asyncio.gather(*(query_ptr(ip) for ip in ips_to_check if ip))
     return ptr_results
 
-async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
-    """Attempts a zone transfer (AXFR) against all authoritative nameservers."""
+async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, timeout: int, verbose: bool) -> Dict[str, Any]:
+    """
+    Attempts a zone transfer (AXFR) against all authoritative nameservers.
+    Checks both A and AAAA records for nameservers.
+    """
     axfr_results = {"status": "Not Attempted", "servers": {}}
     ns_records = records.get("NS", [])
     if not ns_records:
@@ -102,44 +103,61 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     axfr_results["status"] = "Completed"
     
     async def try_axfr(ns):
+        # Resolver is passed in
+        ns_ips = []
         try:
-            # Get IP of nameserver
-            resolver = dns.resolver.Resolver()
-            resolver.timeout = timeout
-            ns_answer = await resolver.resolve_async(ns, "A")
-            ns_ip = str(ns_answer[0])
-
-            # Attempt transfer
-            zone = await dns.zone.from_xfr(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
+            # Get A records
+            a_answers = await resolver.resolve_async(ns, "A")
+            ns_ips.extend([str(a) for a in a_answers])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+            pass # No A records, try AAAA
+        
+        try:
+            # Get AAAA records
+            aaaa_answers = await resolver.resolve_async(ns, "AAAA")
+            ns_ips.extend([str(a) for a in aaaa_answers])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+            pass # No AAAA records
             
-            nodes = zone.nodes.keys()
-            axfr_results["servers"][ns] = {
-                "status": "Successful",
-                "record_count": len(nodes),
-                "records": [str(n) for n in nodes]
-            }
-        except dns.exception.FormError:
-            axfr_results["servers"][ns] = {"status": "Failed (Refused)"}
-        except (dns.exception.Timeout, asyncio.TimeoutError):
-            axfr_results["servers"][ns] = {"status": "Failed (Timeout)"}
-        except Exception as e:
-            axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})"}
-            if verbose:
-                console.print(f"AXFR error for {ns}: {e}")
+        if not ns_ips:
+            axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
+            return
+
+        for ns_ip in ns_ips:
+            try:
+                # Attempt transfer
+                zone = await dns.zone.from_xfr(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
+                
+                nodes = zone.nodes.keys()
+                axfr_results["servers"][ns] = {
+                    "status": "Successful",
+                    "ip_used": ns_ip,
+                    "record_count": len(nodes),
+                    "records": [str(n) for n in nodes]
+                }
+                return # Success, no need to try other IPs for this NS
+            except dns.exception.FormError:
+                axfr_results["servers"][ns] = {"status": "Failed (Refused)", "ip_tried": ns_ip}
+            except (dns.exception.Timeout, asyncio.TimeoutError):
+                axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
+            except Exception as e:
+                axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
+                if verbose:
+                    console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
 
     await asyncio.gather(*(try_axfr(ns) for ns in nameservers))
     
-    if any(s["status"] == "Successful" for s in axfr_results["servers"].values()):
+    if any(s.get("status") == "Successful" for s in axfr_results["servers"].values()):
         axfr_results["summary"] = "Vulnerable (Zone Transfer Successful)"
     else:
         axfr_results["summary"] = "Secure (No successful transfers)"
         
     return axfr_results
 
-async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
     analysis = {}
-    resolver = dns.resolver.Resolver()
+    # Resolver is passed in
 
     # SPF (No network call needed, uses existing records)
     spf_records = [r["value"] for r in records.get("TXT", []) if r["value"].startswith("v=spf1")]
@@ -157,7 +175,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
          try:
-            # CHANGED: Switched to async resolver
+            # CHANGED: Switched to passed-in async resolver
             answers = await resolver.resolve_async(dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -196,26 +214,45 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
             console.print(f"[bold red]Error in whois_lookup: {e}[/bold red]")
         return {"error": str(e)}
 
-async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
-    """Analyzes nameservers, checking IPs and DNSSEC support."""
+async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, Any]:
+    """Analyzes nameservers, checking IPs (A and AAAA) and DNSSEC support."""
     ns_info = {}
     ns_records = records.get("NS", [])
     if not ns_records:
         return {"error": "No NS records found."}
 
-    resolver = dns.resolver.Resolver()
-    resolver.timeout = timeout
+    # Resolver is passed in
     
     async def analyze_ns(ns_record):
         ns_name = ns_record["value"]
-        info = {}
+        info = {"ips": []}
+        ns_ips = []
         try:
-            # Get NS IP
-            answers = await resolver.resolve_async(ns_name, "A")
-            ip = str(answers[0])
-            info["ip"] = ip
-            
-            obj = IPWhois(ip)
+            # Get A records
+            a_answers = await resolver.resolve_async(ns_name, "A")
+            ns_ips.extend([str(a) for a in a_answers])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+            pass # No A records
+        
+        try:
+            # Get AAAA records
+            aaaa_answers = await resolver.resolve_async(ns_name, "AAAA")
+            ns_ips.extend([str(a) for a in aaaa_answers])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+            pass # No AAAA records
+
+        if not ns_ips:
+            info["error"] = "No A or AAAA records found for NS"
+            ns_info[ns_name] = info
+            return
+
+        # Just analyze the first IP found for ASN, etc.
+        # A more complex implementation could check all IPs.
+        first_ip = ns_ips[0]
+        info["ips"] = ns_ips
+        
+        try:
+            obj = IPWhois(first_ip)
             ip_whois_data = await asyncio.to_thread(obj.lookup_rdap, inc_raw=False)
             
             if ip_whois_data:
@@ -246,6 +283,7 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     results = {}
     
     async def check_resolver(name, ip):
+        # This function *needs* its own resolver to set custom nameservers
         resolver = dns.resolver.Resolver()
         resolver.timeout = timeout
         resolver.lifetime = timeout
@@ -292,6 +330,7 @@ def security_audit(records: Dict[str, List[Dict[str, Any]]], email_security: Dic
 async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[str, Any]:
     """
     Detects web technologies, CMS, and security headers using async HTTP.
+    (Enhanced detection logic)
     """
     tech_data = {"headers": {}, "technologies": [], "server": "", "status_code": 0, "error": None}
     urls_to_check = [f"https://{domain}", f"http://{domain}"]
@@ -310,20 +349,31 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                     tech_data["technologies"].append(headers["X-Powered-By"])
                 if headers.get("X-Generator"):
                     tech_data["technologies"].append(headers["X-Generator"])
+                if "Drupal" in headers.get("X-Generator", ""):
+                    tech_data["technologies"].append("Drupal")
 
                 # Simple HTML parsing
                 soup = BeautifulSoup(response.text, "html.parser")
+                
+                # Generator tags
                 generator_tag = soup.find("meta", attrs={"name": "generator"})
                 if generator_tag and generator_tag.get("content"):
                     tech_data["technologies"].append(generator_tag["content"])
 
-                # Simple CMS checks
+                # Script tags
+                scripts = [s.get("src", "") for s in soup.find_all("script") if s.get("src")]
+                if any("react" in s for s in scripts):
+                    tech_data["technologies"].append("React")
+                if any("vue" in s for s in scripts):
+                    tech_data["technologies"].append("Vue.js")
+                if any("shopify" in s for s in scripts):
+                     tech_data["technologies"].append("Shopify")
+                
+                # Body content checks
                 if "wp-content" in response.text:
                     tech_data["technologies"].append("WordPress")
                 if "joomla" in response.text:
                     tech_data["technologies"].append("Joomla")
-                if "Drupal" in response.headers.get("X-Generator", ""):
-                    tech_data["technologies"].append("Drupal")
 
                 # Remove duplicates
                 tech_data["technologies"] = list(set(tech_data["technologies"]))
@@ -341,13 +391,23 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
     
     return tech_data
 
-async def osint_enrichment(domain: str, timeout: int, verbose: bool) -> Dict[str, Any]:
-    """Enriches data with passive DNS and other OSINT sources (e.g., AlienVault OTX)."""
+async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace) -> Dict[str, Any]:
+    """
+    Enriches data with passive DNS (AlienVault OTX).
+    Checks for 'otx' API key in config.
+    """
     osint_data = {"subdomains": [], "passive_dns": []}
     
     # Example: Query AlienVault OTX for passive DNS
     url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
     headers = {"Accept": "application/json"}
+    
+    # Check for API key in the merged config (passed via args)
+    otx_key = getattr(args, 'api_keys', {}).get('otx')
+    if otx_key:
+        headers['X-OTX-API-Key'] = otx_key
+        if verbose:
+            console.print("[dim]Using OTX API Key.[/dim]")
     
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -377,3 +437,4 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool) -> Dict[str
             console.print(f"Error during OSINT enrichment: {e}")
     
     return osint_data
+}

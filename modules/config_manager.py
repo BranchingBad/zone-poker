@@ -8,42 +8,54 @@ import json
 from typing import Dict, Any, Optional
 
 from .config import console
-# The 'register_module_args' import is removed as 'clean_parser' is no longer used.
 
-def get_final_config(args: argparse.Namespace) -> argparse.Namespace:
+def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespace) -> argparse.Namespace:
     """
     Builds the final configuration by layering defaults, config file, and CLI args.
 
     The priority is:
-    1. Values from the JSON config file (if provided).
-    2. Values explicitly set via command-line arguments (highest priority).
+    1. Parser defaults
+    2. Values from the JSON config file (if provided, overrides defaults)
+    3. Values explicitly set via command-line arguments (highest priority, overrides all)
 
     Args:
-        args: The initial parsed arguments from the command line.
+        parser: The ArgumentParser object used to define defaults.
+        cli_args: The initial parsed arguments from the command line.
 
     Returns:
         The final, merged configuration namespace.
     """
+    
+    # 1. Get defaults from the parser by parsing an empty list
+    defaults = vars(parser.parse_args([]))
+    
+    # 2. Load config file data
     config_data = {}
-    if args.config:
+    if cli_args.config:
         try:
-            with open(args.config, 'r') as f:
+            with open(cli_args.config, 'r') as f:
                 config_data = json.load(f)
         except FileNotFoundError:
-            console.print(f"[bold red]Error: Config file '{args.config}' not found.[/bold red]")
+            console.print(f"[bold red]Error: Config file '{cli_args.config}' not found.[/bold red]")
             raise
         except json.JSONDecodeError:
-            console.print(f"[bold red]Error: Could not decode JSON from config file '{args.config}'.[/bold red]")
+            console.print(f"[bold red]Error: Could not decode JSON from config file '{cli_args.config}'.[/bold red]")
             raise
 
-    # The 'clean_parser' logic has been removed as it was redundant.
+    # 3. Merge: Start with defaults, then layer config file
+    final_config = defaults
+    final_config.update(config_data)
     
-    # 1. Start with the config file data
-    final_args = argparse.Namespace(**config_data)
-    
-    # 2. Update/overwrite with any args explicitly passed on the CLI
-    # This logic correctly prioritizes CLI args over config file args.
-    final_args.__dict__.update({k: v for k, v in vars(args).items() if v is not None and v is not False})
+    # 4. Layer explicit CLI args over the top
+    # An arg is "explicit" if it's different from the parser's default value
+    cli_vars = vars(cli_args)
+    for key, value in cli_vars.items():
+        if value != defaults.get(key):
+            final_config[key] = value
 
-    return final_args
+    # 5. Ensure the config file path itself is correctly set, as it might
+    # have been overwritten by the config file's own 'config: null'
+    final_config['config'] = cli_args.config
+
+    return argparse.Namespace(**final_config)
 }
