@@ -10,18 +10,16 @@ from typing import Dict, Any, Optional
 from .config import console
 # The 'register_module_args' import is removed as 'clean_parser' is no longer used.
 
-def get_final_config(args: argparse.Namespace, parser: argparse.ArgumentParser) -> argparse.Namespace:
+def get_final_config(args: argparse.Namespace) -> argparse.Namespace:
     """
     Builds the final configuration by layering defaults, config file, and CLI args.
 
     The priority is:
-    1. Default values.
-    2. Values from the JSON config file (if provided).
-    3. Values explicitly set via command-line arguments (highest priority).
+    1. Values from the JSON config file (if provided).
+    2. Values explicitly set via command-line arguments (highest priority).
 
     Args:
         args: The initial parsed arguments from the command line.
-        parser: The ArgumentParser instance to get default values from.
 
     Returns:
         The final, merged configuration namespace.
@@ -39,15 +37,12 @@ def get_final_config(args: argparse.Namespace, parser: argparse.ArgumentParser) 
             raise
 
     # The 'clean_parser' logic has been removed as it was redundant.
-    # The merge logic below correctly prioritizes CLI args over config file args.
     
-    # Merge config_data into a new Namespace, then update with CLI args
+    # 1. Start with the config file data
     final_args = argparse.Namespace(**config_data)
     
-    # Update the namespace with any values explicitly set on the command line.
-    # 'v is not None' and 'v is not False' ensures that CLI flags
-    # (like --all or --export) or explicit args (like --timeout 5)
-    # override the config file.
+    # 2. Update/overwrite with any args explicitly passed on the CLI
+    # This logic correctly prioritizes CLI args over config file args.
     final_args.__dict__.update({k: v for k, v in vars(args).items() if v is not None and v is not False})
 
     return final_args

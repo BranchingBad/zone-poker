@@ -21,7 +21,11 @@ from .display import (
     display_dns_records_table, display_ptr_table, display_axfr_results,
     display_email_security, display_whois_info, display_nameserver_analysis,
     display_propagation, display_security_audit, display_technology_info, 
-    display_osint_results, display_summary, display_ptr_lookups
+    display_osint_results, display_summary, display_ptr_lookups,
+    # Import new export functions
+    export_txt_records, export_txt_ptr, export_txt_zone, export_txt_mail,
+    export_txt_whois, export_txt_nsinfo, export_txt_propagation,
+    export_txt_security, export_txt_tech, export_txt_osint
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -31,15 +35,16 @@ from .display import (
 # - data_key: The key used to store the module's results in the `all_data` dictionary.
 # - analysis_func: The function from the `analysis` module to call.
 # - display_func: The function from the `display` module to call.
+# - export_func: The function from `display` to format data for .txt reports.
 # - arg_info: A dictionary defining the command-line argument for this module.
 # - description: A user-friendly message shown when the module starts.
-# - args: A list of argument names the `analysis_func` requires. These are dynamically supplied.
 # - dependencies: A list of other modules that must run before this one.
 MODULE_DISPATCH_TABLE = {
     "records": {
         "data_key": "records",
         "analysis_func": get_dns_records,
         "display_func": display_dns_records_table,
+        "export_func": export_txt_records,
         "description": "Querying DNS records...",
         "arg_info": {"short": "-r", "long": "--records", "help": "Query all standard DNS record types."}
     },
@@ -47,14 +52,16 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "ptr_lookups",
         "analysis_func": reverse_ptr_lookups,
         "display_func": display_ptr_lookups,
+        "export_func": export_txt_ptr,
         "description": "Performing reverse DNS (PTR) lookups...",
         "dependencies": ["records"],
         "arg_info": {"short": None, "long": "--ptr", "help": "Perform reverse DNS (PTR) lookups for A/AAAA records."}
     },
     "zone": {
-        "data_key": "zone_info", # This key will hold the combined result
+        "data_key": "zone_info",
         "analysis_func": attempt_axfr,
         "display_func": display_axfr_results,
+        "export_func": export_txt_zone,
         "description": "Attempting zone transfer (AXFR)...",
         "args": ["domain", "records", "timeout", "verbose"],
         "arg_info": {"short": "-z", "long": "--zone", "help": "Attempt a zone transfer (AXFR) against nameservers."}
@@ -63,6 +70,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "email_security",
         "analysis_func": email_security_analysis,
         "display_func": display_email_security,
+        "export_func": export_txt_mail,
         "description": "Analyzing email security (SPF, DMARC)...",
         "dependencies": ["records"],
         "arg_info": {"short": "-m", "long": "--mail", "help": "Analyze email security records (SPF, DMARC, DKIM)."}
@@ -71,6 +79,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "whois",
         "analysis_func": whois_lookup,
         "display_func": display_whois_info,
+        "export_func": export_txt_whois,
         "description": "Performing WHOIS lookup...",
         "arg_info": {"short": "-w", "long": "--whois", "help": "Perform an extended WHOIS lookup on the domain."}
     },
@@ -78,6 +87,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "nameserver_info",
         "analysis_func": nameserver_analysis,
         "display_func": display_nameserver_analysis,
+        "export_func": export_txt_nsinfo,
         "description": "Analyzing nameservers...",
         "dependencies": ["records"],
         "arg_info": {"short": "-n", "long": "--nsinfo", "help": "Analyze nameserver information and check for DNSSEC."}
@@ -86,6 +96,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "propagation",
         "analysis_func": propagation_check,
         "display_func": display_propagation,
+        "export_func": export_txt_propagation,
         "description": "Checking DNS propagation...",
         "arg_info": {"short": "-p", "long": "--propagation", "help": "Check DNS propagation across public resolvers."}
     },
@@ -93,13 +104,16 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "security",
         "analysis_func": security_audit,
         "display_func": display_security_audit,
+        "export_func": export_txt_security,
         "description": "Auditing for security misconfigurations...",
+        "dependencies": ["records", "mail"], # Added dependency
         "arg_info": {"short": "-s", "long": "--security", "help": "Run a basic audit for DNS security misconfigurations."}
     },
     "tech": {
         "data_key": "technology",
         "analysis_func": detect_technologies,
         "display_func": display_technology_info,
+        "export_func": export_txt_tech,
         "description": "Detecting web technologies...",
         "arg_info": {"short": "-t", "long": "--tech", "help": "Detect web technologies, CMS, and security headers."}
     },
@@ -107,6 +121,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "osint",
         "analysis_func": osint_enrichment,
         "display_func": display_osint_results,
+        "export_func": export_txt_osint,
         "description": "Gathering OSINT data...",
         "arg_info": {"short": "-o", "long": "--osint", "help": "Enrich data with passive DNS and other OSINT sources."}
     }
@@ -115,14 +130,6 @@ MODULE_DISPATCH_TABLE = {
 def register_module_args(parser: argparse.ArgumentParser):
     """
     Adds command-line arguments for each module to the argument parser.
-
-    This function iterates through the `MODULE_DISPATCH_TABLE` and dynamically
-    creates command-line flags (e.g., `--records`, `--whois`) for each module,
-    linking them to their configuration.
-
-    Args:
-        parser: The argparse.ArgumentParser instance to add arguments to.
-    This keeps argument definitions co-located with their module configurations.
     """
     for name, details in MODULE_DISPATCH_TABLE.items():
         arg_info = details.get("arg_info")
@@ -140,19 +147,6 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     """
     Orchestrates the execution of analysis modules, manages data dependencies,
     and calls the corresponding display functions.
-
-    This function is the core of the application's workflow. It ensures that
-    modules are executed in the correct order based on their dependencies,
-    gathers all the results, and displays them as they become available.
-
-    Args:
-        modules_to_run: A list of module names to be executed.
-        domain: The target domain for the analysis.
-        args: The parsed command-line arguments, used to control behavior
-              like verbosity, timeouts, and which modules to run.
-
-    Returns:
-        A dictionary containing all the data collected from the analysis modules.
     """
     if not args.quiet:
         console.print(f"Target: {domain}")
@@ -194,13 +188,10 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         display_func = module_info["display_func"]
 
         # Prepare arguments for the analysis function dynamically
-        # Update the context with data from completed dependencies.
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
             analysis_context[dep_key] = all_data.get(dep_key, {})
 
-        # Intelligently build keyword arguments based on the analysis function's signature.
-        # This is more robust than hardcoding argument lists.
         sig = inspect.signature(analysis_func)
         func_kwargs = {}
         for param in sig.parameters:
@@ -222,12 +213,13 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         all_data[data_key] = result
         completed_modules.add(module_name)
 
-        # Display results immediately after analysis if the module was explicitly requested
-        if not args.quiet and module_name in modules_to_run:
+        # Display results immediately after analysis
+        if not args.quiet:
             display_func(result, args.quiet)
 
     # Execute all modules based on the dependency graph
-    for module in modules_to_run:
+    # We must iterate over a copy, as dependencies might add modules to run
+    for module in list(modules_to_run):
         await execute_module(module)
 
     display_summary(all_data, args.quiet)
