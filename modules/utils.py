@@ -99,4 +99,4 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
             elif part in ("-all", "~all", "+all", "?all"):
                 analysis["all_policy"] = part
     return analysis
-}
+# --- The stray '}' on this line has been removed ---

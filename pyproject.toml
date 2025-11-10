@@ -38,7 +38,8 @@ Issues = "https://github.com/BranchingBad/zone-poker/issues"
 [project.scripts]
 zone-poker = "zone_poker:main_wrapper"
 
-# --- THIS IS THE FIX for ModuleNotFoundError ---
-# This tells setuptools to find and install 'zone_poker.py'
+# --- THIS IS THE FIX ---
 [tool.setuptools]
 py-modules = ["zone_poker"]
+# This line tells setuptools to find and install the 'modules' package
+packages = ["modules"]

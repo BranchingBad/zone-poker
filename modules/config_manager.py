@@ -62,4 +62,3 @@ def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespa
             final_config[key] = value
 
     return argparse.Namespace(**final_config)
-}
