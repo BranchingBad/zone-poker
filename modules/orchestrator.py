@@ -22,6 +22,17 @@ from .display import (
     display_osint_results, display_summary
 )
 
+def display_zone_analysis(zone_info: Dict, quiet: bool):
+    """Composite function to display all zone-related results."""
+    if quiet:
+        return
+    # The 'zone' module from the previous version was split into two displays
+    # We call them both here to maintain the output structure.
+    if "ptr_lookups" in zone_info:
+        display_ptr_table(zone_info["ptr_lookups"], quiet)
+    if "axfr" in zone_info:
+        display_axfr_results(zone_info["axfr"], quiet)
+
 # Map command-line arguments to their respective functions and data keys
 MODULE_DISPATCH_TABLE = {
     "records": {
@@ -31,11 +42,11 @@ MODULE_DISPATCH_TABLE = {
         "description": "Querying DNS records..."
     },
     "zone": {
-        "data_key": "zone_info",
-        "analysis_func": "run_zone_analysis", # Special case handled in orchestrator
-        "display_func": "display_zone_analysis", # Special case
+        "data_key": "zone_info", # This key will hold the combined result
+        "analysis_func": attempt_axfr,
+        "display_func": display_axfr_results,
         "description": "Attempting zone transfer (AXFR)...",
-        "dependencies": ["records"]
+        "args": ["domain", "records", "timeout", "verbose"]
     },
     "mail": {
         "data_key": "email_security",
@@ -67,14 +78,13 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "security",
         "analysis_func": security_audit,
         "display_func": display_security_audit,
-        "description": "Auditing for security misconfigurations...",
-        "dependencies": ["records", "zone"]
+        "description": "Auditing for security misconfigurations..."
     },
     "tech": {
         "data_key": "technology",
         "analysis_func": detect_technologies,
         "display_func": display_technology_info,
-        "description": "Detecting web technologies..."
+        "description": "Detecting web technologies...",
     },
     "osint": {
         "data_key": "osint",
@@ -83,23 +93,6 @@ MODULE_DISPATCH_TABLE = {
         "description": "Gathering OSINT data..."
     }
 }
-
-async def run_zone_analysis(domain: str, records: Dict, timeout: int, verbose: bool) -> Dict:
-    """Composite function to run all zone-related analysis."""
-    axfr_data = await attempt_axfr(domain, records, timeout, verbose)
-    ptr_data = await reverse_ptr_lookups(records, timeout, verbose)
-    return {"axfr": axfr_data, "ptr_lookups": ptr_data}
-
-def display_zone_analysis(zone_info: Dict, quiet: bool):
-    """Composite function to display all zone-related results."""
-    if quiet:
-        return
-    # The 'zone' module from the previous version was split into two displays
-    # We call them both here to maintain the output structure.
-    if "ptr_lookups" in zone_info:
-        display_ptr_table(zone_info["ptr_lookups"], quiet)
-    if "axfr" in zone_info:
-        display_axfr_results(zone_info["axfr"], quiet)
 
 async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any) -> Dict[str, Any]:
     """
@@ -116,6 +109,13 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         # Pre-seed the data dictionary with keys for clarity
         "records": {}, "zone_info": {}, "email_security": {}, "whois": {},
         "nameserver_info": {}, "propagation": {}, "security": {}, "technology": {}, "osint": {}
+    }
+
+    # Context of all available data for analysis functions
+    analysis_context = {
+        "domain": domain,
+        "all_data": all_data,
+        **vars(args) # Add timeout, verbose, etc.
     }
 
     # A set to keep track of which modules have been run to satisfy dependencies
@@ -136,32 +136,28 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
 
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
+        display_func = module_info["display_func"]
 
-        # Prepare arguments for the analysis function
-        func_args = [domain]
-        # Dynamically add dependencies as arguments based on the dispatch table
+        # Prepare arguments for the analysis function dynamically
+        # Default args if not specified in the table
+        required_args = module_info.get("args", ["domain", "timeout", "verbose"])
+        
+        # Add data from dependencies to the context for the current function
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
-            func_args.append(all_data.get(dep_key, {}))
-        
-        # Handle our special composite cases
-        if analysis_func == "run_zone_analysis":
-            analysis_func = run_zone_analysis
-        if module_info["display_func"] == "display_zone_analysis":
-            display_func = display_zone_analysis
-        else:
-            display_func = module_info["display_func"]
+            analysis_context[dep_key] = all_data.get(dep_key, {})
 
-        if analysis_func == security_audit:
-            func_args = [domain, all_data, args.verbose]
-        else:
-            func_args.extend([args.timeout, args.verbose])
+        try:
+            func_kwargs = {arg: analysis_context[arg] for arg in required_args}
+        except KeyError as e:
+            console.print(f"[bold red]Error: Missing argument {e} for module '{module_name}'[/bold red]")
+            return
 
         # Run async or sync analysis function
         if asyncio.iscoroutinefunction(analysis_func):
-            result = await analysis_func(*func_args)
+            result = await analysis_func(**func_kwargs)
         else:
-            result = analysis_func(*func_args)
+            result = analysis_func(**func_kwargs)
         
         all_data[data_key] = result
         completed_modules.add(module_name)
@@ -169,6 +165,11 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         # Display results immediately after analysis
         if not args.quiet and module_name in modules_to_run:
             display_func(result, args.quiet)
+
+    # Manually add PTR lookups as it's a separate display but related to 'records'
+    if "records" in modules_to_run:
+        ptr_data = await reverse_ptr_lookups(all_data["records"], args.timeout, args.verbose)
+        display_ptr_table(ptr_data, args.quiet)
 
     for module in modules_to_run:
         await execute_module(module)

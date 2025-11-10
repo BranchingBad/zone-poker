@@ -9,7 +9,6 @@ import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Set, Tuple
 import asyncio
-import aiodns
 
 import dns.resolver
 import dns.query
@@ -80,24 +79,25 @@ async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str,
     await asyncio.gather(*(query_type(rtype) for rtype in RECORD_TYPES))
     return records
 
-async def reverse_ptr_lookups(records: Dict, timeout: int, verbose: bool) -> Dict[str, str]:
+async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
     """Perform reverse PTR lookups for A and AAAA records."""
     ptr_results = {}
     ips_to_check = []
-    if "A" in records:
+    if records.get("A"):
         ips_to_check.extend([rec.get("value") for rec in records["A"]])
-    if "AAAA" in records:
+    if records.get("AAAA"):
         ips_to_check.extend([rec.get("value") for rec in records["AAAA"]])
 
-    resolver = aiodns.DNSResolver()
+    resolver = dns.resolver.Resolver()
     resolver.timeout = timeout
+    resolver.lifetime = timeout
 
     async def query_ptr(ip):
         try:
             reversed_ip = dns.reversename.from_address(ip)
-            answer = await resolver.query(reversed_ip, 'PTR')
-            ptr_results[ip] = str(answer[0].host)
-        except (aiodns.error.DNSError, dns.exception.SyntaxError):
+            answer = await resolver.resolve_async(reversed_ip, 'PTR')
+            ptr_results[ip] = str(answer[0])
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
             ptr_results[ip] = "No PTR record found."
         except Exception as e:
             ptr_results[ip] = f"Error: {e}"
