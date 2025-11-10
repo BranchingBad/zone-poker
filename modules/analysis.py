@@ -182,7 +182,8 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
          try:
             # CHANGED: Switched to passed-in async resolver
             answers = await resolver.resolve_async(dmarc_domain, "TXT")
-            dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for t in rdata.strings]
+            # --- THIS LINE IS FIXED ---
+            dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             dmarc_records = []
     
@@ -385,7 +386,6 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 
                 # Found a working URL, stop checking
                 return tech_data
-            # --- THIS LINE IS UPDATED ---
             except (httpx.RequestError, httpx.TooManyRedirects) as e:
                 tech_data["error"] = f"Error checking {url}: {e}"
                 if verbose:
@@ -443,4 +443,3 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
             console.print(f"Error during OSINT enrichment: {e}")
     
     return osint_data
-}
