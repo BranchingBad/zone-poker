@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional, Set, Tuple
 import asyncio
 
 import dns.resolver
+import dns.asyncresolver # --- THIS IS THE FIX ---
 import dns.query
 import dns.zone
 import dns.exception
@@ -179,7 +180,8 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
 
     # DMARC
     dmarc_domain = f"_dmarc.{domain}"
-    dmarc_.records = [r["value"] for r in records.get("TXT", []) if r.get("value", "").startswith("v=DMARC1")]
+    # --- THIS LINE IS FIXED ---
+    dmarc_records = [r["value"] for r in records.get("TXT", []) if r.get("value", "").startswith("v=DMARC1")]
     
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
@@ -293,7 +295,8 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         # This function *needs* its own resolver to set custom nameservers
-        resolver = dns.resolver.Resolver(configure=False) # Don't read /etc/resolv.conf
+        # --- THIS BLOCK IS FIXED ---
+        resolver = dns.asyncresolver.Resolver(configure=False) # Don't read /etc/resolv.conf
         resolver.set_flags(0)
         resolver.timeout = timeout
         resolver.lifetime = timeout

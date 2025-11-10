@@ -7,7 +7,8 @@ and displaying results.
 import asyncio
 import argparse
 import inspect
-import dns.resolver # Added for centralized resolver
+import dns.resolver
+import dns.asyncresolver # --- THIS IS THE FIX ---
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -162,8 +163,9 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     }
 
     # --- Centralized Resolver Added ---
-    # Do not configure using system's /etc/resolv.conf
-    resolver = dns.resolver.Resolver(configure=False)
+    # --- THIS IS THE FIX ---
+    # Use dns.asyncresolver.Resolver to create an async-capable resolver
+    resolver = dns.asyncresolver.Resolver(configure=False)
     resolver.set_flags(0)
     resolver.timeout = args.timeout
     resolver.lifetime = args.timeout
