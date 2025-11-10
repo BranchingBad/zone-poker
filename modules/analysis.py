@@ -48,10 +48,11 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
     # If no specific types are given, use the default list from config
     types_to_query = record_types if record_types else RECORD_TYPES
 
-    async def query_type(rtype: str):
-        """Inner function to query a single record type."""
+    # --- THIS BLOCK IS THE FIX ---
+    # We use a sequential for loop instead of asyncio.gather()
+    # to avoid being rate-limited by public DNS servers.
+    for rtype in types_to_query:
         try:
-            # --- THIS LINE IS FIXED ---
             answers = await resolver.resolve(domain, rtype)
             record_list = []
             for rdata in answers:
@@ -62,9 +63,12 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
             records[rtype] = []
             if verbose:
                 console.print(f"Error querying {rtype} for {domain}: {e}")
-
-    # Use the new list to create the asyncio tasks
-    await asyncio.gather(*(query_type(rtype) for rtype in types_to_query))
+        except dns.resolver.NoNameservers as e:
+            records[rtype] = []
+            if verbose:
+                console.print(f"Error querying {rtype} for {domain}: {e}")
+    # --- END OF FIX ---
+    
     return records
 
 async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, str]:
@@ -84,7 +88,6 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
     async def query_ptr(ip):
         try:
             reversed_ip = dns.reversename.from_address(ip)
-            # --- THIS LINE IS FIXED ---
             answer = await resolver.resolve(reversed_ip, 'PTR')
             ptr_results[ip] = str(answer[0])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
@@ -104,7 +107,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
     ns_records = records.get("NS", [])
     if not ns_records:
         axfr_results["status"] = "Skipped (No NS records found)"
-        # --- THIS IS THE CORRECTED LINE ---
         return axfr_results
 
     nameservers = [record["value"] for record in ns_records]
@@ -115,7 +117,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         ns_ips = []
         try:
             # Get A records
-            # --- THIS LINE IS FIXED ---
             a_answers = await resolver.resolve(ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -123,7 +124,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         
         try:
             # Get AAAA records
-            # --- THIS LINE IS FIXED ---
             aaaa_answers = await resolver.resolve(ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -180,13 +180,11 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
 
     # DMARC
     dmarc_domain = f"_dmarc.{domain}"
-    # --- THIS LINE IS FIXED (typo) ---
     dmarc_records = [r["value"] for r in records.get("TXT", []) if r.get("value", "").startswith("v=DMARC1")]
     
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
          try:
-            # --- THIS LINE IS FIXED ---
             answers = await resolver.resolve(dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -295,14 +293,12 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         # This function *needs* its own resolver to set custom nameservers
-        # --- THIS BLOCK IS FIXED ---
         resolver = dns.asyncresolver.Resolver(configure=False) # Don't read /etc/resolv.conf
         resolver.set_flags(0)
         resolver.timeout = timeout
         resolver.lifetime = timeout
         resolver.nameservers = [ip]
         try:
-            # --- THIS LINE IS FIXED ---
             answers = await resolver.resolve(domain, "A")
             results[name] = str(answers[0])
         except Exception as e:
