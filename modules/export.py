@@ -98,7 +98,13 @@ def export_reports(domain: str, all_data: Dict[str, Any]):
         if all_data.get("osint"):
             f.write("--- OSINT Enrichment ---\n")
             for source, data in all_data["osint"].items():
-                f.write(f"\n{source.replace('_', ' ').title()}:\n  - {data}\n")
+                # Handle cases where data might be a list (e.g., subdomains) or a single string
+                f.write(f"\n{source.replace('_', ' ').title()}:\n")
+                if isinstance(data, list):
+                    for item in data:
+                        f.write(f"  - {item}\n")
+                else:
+                    f.write(f"  - {data}\n")
 
     console.print(f"\n✓ Reports exported to Desktop:")
     console.print(f"  → {json_file}")

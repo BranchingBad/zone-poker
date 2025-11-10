@@ -33,9 +33,8 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 2.  Install the required Python packages:
     ```bash
-    pip install -r requirements.txt
+    pip install -r requirements.txt # or pip install dnspython requests whois ipwhois rich beautifulsoup4
     ```
-    *(Note: If `requirements.txt` is not present, create it with `dnspython`, `requests`, `whois`, `ipwhois`, `rich`, and `beautifulsoup4` listed.)*
 
 ---
 
@@ -49,7 +48,7 @@ python3 zone-poker.py <domain> [options]
 
 **Example:**
 ```bash
-python3 main.py example.com --verbose
+python3 zone-poker.py example.com --verbose
 ```
 
 ---

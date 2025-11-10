@@ -32,6 +32,37 @@ from .utils import join_txt_chunks, get_parent_zone
 # attempt_axfr, count_spf_lookups, email_security_analysis,
 # whois_lookup, nameserver_analysis, propagation_check,
 # security_audit, osint_enrichment)
+
+def _format_rdata(rtype: str, rdata: Any, ttl: int) -> Dict[str, Any]:
+    """
+    Formats a single dnspython rdata object into a standardized dictionary.
+
+    Args:
+        rtype: The DNS record type (e.g., 'A', 'MX').
+        rdata: The rdata object from dnspython.
+        ttl: The TTL of the record set.
+
+    Returns:
+        A dictionary representing the record.
+    """
+    record_info = {"ttl": ttl}
+    if rtype == "MX":
+        record_info.update({
+            "value": str(rdata.exchange),
+            "priority": rdata.preference,
+        })
+    elif rtype == "SRV":
+        record_info.update({
+            "value": str(rdata.target),
+            "priority": rdata.priority,
+            "weight": rdata.weight,
+            "port": rdata.port,
+        })
+    elif rtype == "TXT":
+        record_info["value"] = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
+    else:
+        record_info["value"] = str(rdata)
+    return record_info
  
 # Example:
 async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str, List[Dict[str, Any]]]:
@@ -61,28 +92,7 @@ async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str,
             answers = await resolver.resolve_async(domain, rtype)
             record_list = []
             for rdata in answers:
-                record_info = {}
-                if rtype == "MX":
-                    record_info = {
-                        "value": str(rdata.exchange),
-                        "priority": rdata.preference,
-                        "ttl": answers.ttl
-                    }
-                elif rtype == "SRV":
-                     record_info = {
-                        "value": str(rdata.target),
-                        "priority": rdata.priority,
-                        "weight": rdata.weight,
-                        "port": rdata.port,
-                        "ttl": answers.ttl
-                    }
-                elif rtype == "TXT":
-                    # TXT records can be split into multiple strings. Join them.
-                    value = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
-                    record_info = {"value": value, "ttl": answers.ttl}
-                else:
-                    record_info = {"value": str(rdata), "ttl": answers.ttl}
-
+                record_info = _format_rdata(rtype, rdata, answers.ttl)
                 record_list.append(record_info)
             records[rtype] = record_list
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout) as e:
@@ -108,11 +118,11 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout:
     """
     ptr_results = {}
     ips_to_check = []
-    if records.get("A"):
-        # Extract all 'value' fields (IP addresses) from the 'A' records list
-        ips_to_check.extend([rec.get("value") for rec in records["A"]])
-    if records.get("AAAA"):
-        ips_to_check.extend([rec.get("value") for rec in records["AAAA"]])
+    # Extract all 'value' fields (IP addresses) from the 'A' and 'AAAA' records lists
+    for rtype in ("A", "AAAA"):
+        for record in records.get(rtype, []):
+            if record.get("value"):
+                ips_to_check.append(record["value"])
 
     resolver = dns.resolver.Resolver()
     resolver.timeout = timeout
