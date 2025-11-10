@@ -6,7 +6,6 @@ and displaying results.
 """
 import asyncio
 import argparse
-import logging
 import inspect
 import dns.resolver # Added for centralized resolver
 from datetime import datetime
@@ -29,8 +28,6 @@ from .display import (
     export_txt_whois, export_txt_nsinfo, export_txt_propagation,
     export_txt_security, export_txt_tech, export_txt_osint
 )
-
-logger = logging.getLogger(__name__)
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
 # It maps a module's command-line name (e.g., "records") to its corresponding
@@ -152,8 +149,9 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     Orchestrates the execution of analysis modules, manages data dependencies,
     and calls the corresponding display functions.
     """
-    logger.info(f"Target: {domain}")
-    logger.info(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    if not args.quiet:
+        console.print(f"Target: {domain}")
+        console.print(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     all_data = {
         "domain": domain,
@@ -191,7 +189,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         for dep in module_info.get("dependencies", []):
             await execute_module(dep)
 
-        logger.info(f"» {module_info['description']}")
+        if not args.quiet:
+            console.print(f"[cyan]» {module_info['description']}[/cyan]")
 
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
@@ -223,8 +222,9 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
             else:
                 result = analysis_func(**func_kwargs)
         except Exception as e:
-            logger.error(f"Error in module '{module_name}': {type(e).__name__} - {e}")
-            logger.debug(e, exc_info=True)
+            console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
+            if args.verbose:
+                console.print_exception(show_locals=True)
             return
         
         all_data[data_key] = result
@@ -240,8 +240,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         await execute_module(module)
 
     display_summary(all_data, args.quiet)
-    logger.info(f"✓ Scan completed for {domain}")
-    logger.info(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    if not args.quiet:
+        console.print(f"✓ Scan completed for {domain}")
+        console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     return all_data
-}

@@ -25,9 +25,9 @@ def setup_parser() -> argparse.ArgumentParser:
         description="Zone-Poker - A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.\nCreated by BranchingBad",
         epilog="""
 Examples:
-  python3 zone-poker.py example.com --all --export
-  python3 zone-poker.py example.com --mail --whois --export -O /path/to/reports/
-  python3 zone-poker.py example.com --records --types A,MX,TXT
+  zone-poker example.com --all --export
+  zone-poker example.com --mail --whois --export -O /path/to/reports/
+  zone-poker example.com --records --types A,MX,TXT
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -142,5 +142,13 @@ async def main():
             progress.advance(scan_task)
 
 
+# --- THIS IS THE NEW WRAPPER FUNCTION ---
+def main_wrapper():
+    """Synchronous wrapper to run the async main function."""
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        console.print(f"\n[bold yellow]Scan aborted by user.[/bold yellow]")
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    main_wrapper()
