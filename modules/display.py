@@ -17,7 +17,7 @@ from .config import console, RECORD_TYPES
 # (display_technology_info, display_dns_records_table,
 # display_ptr_table, display_axfr_results, display_email_security,
 # display_whois_info, display_nameserver_analysis,
-# display_propagation, display_security_audit,
+# display_propagation, display_security_audit, display_ptr_lookups,
 # display_osint_results, display_summary)
 
 # Example:
@@ -66,6 +66,27 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool):
     console.print()  # Use the imported console
     console.print(table)
     console.print(f"Total: {total_records} DNS records found\n")
+
+def display_ptr_lookups(ptr_records: Dict[str, str], quiet: bool):
+    """Displays PTR records in a table."""
+    if quiet or not ptr_records:
+        return
+
+    table = Table(
+        title="Reverse DNS (PTR) Lookups",
+        box=box.ROUNDED,
+        show_header=True,
+        header_style=None
+    )
+    table.add_column("IP Address", width=20)
+    table.add_column("Hostname", max_width=60)
+
+    for ip, hostname in ptr_records.items():
+        table.add_row(ip, hostname)
+
+    console.print(table)
+    console.print(f"Total: {len(ptr_records)} PTR lookups performed\n")
+
 
 # ...
 # ... (Copy ALL other display functions here)

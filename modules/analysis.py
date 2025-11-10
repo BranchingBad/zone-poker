@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Zone-poker - Analysis Module
+Zone-Poker - Analysis Module
 Contains all functions for data gathering and processing.
 """
 import json
@@ -34,44 +34,59 @@ from .utils import join_txt_chunks, get_parent_zone
 # security_audit, osint_enrichment)
  
 # Example:
-async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str, List[Any]]:
-    """Query all major DNS record types"""
-    resolver = aiodns.DNSResolver()
+async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Asynchronously queries for multiple DNS record types for a given domain.
+
+    Args:
+        domain: The domain name to query.
+        timeout: The timeout in seconds for each DNS query.
+        verbose: If True, prints errors to the console.
+
+    Returns:
+        A dictionary where keys are record types (e.g., 'A', 'MX') and values are lists
+        of dictionaries, with each dictionary representing a single DNS record.
+        Example: {'A': [{'value': '1.2.3.4', 'ttl': 3600}]}
+    """
+    resolver = dns.resolver.Resolver()
+    resolver.set_flags(0)  # Disable recursion if only authoritative answers are needed
     resolver.timeout = timeout
+    resolver.lifetime = timeout
     records = {}
 
     async def query_type(rtype: str):
+        """Inner function to query a single record type."""
         try:
-            # aiodns doesn't have a direct equivalent of dnspython's resolve that gives TTL easily,
-            # so we use the lower-level query method.
-            answers = await resolver.query(domain, rtype)
+            # Use dnspython's async resolver
+            answers = await resolver.resolve_async(domain, rtype)
             record_list = []
-            # For TTL, a separate query for the RRset would be needed, or we can omit it for simplicity in async context.
-            # Here, we'll focus on the values first.
             for rdata in answers:
                 record_info = {}
                 if rtype == "MX":
                     record_info = {
-                        "value": str(rdata.host),
-                        "priority": rdata.priority,
-                        "ttl": "N/A" # TTL is harder to get consistently in aiodns
+                        "value": str(rdata.exchange),
+                        "priority": rdata.preference,
+                        "ttl": answers.ttl
                     }
                 elif rtype == "SRV":
                      record_info = {
-                        "value": str(rdata.host),
+                        "value": str(rdata.target),
                         "priority": rdata.priority,
                         "weight": rdata.weight,
                         "port": rdata.port,
-                        "ttl": "N/A"
+                        "ttl": answers.ttl
                     }
+                elif rtype == "TXT":
+                    # TXT records can be split into multiple strings. Join them.
+                    value = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
+                    record_info = {"value": value, "ttl": answers.ttl}
                 else:
-                    # aiodns returns different object types
-                    value = rdata.text if rtype == "TXT" else rdata.host if hasattr(rdata, 'host') else str(rdata)
-                    record_info = {"value": value, "ttl": "N/A"}
+                    record_info = {"value": str(rdata), "ttl": answers.ttl}
 
                 record_list.append(record_info)
             records[rtype] = record_list
-        except (aiodns.error.DNSError) as e:
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout) as e:
+            # It's common for a domain not to have all record types, so we just create an empty list.
             records[rtype] = []
             if verbose:
                 console.print(f"Error querying {rtype} for {domain}: {e}")
@@ -80,10 +95,21 @@ async def get_dns_records(domain: str, timeout: int, verbose: bool) -> Dict[str,
     return records
 
 async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
-    """Perform reverse PTR lookups for A and AAAA records."""
+    """
+    Performs reverse DNS (PTR) lookups for all A and AAAA records found.
+
+    Args:
+        records: The dictionary of DNS records from get_dns_records.
+        timeout: The timeout in seconds for each DNS query.
+        verbose: If True, prints errors to the console.
+
+    Returns:
+        A dictionary mapping each IP address to its PTR record or an error message.
+    """
     ptr_results = {}
     ips_to_check = []
     if records.get("A"):
+        # Extract all 'value' fields (IP addresses) from the 'A' records list
         ips_to_check.extend([rec.get("value") for rec in records["A"]])
     if records.get("AAAA"):
         ips_to_check.extend([rec.get("value") for rec in records["AAAA"]])

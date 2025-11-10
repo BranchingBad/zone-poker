@@ -19,26 +19,29 @@ from .display import (
     display_dns_records_table, display_ptr_table, display_axfr_results,
     display_email_security, display_whois_info, display_nameserver_analysis,
     display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_summary
+    display_osint_results, display_summary, display_ptr_lookups
 )
 
-def display_zone_analysis(zone_info: Dict, quiet: bool):
+def display_zone_analysis(zone_info: Dict, quiet: bool): # This function is no longer used but kept for reference
     """Composite function to display all zone-related results."""
-    if quiet:
-        return
-    # The 'zone' module from the previous version was split into two displays
-    # We call them both here to maintain the output structure.
-    if "ptr_lookups" in zone_info:
-        display_ptr_table(zone_info["ptr_lookups"], quiet)
-    if "axfr" in zone_info:
-        display_axfr_results(zone_info["axfr"], quiet)
+    pass
 
-# Map command-line arguments to their respective functions and data keys
+# The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
+# It maps a module's command-line name (e.g., "records") to its corresponding
+# analysis function, display function, and dependencies.
+#
+# - data_key: The key used to store the module's results in the `all_data` dictionary.
+# - analysis_func: The function from the `analysis` module to call.
+# - display_func: The function from the `display` module to call.
+# - description: A user-friendly message shown when the module starts.
+# - args: A list of argument names the `analysis_func` requires. These are dynamically supplied.
+# - dependencies: A list of other modules that must run before this one.
 MODULE_DISPATCH_TABLE = {
     "records": {
         "data_key": "records",
         "analysis_func": get_dns_records,
-        "display_func": display_dns_records_table,
+        # Display is handled specially to include PTR lookups
+        "display_func": lambda data, quiet: None,
         "description": "Querying DNS records..."
     },
     "zone": {
@@ -108,13 +111,13 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         "scan_timestamp": datetime.now().isoformat(),
         # Pre-seed the data dictionary with keys for clarity
         "records": {}, "zone_info": {}, "email_security": {}, "whois": {},
-        "nameserver_info": {}, "propagation": {}, "security": {}, "technology": {}, "osint": {}
+        "nameserver_info": {}, "propagation": {}, "security": {}, "technology": {}, "osint": {}, "ptr_lookups": {}
     }
 
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
-        "all_data": all_data,
+        "all_data": all_data, # Allows functions to access results from other modules
         **vars(args) # Add timeout, verbose, etc.
     }
 
@@ -122,6 +125,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     completed_modules = set()
 
     async def execute_module(module_name: str):
+        """Recursively executes a module and its dependencies."""
         if module_name not in MODULE_DISPATCH_TABLE or module_name in completed_modules:
             return
 
@@ -139,15 +143,17 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         display_func = module_info["display_func"]
 
         # Prepare arguments for the analysis function dynamically
-        # Default args if not specified in the table
+        # Defaults to a standard set if not specified in the dispatch table.
         required_args = module_info.get("args", ["domain", "timeout", "verbose"])
         
-        # Add data from dependencies to the context for the current function
+        # Make dependency data available in the context for the current function.
+        # For example, the 'mail' module needs the results from the 'records' module.
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
             analysis_context[dep_key] = all_data.get(dep_key, {})
 
         try:
+            # Build the keyword arguments dictionary for the analysis function
             func_kwargs = {arg: analysis_context[arg] for arg in required_args}
         except KeyError as e:
             console.print(f"[bold red]Error: Missing argument {e} for module '{module_name}'[/bold red]")
@@ -163,16 +169,18 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         completed_modules.add(module_name)
 
         # Display results immediately after analysis
-        if not args.quiet and module_name in modules_to_run:
+        if not args.quiet and module_name in modules_to_run and module_name != "records":
             display_func(result, args.quiet)
 
-    # Manually add PTR lookups as it's a separate display but related to 'records'
-    if "records" in modules_to_run:
-        ptr_data = await reverse_ptr_lookups(all_data["records"], args.timeout, args.verbose)
-        display_ptr_table(ptr_data, args.quiet)
-
+    # Execute all modules based on the dependency graph
     for module in modules_to_run:
         await execute_module(module)
+
+    # Special handling for displaying DNS records and PTR lookups together
+    if "records" in modules_to_run:
+        all_data["ptr_lookups"] = await reverse_ptr_lookups(all_data["records"], args.timeout, args.verbose)
+        display_dns_records_table(all_data["records"], args.quiet)
+        display_ptr_lookups(all_data["ptr_lookups"], args.quiet)
 
     display_summary(all_data, args.quiet)
     if not args.quiet:
