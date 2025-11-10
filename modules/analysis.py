@@ -173,7 +173,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         
     return axfr_results
 
-# --- THIS IS THE UPDATED ASYNC FUNCTION ---
 async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
     analysis = {}
@@ -336,8 +335,9 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
     tech_data = {"headers": {}, "technologies": [], "server": "", "status_code": 0, "error": None}
     urls_to_check = [f"https://{domain}", f"http://{domain}"]
     
-    # CHANGED: Use httpx.AsyncClient for async HTTP calls
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
+    # --- THIS IS THE UPDATED LINE ---
+    # Use httpx.AsyncClient with default security (verify=True)
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         for url in urls_to_check:
             try:
                 response = await client.get(url)
@@ -376,7 +376,7 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
             except Exception as e:
-                tech_data["error"] = f"Unexpected error checking {url}: {e}"
+                tech_data["error"] = f"Unexpected error checking {url}: {Example- {e}")
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}")
     
