@@ -35,21 +35,20 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 2.  Install the required Python packages:
     ```bash
-    pip install -r requirements.txt # or pip install dnspython requests whois ipwhois rich beautifulsoup4
+    pip install -r requirements.txt
     ```
 
 ---
 
 ## Usage & Options
 
-Run the `zone-poker.py` script against a single target domain or provide a file with a list of domains. If no specific modules are selected, a full scan is performed.
-
+### Basic Commands
 ```bash
-# Scan a single domain
-python3 zone-poker.py <domain> [options]
+# Scan a single domain with all modules and export
+python3 zone-poker.py example.com --all --export
 
 # Scan multiple domains from a JSON file
-python3 zone-poker.py -f domains.json [options]
+python3 zone-poker.py -f domains.json --all
 
 # Use a configuration file to define scan parameters
 python3 zone-poker.py -c my-scan.json
@@ -57,8 +56,30 @@ python3 zone-poker.py -c my-scan.json
 
 **Example:**
 ```bash
-python3 zone-poker.py example.com --verbose
+# Scan a single domain with all modules and export
+python3 zone-poker.py example.com --all --export
+
+# Scan multiple domains from a JSON file
+python3 zone-poker.py -f domains.json --all
+
+# Use a configuration file to define scan parameters
+python3 zone-poker.py -c my-scan.json
 ```
+
+Analysis Modules
+Run specific modules by adding their flags.
+
+Flag	Module	Description
+-r, --records	Records	Query all standard DNS record types.
+--ptr	PTR Lookups	Perform reverse DNS (PTR) lookups for A/AAAA records.
+-z, --zone	Zone Transfer	Attempt a zone transfer (AXFR) against nameservers.
+-m, --mail	Email Security	Analyze email security records (SPF, DMARC, DKIM).
+-w, --whois	WHOIS	Perform an extended WHOIS lookup on the domain.
+-n, --nsinfo	Nameserver Info	Analyze nameserver information and check for DNSSEC.
+-p, --propagation	Propagation	Check DNS propagation across public resolvers.
+-s, --security	Security Audit	Run a basic audit for DNS security misconfigurations.
+-t, --tech	Tech Detection	Detect web technologies, CMS, and security headers.
+-o, --osint	OSINT	Enrich data with passive DNS and other OSINT sources.
 
 ---
 
