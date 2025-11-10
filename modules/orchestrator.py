@@ -162,17 +162,21 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     }
 
     # --- Centralized Resolver Added ---
-    resolver = dns.resolver.Resolver()
+    # Do not configure using system's /etc/resolv.conf
+    resolver = dns.resolver.Resolver(configure=False)
     resolver.set_flags(0)
     resolver.timeout = args.timeout
     resolver.lifetime = args.timeout
+    # Force public DNS servers to bypass local stub resolvers (like 127.0.0.53)
+    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
+
 
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
         "resolver": resolver, # Pass the single resolver to all functions
         "all_data": all_data, # Allows functions to access results from other modules
-        "args": args, # --- THIS LINE IS ADDED ---
+        "args": args, # Added to pass full args namespace to functions
         **vars(args) # Add timeout, verbose, etc.
     }
 

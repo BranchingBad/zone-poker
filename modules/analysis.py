@@ -293,7 +293,9 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         # This function *needs* its own resolver to set custom nameservers
-        resolver = dns.resolver.Resolver()
+        # --- THIS BLOCK IS FIXED ---
+        resolver = dns.resolver.Resolver(configure=False) # Don't read /etc/resolv.conf
+        resolver.set_flags(0)
         resolver.timeout = timeout
         resolver.lifetime = timeout
         resolver.nameservers = [ip]
