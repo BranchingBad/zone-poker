@@ -4,7 +4,6 @@ Zone poker
 A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis
 """
 
-import logging
 import argparse
 import asyncio
 import json
@@ -16,17 +15,14 @@ from typing import List
 from modules.orchestrator import run_analysis_modules, MODULE_DISPATCH_TABLE, register_module_args
 from modules.export import export_reports
 from modules.config_manager import get_final_config
-from modules.logger_config import setup_logging
 from modules.config import console
 import dns.resolver
 from rich.progress import Progress # Import Progress
 
-logger = logging.getLogger(__name__)
-
 def setup_parser() -> argparse.ArgumentParser:
     """Creates and configures the argument parser."""
     parser = argparse.ArgumentParser(
-        description="Zone-Poker - A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.\nCreated by wh0xac",
+        description="Zone-Poker - A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.\nCreated by BranchingBad",
         epilog="""
 Examples:
   python3 zone-poker.py example.com --all --export
@@ -52,7 +48,6 @@ Examples:
     parser.add_argument("-O", "--output-dir", help="Path to a directory for saving reports (default: Desktop)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed error logs during the scan")
     parser.add_argument("-q", "--quiet", action="store_true", help="Show minimal console output (suppress tables and headers)")
-    parser.add_argument("--log-file", help="Path to a file to save detailed logs.")
 
     # Module-specific Options
     parser.add_argument("--types", help="Comma-separated list of DNS record types to query (e.g., A,MX,TXT)")
@@ -72,19 +67,20 @@ def get_domains_to_scan(args: argparse.Namespace, parser: argparse.ArgumentParse
             with open(file_input, 'r') as f:
                 domains_from_file = json.load(f)
             if not isinstance(domains_from_file, list):
-                logger.error(f"The JSON file '{file_input}' must contain a list of domain strings.")
+                console.print(f"[bold red]Error: The JSON file '{file_input}' must contain a list of domain strings.[/bold red]")
                 return []
             domains_to_scan.extend(domains_from_file)
         except FileNotFoundError:
-            logger.error(f"The file '{file_input}' was not found.")
+            console.print(f"[bold red]Error: The file '{file_input}' was not found.[/bold red]")
             return []
         except json.JSONDecodeError:
-            logger.error(f"Could not decode JSON from the file '{file_input}'. Please check the format.")
+            console.print(f"[bold red]Error: Could not decode JSON from the file '{file_input}'. Please check the format.[/bold red]")
             return []
     elif domain_input:
         domains_to_scan.append(domain_input)
 
     if not domains_to_scan:
+        console.print("[bold red]Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.[/bold red]")
         parser.print_help()
         return []
     
@@ -99,8 +95,6 @@ async def main():
         args = get_final_config(parser, cli_args)
     except (FileNotFoundError, json.JSONDecodeError):
         return # Error message is printed by the config manager
-
-    setup_logging(args.verbose, args.quiet, args.log_file)
 
     domains_to_scan = get_domains_to_scan(args, parser)
     if not domains_to_scan:
@@ -135,14 +129,14 @@ async def main():
                     export_reports(domain, all_data)
 
             except dns.resolver.NXDOMAIN:
-                logger.error(f"The domain '{domain}' does not exist (NXDOMAIN).")
+                console.print(f"[bold red]Error: The domain '{domain}' does not exist (NXDOMAIN).[/bold red]")
             except KeyboardInterrupt:
-                logger.warning("\nScan aborted by user.")
+                console.print(f"\n[bold yellow]Scan aborted by user.[/bold yellow]")
                 return # Exit the loop and the script
             except Exception as e:
-                logger.error(f"An unexpected error occurred while scanning '{domain}': {e}")
+                console.print(f"[bold red]An unexpected error occurred while scanning '{domain}': {e}[/bold red]")
                 if getattr(args, 'verbose', False):
-                    logger.debug(traceback.format_exc())
+                    console.print(f"\n[dim]{traceback.format_exc()}[/dim]")
                 console.print(f"Scan for {domain} terminated due to error. Moving to next domain if available.")
             
             progress.advance(scan_task)

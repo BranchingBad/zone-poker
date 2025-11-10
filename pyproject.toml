@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zone-poker"
+version = "1.0.0"
+authors = [
+  { name="BranchingBad", email="your-email@example.com" },
+]
+description = "A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Environment :: Console",
+]
+# Your dependencies from requirements.txt go here
+dependencies = [
+    "dnspython",
+    "httpx",
+    "python-whois",
+    "ipwhois",
+    "rich",
+    "beautifulsoup4"
+]
+
+[project.urls]
+Homepage = "https://github.com/BranchingBad/zone-poker"
+Issues = "https://github.com/BranchingBad/zone-poker/issues"
+
+# This is the magic part!
+[project.scripts]
+zone-poker = "zone_poker:main_wrapper"
