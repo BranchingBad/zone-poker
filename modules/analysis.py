@@ -182,7 +182,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
          try:
             # CHANGED: Switched to passed-in async resolver
             answers = await resolver.resolve_async(dmarc_domain, "TXT")
-            dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
+            dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for t in rdata.strings]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             dmarc_records = []
     
@@ -263,3 +263,184 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
             if ip_whois_data:
                 info["asn"] = ip_whois_data.get("asn", "N/A")
                 info["asn_registry"] = ip_whois_data.get("asn_registry", "N/A")
+                info["asn_cidr"] = ip_whois_data.get("asn_cidr", "N/A")
+                info["asn_description"] = ip_whois_data.get("asn_description", "N/A")
+        except Exception as e:
+            info["error"] = str(e)
+            if verbose:
+                console.print(f"Error analyzing NS {ns_name}: {e}")
+        ns_info[ns_name] = info
+
+    await asyncio.gather(*(analyze_ns(ns) for ns in ns_records))
+    
+    # Check DNSSEC
+    if records.get("DNSKEY") and records.get("DS"):
+        ns_info["dnssec"] = "Enabled (DNSKEY and DS records found)"
+    elif records.get("DNSKEY"):
+        ns_info["dnssec"] = "Partial (DNSKEY found, but no DS record)"
+    else:
+        ns_info["dnssec"] = "Not Enabled (No DNSKEY or DS records)"
+        
+    return ns_info
+
+async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
+    """Checks domain 'A' record propagation against public resolvers."""
+    results = {}
+    
+    async def check_resolver(name, ip):
+        # This function *needs* its own resolver to set custom nameservers
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = timeout
+        resolver.lifetime = timeout
+        resolver.nameservers = [ip]
+        try:
+            answers = await resolver.resolve_async(domain, "A")
+            results[name] = str(answers[0])
+        except Exception as e:
+            results[name] = f"Error: {type(e).__name__}"
+            
+    await asyncio.gather(*(check_resolver(name, ip) for name, ip in PUBLIC_RESOLVERS.items()))
+    return results
+
+def security_audit(records: Dict[str, List[Dict[str, Any]]], email_security: Dict[str, Any]) -> Dict[str, str]:
+    """Runs a basic audit for DNS security misconfigurations."""
+    audit = {}
+    
+    # SPF Policy
+    if email_security.get("spf", {}).get("all_policy") == "?all":
+        audit["SPF Policy"] = "Weak (Using '?all' Neutral policy)"
+    elif email_security.get("spf", {}).get("all_policy") == "~all":
+        audit["SPF Policy"] = "Moderate (Using '~all' SoftFail policy)"
+    elif email_security.get("spf", {}).get("all_policy") == "-all":
+        audit["SPF Policy"] = "Secure (Using '-all' HardFail policy)"
+    else:
+        audit["SPF Policy"] = "Weak (No 'all' policy or record not found)"
+
+    # DMARC Policy
+    if email_security.get("dmarc", {}).get("p") == "none":
+        audit["DMARC Policy"] = "Weak (Policy 'p=none' is in monitoring mode)"
+    elif email_security.get("dmarc", {}).get("p") in ("quarantine", "reject"):
+        audit["DMARC Policy"] = f"Secure (Policy 'p={email_security['dmarc']['p']}')"
+    else:
+        audit["DMARC Policy"] = "Not Found or Misconfigured"
+
+    # CAA Record
+    if records.get("CAA"):
+        audit["CAA Record"] = "Present (Restricts certificate issuance)"
+    else:
+        audit["CAA Record"] = "Not Found (Any CA can issue certificates)"
+
+    return audit
+
+async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[str, Any]:
+    """
+    Detects web technologies, CMS, and security headers using async HTTP.
+    (Enhanced detection logic)
+    """
+    tech_data = {"headers": {}, "technologies": [], "server": "", "status_code": 0, "error": None}
+    urls_to_check = [f"https://{domain}", f"http://{domain}"]
+    
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        for url in urls_to_check:
+            try:
+                response = await client.get(url)
+                tech_data["status_code"] = response.status_code
+                tech_data["server"] = response.headers.get("Server", "")
+                
+                # Simple header parsing
+                headers = dict(response.headers)
+                tech_data["headers"] = headers
+                if headers.get("X-Powered-By"):
+                    tech_data["technologies"].append(headers["X-Powered-By"])
+                if headers.get("X-Generator"):
+                    tech_data["technologies"].append(headers["X-Generator"])
+                if "Drupal" in headers.get("X-Generator", ""):
+                    tech_data["technologies"].append("Drupal")
+
+                # Simple HTML parsing
+                soup = BeautifulSoup(response.text, "html.parser")
+                
+                # Generator tags
+                generator_tag = soup.find("meta", attrs={"name": "generator"})
+                if generator_tag and generator_tag.get("content"):
+                    tech_data["technologies"].append(generator_tag["content"])
+
+                # Script tags
+                scripts = [s.get("src", "") for s in soup.find_all("script") if s.get("src")]
+                if any("react" in s for s in scripts):
+                    tech_data["technologies"].append("React")
+                if any("vue" in s for s in scripts):
+                    tech_data["technologies"].append("Vue.js")
+                if any("shopify" in s for s in scripts):
+                     tech_data["technologies"].append("Shopify")
+                
+                # Body content checks
+                if "wp-content" in response.text:
+                    tech_data["technologies"].append("WordPress")
+                if "joomla" in response.text:
+                    tech_data["technologies"].append("Joomla")
+
+                # Remove duplicates
+                tech_data["technologies"] = list(set(tech_data["technologies"]))
+                
+                # Found a working URL, stop checking
+                return tech_data
+            # --- THIS LINE IS UPDATED ---
+            except (httpx.RequestError, httpx.TooManyRedirects) as e:
+                tech_data["error"] = f"Error checking {url}: {e}"
+                if verbose:
+                    console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
+            except Exception as e:
+                tech_data["error"] = f"Unexpected error checking {url}: {e}"
+                if verbose:
+                    console.print(f"[dim]Tech detection failed for {url}: {e}")
+    
+    return tech_data
+
+async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace) -> Dict[str, Any]:
+    """
+    Enriches data with passive DNS (AlienVault OTX).
+    Checks for 'otx' API key in config.
+    """
+    osint_data = {"subdomains": [], "passive_dns": []}
+    
+    # Example: Query AlienVault OTX for passive DNS
+    url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
+    headers = {"Accept": "application/json"}
+    
+    # Check for API key in the merged config (passed via args)
+    otx_key = getattr(args, 'api_keys', {}).get('otx')
+    if otx_key:
+        headers['X-OTX-API-Key'] = otx_key
+        if verbose:
+            console.print("[dim]Using OTX API Key.[/dim]")
+    
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(url, headers=headers)
+            
+        if response.status_code == 200:
+            data = response.json()
+            passive_dns = data.get("passive_dns", [])
+            seen_ips = set()
+            for record in passive_dns:
+                if record.get("address") not in seen_ips:
+                    osint_data["passive_dns"].append({
+                        "ip": record["address"],
+                        "hostname": record["hostname"],
+                        "last_seen": record["last"],
+                    })
+                    seen_ips.add(record["address"])
+                    
+            # Also extract subdomains from hostnames
+            subdomains = {record["hostname"] for record in passive_dns if record["hostname"].endswith(f".{domain}")}
+            osint_data["subdomains"] = list(subdomains)
+        else:
+            osint_data["error"] = f"OTX query failed (Status: {response.status_code})"
+    except httpx.RequestError as e:
+        osint_data["error"] = f"OTX query failed: {e}"
+        if verbose:
+            console.print(f"Error during OSINT enrichment: {e}")
+    
+    return osint_data
+}

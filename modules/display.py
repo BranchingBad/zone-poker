@@ -35,9 +35,7 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool):
     table.add_column("Extra", width=20)
     
     total_records = 0
-    # --- THIS LOOP IS FIXED ---
-    # It now iterates over the keys in the received 'records' dictionary
-    # instead of the hardcoded RECORD_TYPES list.
+    # This loop is data-driven (from a previous fix)
     for rtype in records.keys():
         record_list = records.get(rtype, [])
         if record_list:
@@ -51,6 +49,9 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool):
                     extra = f"Priority: {record['priority']}"
                 elif rtype == "SRV":
                     extra = f"P:{record.get('priority')} W:{record.get('weight')} Port:{record.get('port')}"
+                # --- THIS LINE IS NEW ---
+                elif rtype == "SOA":
+                    extra = f"Serial: {record.get('serial')}"
                 
                 type_display = rtype if idx == 0 else ""
                 
@@ -210,7 +211,6 @@ def display_nameserver_analysis(data: dict, quiet: bool):
         if "error" in info:
             table.add_row(ns, f"[red]{info['error']}[/red]", "")
         else:
-            # --- THIS BLOCK IS FIXED ---
             ip_list = info.get('ips', [])
             ip_str = "\n".join(ip_list) if ip_list else "N/A"
             table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
@@ -379,6 +379,9 @@ def export_txt_records(data: Dict[str, List[Any]]) -> str:
                     extra = f" (Priority: {record['priority']})"
                 elif r_type == "SRV":
                     extra = f" (P: {record.get('priority')} W: {record.get('weight')} Port: {record.get('port')})"
+                # --- THIS LINE IS NEW ---
+                elif r_type == "SOA":
+                    extra = f" (Serial: {record.get('serial')})"
                 report.append(f"  - {value}{extra}")
     if total_records == 0:
         report.append("No DNS records found.")
@@ -448,7 +451,6 @@ def export_txt_nsinfo(data: Dict[str, Any]) -> str:
     for ns, info in data.items():
         if ns == "dnssec": continue
         
-        # --- THIS BLOCK IS FIXED ---
         ip_list = info.get('ips', [])
         ip_str = ", ".join(ip_list) if ip_list else "N/A" # Use comma for TXT
         asn = info.get('asn_description', 'N/A')

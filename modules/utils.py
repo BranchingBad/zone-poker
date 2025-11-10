@@ -70,6 +70,14 @@ def _format_rdata(rtype: str, rdata: Any, ttl: int) -> Dict[str, Any]:
             "weight": rdata.weight,
             "port": rdata.port,
         })
+    # --- THIS BLOCK IS NEW ---
+    elif rtype == "SOA":
+        record_info.update({
+            "value": str(rdata.mname),
+            "rname": str(rdata.rname),
+            "serial": rdata.serial,
+        })
+    # --- END NEW BLOCK ---
     elif rtype == "TXT":
         record_info["value"] = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
     else:
@@ -91,3 +99,4 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
             elif part in ("-all", "~all", "+all", "?all"):
                 analysis["all_policy"] = part
     return analysis
+}
