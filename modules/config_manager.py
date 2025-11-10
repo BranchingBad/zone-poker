@@ -5,6 +5,7 @@ Handles loading and merging of settings from command-line arguments and config f
 """
 import argparse
 import json
+import logging
 from typing import Dict, Any, Optional
 
 from .config import console
@@ -36,10 +37,10 @@ def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespa
             with open(cli_args.config, 'r') as f:
                 config_data = json.load(f)
         except FileNotFoundError:
-            console.print(f"[bold red]Error: Config file '{cli_args.config}' not found.[/bold red]")
+            logging.error(f"Config file '{cli_args.config}' not found.")
             raise
         except json.JSONDecodeError:
-            console.print(f"[bold red]Error: Could not decode JSON from config file '{cli_args.config}'.[/bold red]")
+            logging.error(f"Could not decode JSON from config file '{cli_args.config}'.")
             raise
 
     # 3. Merge: Start with defaults, then layer config file

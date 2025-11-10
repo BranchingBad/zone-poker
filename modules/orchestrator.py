@@ -6,6 +6,7 @@ and displaying results.
 """
 import asyncio
 import argparse
+import logging
 import inspect
 import dns.resolver # Added for centralized resolver
 from datetime import datetime
@@ -149,9 +150,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     Orchestrates the execution of analysis modules, manages data dependencies,
     and calls the corresponding display functions.
     """
-    if not args.quiet:
-        console.print(f"Target: {domain}")
-        console.print(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    logging.info(f"Target: {domain}")
+    logging.info(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     all_data = {
         "domain": domain,
@@ -189,8 +189,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         for dep in module_info.get("dependencies", []):
             await execute_module(dep)
 
-        if not args.quiet:
-            console.print(f"[cyan]» {module_info['description']}[/cyan]")
+        logging.info(f"» {module_info['description']}")
 
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
@@ -222,9 +221,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
             else:
                 result = analysis_func(**func_kwargs)
         except Exception as e:
-            console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
-            if args.verbose:
-                console.print_exception(show_locals=True)
+            logging.error(f"Error in module '{module_name}': {type(e).__name__} - {e}")
+            logging.debug(e, exc_info=True)
             return
         
         all_data[data_key] = result
@@ -240,9 +238,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         await execute_module(module)
 
     display_summary(all_data, args.quiet)
-    if not args.quiet:
-        console.print(f"✓ Scan completed for {domain}")
-        console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    logging.info(f"✓ Scan completed for {domain}")
+    logging.info(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     return all_data
 }
