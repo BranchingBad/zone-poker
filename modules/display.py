@@ -49,7 +49,6 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool):
                     extra = f"Priority: {record['priority']}"
                 elif rtype == "SRV":
                     extra = f"P:{record.get('priority')} W:{record.get('weight')} Port:{record.get('port')}"
-                # --- THIS LINE IS NEW ---
                 elif rtype == "SOA":
                     extra = f"Serial: {record.get('serial')}"
                 
@@ -166,27 +165,28 @@ def display_whois_info(data: dict, quiet: bool):
     table.add_column("Key", style="bold cyan", no_wrap=True, width=18)
     table.add_column("Value")
 
-    key_fields = [
-        'domain_name', 'registrar', 'status', 'creation_date', 
-        'expiration_date', 'updated_date', 'name_servers', 'emails'
-    ]
+    # --- THIS SECTION IS REFACTORED ---
+    # Iterate over all data items instead of a hardcoded list.
+    # Exclude keys that are not helpful in the display.
+    EXCLUDE_KEYS = {'error'}
     
-    for key in key_fields:
-        if key in data and data[key]:
-            value = data[key]
+    for key, value in data.items():
+        if key in EXCLUDE_KEYS or not value:
+            continue
             
-            if isinstance(value, list):
-                value_str = "\n".join(str(v) for v in value)
-            elif 'date' in key and isinstance(value, str):
-                try:
-                    dt = datetime.datetime.fromisoformat(value)
-                    value_str = dt.strftime('%Y-%m-%d %H:%M:%S')
-                except ValueError:
-                    value_str = str(value) 
-            else:
-                value_str = str(value)
-            
-            table.add_row(f"{key.replace('_', ' ').title()}:", value_str)
+        if isinstance(value, list):
+            value_str = "\n".join(str(v) for v in value)
+        elif 'date' in key and isinstance(value, str):
+            try:
+                dt = datetime.datetime.fromisoformat(value)
+                value_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                value_str = str(value) 
+        else:
+            value_str = str(value)
+        
+        table.add_row(f"{key.replace('_', ' ').title()}:", value_str)
+    # --- END REFACTOR ---
 
     console.print(Panel(table, title="WHOIS Information", box=box.ROUNDED, expand=False))
     console.print()
@@ -379,7 +379,6 @@ def export_txt_records(data: Dict[str, List[Any]]) -> str:
                     extra = f" (Priority: {record['priority']})"
                 elif r_type == "SRV":
                     extra = f" (P: {record.get('priority')} W: {record.get('weight')} Port: {record.get('port')})"
-                # --- THIS LINE IS NEW ---
                 elif r_type == "SOA":
                     extra = f" (Serial: {record.get('serial')})"
                 report.append(f"  - {value}{extra}")
