@@ -51,7 +51,7 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
         """Inner function to query a single record type."""
         try:
             # --- THIS LINE IS FIXED ---
-            answers = await resolver.resolve(domain, rtype)
+            answers = await resolver.resolve_async(domain, rtype)
             record_list = []
             for rdata in answers:
                 record_info = _format_rdata(rtype, rdata, answers.ttl)
@@ -84,7 +84,7 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
         try:
             reversed_ip = dns.reversename.from_address(ip)
             # --- THIS LINE IS FIXED ---
-            answer = await resolver.resolve(reversed_ip, 'PTR')
+            answer = await resolver.resolve_async(reversed_ip, 'PTR')
             ptr_results[ip] = str(answer[0])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
             ptr_results[ip] = "No PTR record found."
@@ -115,7 +115,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         try:
             # Get A records
             # --- THIS LINE IS FIXED ---
-            a_answers = await resolver.resolve(ns, "A")
+            a_answers = await resolver.resolve_async(ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No A records, try AAAA
@@ -123,7 +123,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         try:
             # Get AAAA records
             # --- THIS LINE IS FIXED ---
-            aaaa_answers = await resolver.resolve(ns, "AAAA")
+            aaaa_answers = await resolver.resolve_async(ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No AAAA records
@@ -185,7 +185,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
     if not dmarc_records:
          try:
             # --- THIS LINE IS FIXED ---
-            answers = await resolver.resolve(dmarc_domain, "TXT")
+            answers = await resolver.resolve_async(dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             dmarc_records = []
@@ -238,14 +238,14 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
         ns_ips = []
         try:
             # Get A records
-            a_answers = await resolver.resolve(ns_name, "A")
+            a_answers = await resolver.resolve_async(ns_name, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No A records
         
         try:
             # Get AAAA records
-            aaaa_answers = await resolver.resolve(ns_name, "AAAA")
+            aaaa_answers = await resolver.resolve_async(ns_name, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
             pass # No AAAA records
@@ -293,7 +293,6 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         # This function *needs* its own resolver to set custom nameservers
-        # --- THIS BLOCK IS FIXED ---
         resolver = dns.resolver.Resolver(configure=False) # Don't read /etc/resolv.conf
         resolver.set_flags(0)
         resolver.timeout = timeout
@@ -301,7 +300,7 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
         resolver.nameservers = [ip]
         try:
             # --- THIS LINE IS FIXED ---
-            answers = await resolver.resolve(domain, "A")
+            answers = await resolver.resolve_async(domain, "A")
             results[name] = str(answers[0])
         except Exception as e:
             results[name] = f"Error: {type(e).__name__}"
