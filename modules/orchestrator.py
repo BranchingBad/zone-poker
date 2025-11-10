@@ -156,6 +156,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     all_data = {
         "domain": domain,
         "scan_timestamp": datetime.now().isoformat(),
+        "args_namespace": args, # Added to pass args to other modules (like export)
         # Pre-seed data keys from all modules for a consistent structure
         **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()}
     }
@@ -194,14 +195,22 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
         display_func = module_info["display_func"]
-
+        
         # Prepare arguments for the analysis function dynamically
+        func_kwargs = {}
+
+        # --- Handle special --types arg for 'records' module ---
+        if module_name == "records":
+            record_types_str = getattr(args, 'types', None)
+            if record_types_str:
+                func_kwargs['record_types'] = [t.strip().upper() for t in record_types_str.split(',')]
+        
+        # Populate dependencies
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
             analysis_context[dep_key] = all_data.get(dep_key, {})
 
         sig = inspect.signature(analysis_func)
-        func_kwargs = {}
         for param in sig.parameters:
             if param in analysis_context:
                 func_kwargs[param] = analysis_context[param]

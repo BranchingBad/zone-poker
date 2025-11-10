@@ -198,7 +198,7 @@ def display_nameserver_analysis(data: dict, quiet: bool):
 
     table = Table(title=title, box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("Nameserver", style="bold")
-    table.add_column("IP Address")
+    table.add_column("IP Address(es)")
     table.add_column("ASN Description")
     
     for ns, info in data.items():
@@ -207,7 +207,10 @@ def display_nameserver_analysis(data: dict, quiet: bool):
         if "error" in info:
             table.add_row(ns, f"[red]{info['error']}[/red]", "")
         else:
-            table.add_row(ns, info.get('ip', 'N/A'), info.get('asn_description', 'N/A'))
+            # --- THIS BLOCK IS FIXED ---
+            ip_list = info.get('ips', [])
+            ip_str = "\n".join(ip_list) if ip_list else "N/A"
+            table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
             
     console.print(table)
     console.print()
@@ -441,11 +444,15 @@ def export_txt_nsinfo(data: Dict[str, Any]) -> str:
     dnssec_status = data.get("dnssec", "Unknown")
     for ns, info in data.items():
         if ns == "dnssec": continue
-        ip = info.get('ip', 'N/A')
+        
+        # --- THIS BLOCK IS FIXED ---
+        ip_list = info.get('ips', [])
+        ip_str = ", ".join(ip_list) if ip_list else "N/A" # Use comma for TXT
         asn = info.get('asn_description', 'N/A')
         report.append(f"  - {ns}")
-        report.append(f"    IP: {ip}")
+        report.append(f"    IP(s): {ip_str}")
         report.append(f"    ASN: {asn}")
+        
     report.append(f"\nDNSSEC: {dnssec_status}")
     report.append("\n")
     return "\n".join(report)

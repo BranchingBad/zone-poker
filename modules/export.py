@@ -6,6 +6,7 @@ Contains functions for exporting reports to files.
 import json
 from datetime import datetime
 from typing import Dict, Any
+from pathlib import Path
 
 # Import shared config and utilities
 from .config import console
@@ -20,18 +21,40 @@ def export_reports(domain: str, all_data: Dict[str, Any]):
     The TXT report is generated dynamically by looping through the
     MODULE_DISPATCH_TABLE and calling each module's 'export_func'.
     """
-    desktop_path = get_desktop_path()
+    args = all_data.get('args_namespace')
+    output_path_str = getattr(args, 'output_dir', None) if args else None
+    save_path: Path
+
+    if output_path_str:
+        save_path = Path(output_path_str)
+        if not save_path.exists() or not save_path.is_dir():
+            console.print(f"[bold red]Error: Output directory '{output_path_str}' not found. Defaulting to Desktop.[/bold red]")
+            save_path = get_desktop_path()
+    else:
+        save_path = get_desktop_path()
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    json_file = desktop_path / f"{domain}_dnsint_{timestamp}.json"
-    txt_file = desktop_path / f"{domain}_dnsint_{timestamp}.txt"
+    json_file = save_path / f"{domain}_dnsint_{timestamp}.json"
+    txt_file = save_path / f"{domain}_dnsint_{timestamp}.txt"
     
-    # --- JSON Export ---
-    all_data["export_timestamp"] = datetime.now().isoformat()
-    all_data["export_location"] = str(desktop_path)
+    # --- JSON Export (Cleaned) ---
+    export_data = {
+        "domain": all_data.get("domain"),
+        "scan_timestamp": all_data.get("scan_timestamp"),
+        "export_timestamp": datetime.now().isoformat(),
+        "export_location": str(save_path)
+    }
+
+    # Add data from each module, using the data_key from the dispatch table
+    for module_name, config in MODULE_DISPATCH_TABLE.items():
+        data_key = config["data_key"]
+        # Only add data if it exists and is not empty
+        if data_key in all_data and all_data[data_key]:
+            export_data[data_key] = all_data[data_key]
     
     with open(json_file, "w") as f:
-        json.dump(all_data, f, indent=2, default=str)
+        json.dump(export_data, f, indent=2, default=str)
     
     # --- TXT Report Generation ---
     report_content = []
@@ -61,6 +84,6 @@ def export_reports(domain: str, all_data: Dict[str, Any]):
     with open(txt_file, "w") as f:
         f.write("\n".join(report_content))
 
-    console.print(f"\n✓ Reports exported to Desktop:")
+    console.print(f"\n✓ Reports exported to {save_path}:")
     console.print(f"  → {json_file}")
     console.print(f"  → {txt_file}\n")
