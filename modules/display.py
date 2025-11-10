@@ -35,7 +35,10 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool):
     table.add_column("Extra", width=20)
     
     total_records = 0
-    for rtype in RECORD_TYPES:
+    # --- THIS LOOP IS FIXED ---
+    # It now iterates over the keys in the received 'records' dictionary
+    # instead of the hardcoded RECORD_TYPES list.
+    for rtype in records.keys():
         record_list = records.get(rtype, [])
         if record_list:
             for idx, record in enumerate(record_list):
