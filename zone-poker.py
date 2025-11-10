@@ -14,12 +14,12 @@ from modules.export import export_reports
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="DNSint v1 - DNS Intelligence Toolkit\nPerform deep DNS reconnaissance, WHOIS analysis, and email security checks.\nCreated by wh0xac",
+        description="Zone-Poker - A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.\nCreated by wh0xac",
         epilog="""
 Examples:
-  python3 run_dnsint.py example.com -a -e
-  python3 run_dnsint.py example.com -m -w -e -t
-  python3 run_dnsint.py example.com -p -r --tech
+  python3 zone-poker.py example.com --all --export
+  python3 zone-poker.py example.com --mail --whois --export
+  python3 zone-poker.py example.com --propagation --records --tech
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -27,8 +27,8 @@ Examples:
     parser.add_argument("--version", action="version", version="%(prog)s 1.0")
     parser.add_argument("domain", help="Target domain (e.g., example.com)")
     parser.add_argument("-a", "--all", action="store_true", help="Run full DNS + OSINT + Technology scan")
-    parser.add_argument("-r", "--records", action="store_true", help="Query DNS record types")
-    parser.add_argument("-z", "--zone", action="store_true", help="Perform reverse PTR & AXFR checks")
+    parser.add_argument("-r", "--records", action="store_true", help="Query DNS records & perform reverse PTR lookups")
+    parser.add_argument("-z", "--zone", action="store_true", help="Attempt a zone transfer (AXFR) against nameservers")
     parser.add_argument("-m", "--mail", action="store_true", help="Analyze SPF, DKIM, DMARC")
     parser.add_argument("-w", "--whois", action="store_true", help="Perform extended WHOIS lookup")
     parser.add_argument("-n", "--nsinfo", action="store_true", help="Analyze nameserver info & DNSSEC")
@@ -60,7 +60,7 @@ Examples:
         all_data = await run_analysis_modules(modules_to_run, domain, args)
         
         if args.export:
-            export_reports(domain, all_data, args.verbose)
+            export_reports(domain, all_data)
 
     except Exception as e:
         from modules.config import console

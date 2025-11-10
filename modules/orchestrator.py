@@ -22,10 +22,6 @@ from .display import (
     display_osint_results, display_summary, display_ptr_lookups
 )
 
-def display_zone_analysis(zone_info: Dict, quiet: bool): # This function is no longer used but kept for reference
-    """Composite function to display all zone-related results."""
-    pass
-
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
 # It maps a module's command-line name (e.g., "records") to its corresponding
 # analysis function, display function, and dependencies.

@@ -11,7 +11,7 @@ from typing import Dict, Any
 from .config import console
 from .utils import get_desktop_path
 
-def export_reports(domain: str, all_data: Dict):
+def export_reports(domain: str, all_data: Dict[str, Any]):
     """Export JSON and TXT reports with enhanced AXFR details to Desktop"""
     desktop_path = get_desktop_path()
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -36,9 +36,20 @@ def export_reports(domain: str, all_data: Dict):
             for r_type, items in all_data["records"].items():
                 if items:
                     f.write(f"\n{r_type}:\n")
-                    for item in items:
-                        f.write(f"  - {item.get('value', 'N/A')}\n")
+                    for record in items:
+                        value = record.get("value", "N/A")
+                        extra = ""
+                        if r_type == "MX" and "priority" in record:
+                            extra = f" (Priority: {record['priority']})"
+                        elif r_type == "SRV":
+                            extra = f" (P: {record.get('priority')} W: {record.get('weight')} Port: {record.get('port')})"
+                        f.write(f"  - {value}{extra}\n")
             f.write("\n")
+
+        if all_data.get("zone_info"):
+            f.write("--- Zone Transfer (AXFR) ---\n")
+            f.write(f"{all_data['zone_info'].get('status', 'No data.')}\n\n")
+
 
         if all_data.get("whois"):
             f.write("--- WHOIS Information ---\n")
@@ -58,6 +69,13 @@ def export_reports(domain: str, all_data: Dict):
                     f.write(f"  - {data}\n")
             f.write("\n")
 
+        if all_data.get("nameserver_info"):
+            f.write("--- Nameserver Analysis ---\n")
+            for ns, info in all_data["nameserver_info"].items():
+                ip = info.get('ip', 'N/A')
+                f.write(f"{ns} -> IP: {ip}\n")
+            f.write("\n")
+
         if all_data.get("technology"):
             f.write("--- Technology Detection ---\n")
             tech = all_data["technology"]
@@ -69,6 +87,18 @@ def export_reports(domain: str, all_data: Dict):
                 f.write("\nSecurity Headers:\n")
                 for h_key, h_value in tech["headers"].items():
                     f.write(f"  - {h_key}: {h_value}\n")
+            f.write("\n")
+
+        if all_data.get("security"):
+            f.write("--- Security Audit ---\n")
+            for check, result in all_data["security"].items():
+                f.write(f"{check}: {result}\n")
+            f.write("\n")
+
+        if all_data.get("osint"):
+            f.write("--- OSINT Enrichment ---\n")
+            for source, data in all_data["osint"].items():
+                f.write(f"\n{source.replace('_', ' ').title()}:\n  - {data}\n")
 
     console.print(f"\n✓ Reports exported to Desktop:")
     console.print(f"  → {json_file}")
