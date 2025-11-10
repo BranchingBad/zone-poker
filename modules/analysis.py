@@ -26,48 +26,11 @@ from bs4 import BeautifulSoup
 
 # Import shared config and utilities
 from .config import console, RECORD_TYPES, PUBLIC_RESOLVERS
-from .utils import join_txt_chunks, get_parent_zone
+# --- THIS LINE IS UPDATED ---
+from .utils import join_txt_chunks, get_parent_zone, _format_rdata, _parse_spf_record
 
-# --- Helper Functions ---
-
-def _format_rdata(rtype: str, rdata: Any, ttl: int) -> Dict[str, Any]:
-    """
-    Formats a single dnspython rdata object into a standardized dictionary.
-    """
-    record_info = {"ttl": ttl}
-    if rtype == "MX":
-        record_info.update({
-            "value": str(rdata.exchange),
-            "priority": rdata.preference,
-        })
-    elif rtype == "SRV":
-        record_info.update({
-            "value": str(rdata.target),
-            "priority": rdata.priority,
-            "weight": rdata.weight,
-            "port": rdata.port,
-        })
-    elif rtype == "TXT":
-        record_info["value"] = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
-    else:
-        record_info["value"] = str(rdata)
-    return record_info
-
-def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
-    """Helper to parse an SPF record string."""
-    parts = spf_record.split()
-    analysis = {"raw": spf_record, "mechanisms": {}}
-    if parts:
-        analysis["version"] = parts[0]
-        for part in parts[1:]:
-            if part.startswith(("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:", "exists:")):
-                key, _, value = part.partition(":")
-                qualifier = key[0] if key[0] in "+-~?" else "+"
-                key = key.lstrip("+-~?")
-                analysis["mechanisms"].setdefault(key, []).append(value)
-            elif part in ("-all", "~all", "+all", "?all"):
-                analysis["all_policy"] = part
-    return analysis
+# --- Helper Functions (REMOVED) ---
+# _format_rdata and _parse_spf_record have been moved to utils.py
 
 # --- Analysis Functions ---
 
@@ -132,7 +95,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     ns_records = records.get("NS", [])
     if not ns_records:
         axfr_results["status"] = "Skipped (No NS records found)"
-        return axfr_results
+        return axaxfr_results
 
     nameservers = [record["value"] for record in ns_records]
     axfr_results["status"] = "Completed"
@@ -146,7 +109,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
             ns_ip = str(ns_answer[0])
 
             # Attempt transfer
-            # --- THIS IS THE CORRECTED LINE ---
             zone = await dns.zone.from_xfr(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
             
             nodes = zone.nodes.keys()
@@ -221,7 +183,6 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
     'whois' library in a separate thread.
     """
     try:
-        # CHANGED: Run blocking 'whois_lib.whois' in a thread
         whois_data = await asyncio.to_thread(whois_lib.whois, domain)
         
         if whois_data and whois_data.get('domain_name'):
@@ -253,7 +214,6 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], timeout:
             ip = str(answers[0])
             info["ip"] = ip
             
-            # CHANGED: Run blocking 'IPWhois' in a thread
             obj = IPWhois(ip)
             ip_whois_data = await asyncio.to_thread(obj.lookup_rdap, inc_raw=False)
             
@@ -335,8 +295,6 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
     tech_data = {"headers": {}, "technologies": [], "server": "", "status_code": 0, "error": None}
     urls_to_check = [f"https://{domain}", f"http://{domain}"]
     
-    # --- THIS IS THE UPDATED LINE ---
-    # Use httpx.AsyncClient with default security (verify=True)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         for url in urls_to_check:
             try:
@@ -376,7 +334,8 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
             except Exception as e:
-                tech_data["error"] = f"Unexpected error checking {url}: {Example- {e}")
+                # --- THIS LINE IS UPDATED (Typo fixed) ---
+                tech_data["error"] = f"Unexpected error checking {url}: {e}"
                 if verbose:
                     console.print(f"[dim]Tech detection failed for {url}: {e}")
     
@@ -391,7 +350,6 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool) -> Dict[str
     headers = {"Accept": "application/json"}
     
     try:
-        # CHANGED: Use httpx.AsyncClient for async API call
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.get(url, headers=headers)
             

@@ -7,6 +7,7 @@ import sys
 import re
 import os
 from pathlib import Path
+from typing import Dict, Any # Added imports for new functions
 
 # Import the shared console object
 from .config import console
@@ -49,3 +50,44 @@ def get_parent_zone(domain: str) -> str | None:
     if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) > 2): # Avoid 'co.uk' style TLDs
         return '.'.join(parts[1:])
     return None
+
+# --- Helper Functions Moved from Analysis.py ---
+
+def _format_rdata(rtype: str, rdata: Any, ttl: int) -> Dict[str, Any]:
+    """
+    Formats a single dnspython rdata object into a standardized dictionary.
+    """
+    record_info = {"ttl": ttl}
+    if rtype == "MX":
+        record_info.update({
+            "value": str(rdata.exchange),
+            "priority": rdata.preference,
+        })
+    elif rtype == "SRV":
+        record_info.update({
+            "value": str(rdata.target),
+            "priority": rdata.priority,
+            "weight": rdata.weight,
+            "port": rdata.port,
+        })
+    elif rtype == "TXT":
+        record_info["value"] = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
+    else:
+        record_info["value"] = str(rdata)
+    return record_info
+
+def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
+    """Helper to parse an SPF record string."""
+    parts = spf_record.split()
+    analysis = {"raw": spf_record, "mechanisms": {}}
+    if parts:
+        analysis["version"] = parts[0]
+        for part in parts[1:]:
+            if part.startswith(("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:", "exists:")):
+                key, _, value = part.partition(":")
+                qualifier = key[0] if key[0] in "+-~?" else "+"
+                key = key.lstrip("+-~?")
+                analysis["mechanisms"].setdefault(key, []).append(value)
+            elif part in ("-all", "~all", "+all", "?all"):
+                analysis["all_policy"] = part
+    return analysis
