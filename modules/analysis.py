@@ -450,4 +450,4 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
         if verbose:
             console.print(f"Error during OSINT enrichment: {e}")
     
-    return osint_data
+    return osint_data   
