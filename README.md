@@ -84,8 +84,8 @@ python3 zone-poker.py example.com -r --types A,MX
 ```
 
 ## Command-Line Arguments
-| Flag | Module | Description |
-|---|---|---|
+| Flag | Description |
+|---|---|
 | `-a`,	`--all` |	Run all analysis modules.
 | `-e`,	`--export` |	Export JSON and TXT reports.
 | `-O`,	`--output-dir` |	Path to a directory for saving reports (default: Desktop).
