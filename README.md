@@ -2,7 +2,7 @@
 
 **Zone-Poker** is a powerful and feature-rich DNS intelligence and reconnaissance tool, designed to provide a comprehensive overview of a domain's DNS configuration, security posture, and related OSINT data from a single command.
 
-The tool gathers data from various sources, analyzes it, and presents it in a clean, human-readable format in your terminal. It also exports the complete findings to JSON and TXT files for easy record-keeping and further analysis.
+The tool gathers data from various sources, analyzes it, and presents it in a clean, human-readable format in your terminal. It also exports the complete findings to `JSON` and `TXT` files for easy record-keeping and further analysis.
 
 ---
 
@@ -10,7 +10,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 - **Comprehensive DNS Record Enumeration**: Queries over a dozen record types, including `A`, `AAAA`, `MX`, `NS`, `SOA`, `TXT`, `SRV`, `CAA`, and more.
 - **Reverse DNS Lookups**: Automatically performs PTR lookups for discovered `A` and `AAAA` records.
-- **Zone Transfer Attempts (AXFR)**: Tries to perform a DNS zone transfer against each authoritative nameserver (over IPv4 and IPv6).
+- **Zone Transfer Attempts (AXFR)**: Tries to perform a DNS zone transfer against each authoritative nameserver over both IPv4 and IPv6.
 - **Email Security Analysis**: Checks for `SPF`, `DMARC`, and `DKIM` records and analyzes their policies for potential misconfigurations.
 - **WHOIS & IP Intelligence**: Fetches `WHOIS` data for the domain and runs `IPWHOIS` lookups on nameserver IP addresses to find ASN details.
 - **Nameserver & DNSSEC Analysis**: Gathers information about the domain's nameservers (IPv4/IPv6) and checks for DNSSEC records (`DNSKEY`, `DS`).
@@ -19,7 +19,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 - **Security Audit**: Performs basic security checks for common DNS misconfigurations.
 - **OSINT Enrichment**: Gathers related data from open-source intelligence sources (e.g., AlienVault OTX).
 - **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels in the terminal.
-- **Configuration File**: Use a JSON config file to manage all your scan options and API keys.
+- **Flexible Configuration**: Use a `JSON` config file to manage all your scan options and API keys, with a clear priority system (CLI > Config > Defaults).
 - **Bulk Analysis**: Scan multiple domains at once by providing a JSON file.
 - **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports to a configurable directory.
 
@@ -41,7 +41,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 ---
 ## ⚙️ Configuration
 
-Zone-Poker can be configured using a JSON file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
+Zone-Poker can be configured using a `JSON` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
 
 ### Configuration Priority
 The tool uses a 3-tiered priority system for settings, processed in the following order:
@@ -64,23 +64,25 @@ For modules that use third-party APIs (like OSINT enrichment), you can provide A
   }
 }
 ```
-## Usage & Options
+---
+## 🚀 Usage
+
 ### Basic Commands
 ```bash
-# Scan a single domain with all modules and export
+# Scan a single domain, run all modules, and export reports
 python3 zone-poker.py example.com --all --export
 
-# Scan multiple domains from a JSON file
-python3 zone-poker.py -f domains.json --all
+# Scan multiple domains from a file and run a security audit
+python3 zone-poker.py -f domains.json --security
 
 # Use a configuration file to define scan parameters
-python3 zone-poker.py -c my-scan.json
+python3 zone-poker.py example.com -c my-scan.json
 
 # Scan and save reports to a specific directory
-python3 zone-poker.py example.com --all -e -O /home/user/reports/
+python3 zone-poker.py example.com --all --export -O /home/user/reports/
 
 # Query for only A and MX records
-python3 zone-poker.py example.com -r --types A,MX
+python3 zone-poker.py example.com --records --types A,MX
 ```
 
 ## Command-Line Arguments
@@ -122,8 +124,9 @@ All scans automatically generate two report files on your Desktop (or the direct
 `{domain}_dnsint_{timestamp}`.json: A structured JSON file containing all the raw data gathered during the scan. Ideal for programmatic access or ingestion into other tools.
 
 `{domain}_dnsint_{timestamp}.txt`: A detailed text report that mirrors the information displayed in the console, suitable for manual review and sharing.
+
 ---
 
-## License
+## ⚖️ License
 
 This project is licensed under the Apache Version 2.0 License. See the `LICENSE` file for details.
