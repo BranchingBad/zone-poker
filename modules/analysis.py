@@ -180,6 +180,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
 
     # DMARC
     dmarc_domain = f"_dmarc.{domain}"
+    # --- THIS LINE IS FIXED (typo) ---
     dmarc_records = [r["value"] for r in records.get("TXT", []) if r.get("value", "").startswith("v=DMARC1")]
     
     # If not on root, check the _dmarc subdomain asynchronously
@@ -293,6 +294,7 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         # This function *needs* its own resolver to set custom nameservers
+        # --- THIS BLOCK IS FIXED ---
         resolver = dns.asyncresolver.Resolver(configure=False) # Don't read /etc/resolv.conf
         resolver.set_flags(0)
         resolver.timeout = timeout
