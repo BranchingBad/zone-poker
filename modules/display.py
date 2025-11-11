@@ -741,9 +741,12 @@ def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
         report.append("\nSecurity Headers:")
         for h_key, h_value in data["headers"].items():
             report.append(f"  - {h_key}: {h_value}")
-    return "\n".join(report)
+    return report
 
-def export_txt_osint(data: Dict[str, Any]) -> str:
+def export_txt_tech(data: Dict[str, Any]) -> str:
+    return _create_report_section("Technology Detection", data, _format_tech_txt)
+
+def _format_osint_txt(data: Dict[str, Any]) -> List[str]:
     """Formats OSINT Enrichment for the text report."""
     report = ["="*15 + " OSINT Enrichment " + "="*15]
     if data.get("error"):
@@ -762,9 +765,12 @@ def export_txt_osint(data: Dict[str, Any]) -> str:
         for item in passive_dns:
             report.append(f"  - {item.get('hostname')} -> {item.get('ip')} (Last: {item.get('last_seen')})")
 
-    return "\n".join(report)
+    return report
 
-def export_txt_content_hash(data: Dict[str, Any]) -> str:
+def export_txt_osint(data: Dict[str, Any]) -> str:
+    return _create_report_section("OSINT Enrichment", data, _format_osint_txt)
+
+def _format_content_hash_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Content Hash analysis for the text report."""
     report = ["="*15 + " Content & Favicon Hashes " + "="*15]
     if data.get("error"):
@@ -775,9 +781,12 @@ def export_txt_content_hash(data: Dict[str, Any]) -> str:
         report.append(f"  {'Favicon Murmur32 Hash:':<25}: {data['favicon_murmur32_hash']}")
     if data.get("page_sha256_hash"):
         report.append(f"  {'Page Content SHA256:':<25}: {data['page_sha256_hash']}")
-    return "\n".join(report)
+    return report
 
-def export_txt_ct_logs(data: Dict[str, Any]) -> str:
+def export_txt_content_hash(data: Dict[str, Any]) -> str:
+    return _create_report_section("Content & Favicon Hashes", data, _format_content_hash_txt)
+
+def _format_ct_logs_txt(data: Dict[str, Any]) -> List[str]:
     """Formats CT Log analysis for the text report."""
     report = ["="*15 + " Certificate Transparency Log Analysis " + "="*15]
     if data.get("error"):
@@ -791,9 +800,12 @@ def export_txt_ct_logs(data: Dict[str, Any]) -> str:
     else:
         report.append("No subdomains found in CT logs.")
     report.append("\n")
-    return "\n".join(report)
+    return report
 
-def export_txt_waf_detection(data: Dict[str, Any]) -> str:
+def export_txt_ct_logs(data: Dict[str, Any]) -> str:
+    return _create_report_section("Certificate Transparency Log Analysis", data, _format_ct_logs_txt)
+
+def _format_waf_detection_txt(data: Dict[str, Any]) -> List[str]:
     """Formats WAF Detection analysis for the text report."""
     report = ["--- WAF Detection ---"]
     if data.get("error"):
@@ -806,7 +818,10 @@ def export_txt_waf_detection(data: Dict[str, Any]) -> str:
         else:
             report.append("No WAF identified from response headers.")
     report.append("\n")
-    return "\n".join(report)
+    return report
+
+def export_txt_waf_detection(data: Dict[str, Any]) -> str:
+    return _create_report_section("WAF Detection", data, _format_waf_detection_txt)
 
 def display_http_headers(data: dict, quiet: bool):
     """Displays HTTP Security Header analysis in a panel."""
