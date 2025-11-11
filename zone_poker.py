@@ -11,8 +11,10 @@ import traceback
 from datetime import datetime
 from typing import List
 
-# Import all our modules
-from modules.orchestrator import run_analysis_modules, MODULE_DISPATCH_TABLE, register_module_args
+# --- THESE IMPORTS ARE UPDATED ---
+from modules.orchestrator import run_analysis_modules
+from modules.dispatch_table import MODULE_DISPATCH_TABLE, register_module_args
+# --- END UPDATED IMPORTS ---
 from modules.export import export_reports
 from modules.config_manager import get_final_config
 from modules.config import console
