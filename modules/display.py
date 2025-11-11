@@ -161,6 +161,10 @@ def display_email_security(data: dict, quiet: bool = False):
 @console_display_handler("WHOIS Information")
 def display_whois_info(data: dict, quiet: bool = False):
     """Displays WHOIS data in a rich panel."""
+    # --- THIS IS THE FIX ---
+    if not isinstance(data, dict):
+        console.print(Panel(f"[dim]Could not display WHOIS data. Received unexpected format: {str(data)}[/dim]", title="WHOIS Information", box=box.ROUNDED, border_style="dim"))
+        return
     table = Table(box=None, show_header=False, pad_edge=False)
     table.add_column("Key", style="bold cyan", no_wrap=True, width=18)
     table.add_column("Value")
@@ -269,16 +273,16 @@ def display_technology_info(data: dict, quiet: bool = False):
         tech_str = ", ".join(tech)
         tree.add(f"[bold]Technologies:[/bold] {tech_str}")
     
-    headers = data.get('headers')
-    if headers:
+    headers_data = data.get('headers')
+    if isinstance(headers_data, dict):
         sec_headers = [
             'strict-transport-security', 'content-security-policy', 
             'x-content-type-options', 'x-frame-options'
         ]
         header_tree = tree.add("[bold]Security Headers:[/bold]")
         for h in sec_headers:
-            if h in headers:
-                header_tree.add(f"[green]✓ {h}[/green]: {headers[h]}")
+            if h in headers_data:
+                header_tree.add(f"[green]✓ {h}[/green]: {headers_data[h]}")
             else:
                 header_tree.add(f"[red]✗ {h}[/red]: Not Found")
 
@@ -347,29 +351,32 @@ def display_smtp_info(data: dict, quiet: bool = False):
     """Displays Mail Server (SMTP) analysis in a panel."""
     tree = Tree("[bold]SMTP Server Analysis[/bold]")
     for server, info in data.items():
-        if info.get("error"):
-            tree.add(f"✗ [red]{server}[/red]: {info['error']}")
-            continue
-        node = tree.add(f"✓ [green]{server}[/green]")
-        node.add(f"Banner: [dim]{info.get('banner', 'N/A')}[/dim]")
-        
-        starttls_status = info.get('starttls', 'Unknown')
-        color = "green" if starttls_status == "Supported" else "yellow"
-        node.add(f"STARTTLS: [{color}]{starttls_status}[/{color}]")
-
-        cert_info = info.get('certificate')
-        if cert_info:
-            cert_tree = node.add("[bold]Certificate Info[/bold]")
-            cert_tree.add(f"Subject: {cert_info.get('subject', 'N/A')}")
+        if isinstance(info, dict):
+            if info.get("error"):
+                tree.add(f"✗ [red]{server}[/red]: {info['error']}")
+                continue
+            node = tree.add(f"✓ [green]{server}[/green]")
+            node.add(f"Banner: [dim]{info.get('banner', 'N/A')}[/dim]")
             
-            valid_until_ts = cert_info.get('valid_until')
-            if valid_until_ts:
-                now = datetime.datetime.now().timestamp()
-                valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
-                if now > valid_until_ts:
-                    cert_tree.add(f"Validity: [red]Expired on {valid_until_dt}[/red]")
-                else:
-                    cert_tree.add(f"Validity: [green]Valid until {valid_until_dt}[/green]")
+            starttls_status = info.get('starttls', 'Unknown')
+            color = "green" if starttls_status == "Supported" else "yellow"
+            node.add(f"STARTTLS: [{color}]{starttls_status}[/{color}]")
+
+            cert_info = info.get('certificate')
+            if cert_info:
+                cert_tree = node.add("[bold]Certificate Info[/bold]")
+                cert_tree.add(f"Subject: {cert_info.get('subject', 'N/A')}")
+                
+                valid_until_ts = cert_info.get('valid_until')
+                if valid_until_ts:
+                    now = datetime.datetime.now().timestamp()
+                    valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
+                    if now > valid_until_ts:
+                        cert_tree.add(f"Validity: [red]Expired on {valid_until_dt}[/red]")
+                    else:
+                        cert_tree.add(f"Validity: [green]Valid until {valid_until_dt}[/green]")
+        else:
+            tree.add(f"✗ [red]{server}[/red]: Error - {str(info)}")
 
     console.print(Panel(tree, title="Mail Server (SMTP) Analysis", box=box.ROUNDED))
 
@@ -378,25 +385,29 @@ def display_reputation_info(data: dict, quiet: bool = False):
     """Displays IP Reputation analysis in a panel."""
     tree = Tree("[bold]IP Reputation Analysis (AbuseIPDB)[/bold]")
     for ip, info in data.items():
-        if info.get("error"):
-            tree.add(f"✗ [red]{ip}[/red]: {info['error']}")
-            continue
+        if isinstance(info, dict):
+            if info.get("error"):
+                tree.add(f"✗ [red]{ip}[/red]: {info['error']}")
+                continue
 
-        score = info.get('abuseConfidenceScore', 0)
-        if score > 50:
-            color = "red"
-        elif score > 0:
-            color = "yellow"
+            score = info.get('abuseConfidenceScore', 0)
+            if score > 50:
+                color = "red"
+            elif score > 0:
+                color = "yellow"
+            else:
+                color = "green"
+            
+            node = tree.add(f"✓ [{color}]{ip}[/{color}]")
+            node.add(f"Abuse Score: [{color}]{score}[/{color}]")
+            node.add(f"Total Reports: {info.get('totalReports', 0)}")
+            
+            if info.get('lastReportedAt'):
+                last_reported = datetime.datetime.fromisoformat(info['lastReportedAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
+                node.add(f"Last Reported: {last_reported}")
         else:
-            color = "green"
-        
-        node = tree.add(f"✓ [{color}]{ip}[/{color}]")
-        node.add(f"Abuse Score: [{color}]{score}[/{color}]")
-        node.add(f"Total Reports: {info.get('totalReports', 0)}")
-        
-        if info.get('lastReportedAt'):
-            last_reported = datetime.datetime.fromisoformat(info['lastReportedAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
-            node.add(f"Last Reported: {last_reported}")
+            # Handle case where info is not a dict (e.g., an error string)
+            tree.add(f"✗ [red]{ip}[/red]: Error - {str(info)}")
 
     console.print(Panel(tree, title="IP Reputation Analysis (AbuseIPDB)", box=box.ROUNDED))
 
@@ -466,27 +477,34 @@ def display_summary(data: dict, quiet: bool):
     table.add_column("Finding")
     
     # Zone Transfer
-    axfr_summary = data.get('zone_info', {}).get('summary', 'N/A')
+    zone_info = data.get('zone_info', {})
+    axfr_summary = zone_info.get('summary', 'N/A') if isinstance(zone_info, dict) else 'Error'
     axfr_color = "bold red" if "Vulnerable" in axfr_summary else "green"
     table.add_row("Zone Transfer", f"[{axfr_color}]{axfr_summary}[/{axfr_color}]")
     
     # SPF
-    spf_policy = data.get('email_security', {}).get('spf', {}).get('all_policy', 'Not Found')
+    email_sec = data.get('email_security', {})
+    spf_data = email_sec.get('spf', {}) if isinstance(email_sec, dict) else {}
+    spf_policy = spf_data.get('all_policy', 'Not Found') if isinstance(spf_data, dict) else 'Error'
     spf_color = "red" if spf_policy in ["?all", "Not Found"] else "yellow" if spf_policy == "~all" else "green"
     table.add_row("SPF Policy", f"[{spf_color}]{spf_policy}[/{spf_color}]")
     
     # DMARC
-    dmarc_policy = data.get('email_security', {}).get('dmarc', {}).get('p', 'Not Found')
-    dmarc_color = "red" if dmarc_policy in ["none", "Not Found"] else "green"
+    dmarc_data = email_sec.get('dmarc', {}) if isinstance(email_sec, dict) else {}
+    dmarc_policy = dmarc_data.get('p', 'Not Found') if isinstance(dmarc_data, dict) else 'Error'
+    dmarc_color = "red" if dmarc_policy in ["none", "Not Found", "Error"] else "green"
     table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
 
     # Security Audit
     audit_findings = data.get('security', {})
-    weak_findings = [k for k, v in audit_findings.items() if "Weak" in v or "Not Found" in v]
-    if weak_findings:
-        table.add_row("Security Audit", f"[red]Found {len(weak_findings)} issues[/red] ({', '.join(weak_findings)})")
+    if isinstance(audit_findings, dict):
+        weak_findings = [k for k, v in audit_findings.items() if isinstance(v, str) and ("Weak" in v or "Not Found" in v)]
+        if weak_findings:
+            table.add_row("Security Audit", f"[red]Found {len(weak_findings)} issues[/red] ({', '.join(weak_findings)})")
+        else:
+            table.add_row("Security Audit", "[green]All checks passed[/green]")
     else:
-        table.add_row("Security Audit", "[green]All checks passed[/green]")
+        table.add_row("Security Audit", "[bold red]Error processing audit data[/bold red]")
 
     console.print(table)
     console.print()
@@ -581,7 +599,7 @@ def export_txt_critical_findings(data: Dict[str, Any]) -> str:
 
     # High IP Reputation Abuse Score
     reputation_info = data.get('reputation_info', {})
-    high_risk_ips = [ip for ip, info in reputation_info.items() if info.get('abuseConfidenceScore', 0) > 75]
+    high_risk_ips = [ip for ip, info in reputation_info.items() if isinstance(info, dict) and info.get('abuseConfidenceScore', 0) > 75]
     if high_risk_ips:
         critical_findings.append(f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)}).")
 
@@ -847,6 +865,10 @@ def export_txt_dane(data: Dict[str, Any]) -> str:
 @console_display_handler("HTTP Security Headers Analysis")
 def display_http_headers(data: dict, quiet: bool):
     """Displays HTTP Security Header analysis in a panel."""
+    if not isinstance(data, dict):
+        console.print(Panel(f"[dim]Could not display HTTP Headers. Received unexpected format: {str(data)}[/dim]", title="HTTP Security Headers Analysis", box=box.ROUNDED, border_style="dim"))
+        return
+
     tree = Tree(f"[bold]HTTP Security Headers Analysis[/bold]\n[dim]Final URL: {data.get('final_url')}[/dim]")
 
     analysis = data.get("analysis", {})
@@ -973,14 +995,19 @@ def display_ip_geolocation(data: dict, quiet: bool = False):
     table.add_column("ISP")
 
     for ip, info in data.items():
-        if info.get("error"):
-            table.add_row(ip, f"[red]{info['error']}[/red]", "", "")
-        else:
+        if isinstance(info, dict):
+            if info.get("error"):
+                table.add_row(ip, f"[red]{info['error']}[/red]", "", "")
+            else:
+                table.add_row(
+                    ip,
+                    info.get("country", "N/A"),
+                    info.get("city", "N/A"),
+                    info.get("isp", "N/A"),
+                )
+        else: # Handle case where info is not a dict (e.g., an error string)
             table.add_row(
-                ip,
-                info.get("country", "N/A"),
-                info.get("city", "N/A"),
-                info.get("isp", "N/A"),
+                ip, f"[red]Error: {str(info)}[/red]", "", ""
             )
     console.print(table)
 
