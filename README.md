@@ -1,5 +1,16 @@
 # Zone-Poker
 
+```
+
+ _____                      ____       _             
+|__  /___  _ __   ___      |  _ \ ___ | | _____ _ __ 
+  / // _ \| '_ \ / _ \_____| |_) / _ \| |/ / _ \ '__|
+ / /| (_) | | | |  __/_____|  __/ (_) |   <  __/ |   
+/____\___/|_| |_|\___|     |_|   \___/|_|\_\___|_|   
+                                                               
+A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.
+```
+
 **Zone-Poker** is a powerful and feature-rich DNS intelligence and reconnaissance tool, designed to provide a comprehensive overview of a domain's DNS configuration, security posture, and related OSINT data from a single command.
 
 The tool gathers data from various sources, analyzes it, and presents it in a clean, human-readable format in your terminal. It also exports the complete findings to `JSON` and `TXT` files for easy record-keeping and further analysis.
@@ -43,7 +54,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/wh0xac/zone-poker.git
+    git clone https://github.com/BranchingBad/zone-poker.git
     cd zone-poker
     ```
 
@@ -55,8 +66,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 ---
 ## ⚙️ Configuration
 
-Zone-Poker can be configured using a `JSON` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
-Zone-Poker can be configured using a `JSON` or `YAML` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
+Zone-Poker can be configured using a `JSON` or `YAML` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can, including API keys.
 
 ### Configuration Priority
 The tool uses a 3-tiered priority system for settings, processed in the following order:
@@ -105,13 +115,14 @@ zone-poker example.com --all -q --log-file scan.log
 | Flag | Description |
 |---|---|
 | `-a`,	`--all` |	Run all analysis modules.
+| `-f`,	`--file` |	Path to a file (JSON or YAML) containing a list of domains to analyze.
+| `-c`,	`--config` |	Path to a config file (JSON or YAML) with scan options.
 | `-e`,	`--export` |	Export JSON and TXT reports.
 | `-O`,	`--output-dir` |	Path to a directory for saving reports (default: Desktop).
-| `-c`,	`--config` |	Path to a JSON config file with scan options.
-| `-f`,	`--file` |	Path to a JSON file containing a list of domains to analyze.
 | `-v`,	`--verbose` |	Show detailed error logs and debug messages during the scan.
 | `-q`,	`--quiet` |	Show minimal console output (suppresses tables, headers, and progress bars).
 | `--log-file` | Path to a file to save detailed, verbose logs.
+| `--output` | Console output format (`table`, `json`, `csv`).
 | `--timeout`	| Set the DNS query timeout in seconds (default: 5).
 | `--retries` | Number of times to retry a failed domain scan (default: 0).
 | `--types`	| Comma-separated list of specific DNS record types to query (e.g., `A,MX,TXT`).
