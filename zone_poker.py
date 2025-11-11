@@ -17,6 +17,7 @@ from modules.dispatch_table import MODULE_DISPATCH_TABLE, register_module_args
 # --- END UPDATED IMPORTS ---
 from modules.export import export_reports
 from modules.config_manager import get_final_config
+from modules.logger_config import initialize_logging
 from modules.config import console
 import dns.resolver
 from rich.progress import Progress # Import Progress
@@ -92,6 +93,9 @@ async def main():
     parser = setup_parser()
     cli_args = parser.parse_args()
     
+    # --- THIS IS THE FIX: Initialize logging first ---
+    initialize_logging(cli_args)
+
     try:
         # Get the final configuration, merging defaults, config file, and CLI arguments
         args = get_final_config(parser, cli_args)

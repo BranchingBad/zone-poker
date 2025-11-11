@@ -6,9 +6,20 @@ Sets up the application-wide logger.
 import logging
 import sys
 from typing import Optional
+import argparse
 
 from rich.logging import RichHandler
 from .config import console
+
+def initialize_logging(cli_args: argparse.Namespace):
+    """
+    Initial, pre-config logging setup based on raw CLI args.
+    This ensures logging is active before the config file is even read.
+    """
+    verbose = getattr(cli_args, 'verbose', False)
+    quiet = getattr(cli_args, 'quiet', False)
+    log_file = getattr(cli_args, 'log_file', None)
+    setup_logging(verbose, quiet, log_file)
 
 def setup_logging(verbose: bool, quiet: bool, log_file: Optional[str] = None):
     """

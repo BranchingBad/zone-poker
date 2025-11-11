@@ -205,6 +205,12 @@ def display_nameserver_analysis(data: dict, quiet: bool):
     table.add_column("IP Address(es)")
     table.add_column("ASN Description")
     
+    # --- THIS IS THE FIX: Handle top-level error ---
+    if data.get("error"):
+        table.add_row("[red]Error[/red]", f"[red]{data['error']}[/red]", "")
+        console.print(table)
+        console.print()
+        return
     for ns, info in data.items():
         if ns == "dnssec": 
             continue

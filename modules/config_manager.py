@@ -55,10 +55,9 @@ def get_final_config(parser: argparse.ArgumentParser, cli_args: argparse.Namespa
     # needs to remain False even if the config file has `"export": true`.
     cli_vars = vars(cli_args)
     for key, value in cli_vars.items():
-        # We check if the argument was provided on the command line by creating a new
-        # parser that knows which args were specified.
-        specified_args = {k: v for k, v in cli_vars.items() if k in [action.dest for action in parser._actions]}
-        if key in specified_args and value != defaults.get(key):
+        # An argument is considered "explicitly set" if its value is different
+        # from the parser's default. This works for both flags and positional args.
+        if value != defaults.get(key):
             final_config[key] = value
 
     return argparse.Namespace(**final_config)

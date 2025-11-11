@@ -38,12 +38,17 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
 
     # --- Centralized Resolver RE-ADDED ---
     # Use the standard SYNCHRONOUS resolver. We will call it via asyncio.to_thread
+    from dns import flags
     resolver = dns.resolver.Resolver(configure=False)
-    # DO NOT set_flags(0) - this was the bug causing SERVFAIL
+    # --- THIS IS THE FIX ---
+    # Explicitly set flags to Recursion Desired (RD) ONLY.
+    # This disables the default 'DNSSEC OK' (DO) flag that dnspython sets,
+    # which was causing SERVFAIL errors from public resolvers like 8.8.8.8
+    # when they couldn't validate a response for an unsigned domain.
+    resolver.set_flags(flags.RD)
     resolver.timeout = args.timeout
     resolver.lifetime = args.timeout
     resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
-    # --- END ---
 
     # Context of all available data for analysis functions
     analysis_context = {
@@ -87,11 +92,16 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         # Populate dependencies
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
-            analysis_context[dep_key] = all_data.get(dep_key, {})
+            # --- THIS IS THE FIX: Pass the actual data key as the kwarg name ---
+            # e.g., for a module depending on 'records', this makes the 'records'
+            # kwarg available to its analysis function.
+            func_kwargs[dep_key] = all_data.get(dep_key, {})
 
         sig = inspect.signature(analysis_func)
         for param in sig.parameters:
-            if param in analysis_context:
+            # --- THIS IS THE FIX ---
+            # Only add from context if not already populated by a dependency.
+            if param in analysis_context and param not in func_kwargs:
                 func_kwargs[param] = analysis_context[param]
 
         try:
@@ -99,7 +109,11 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
             if asyncio.iscoroutinefunction(analysis_func):
                 result = await analysis_func(**func_kwargs)
             else:
-                result = analysis_func(**func_kwargs)
+                # --- THIS IS THE FIX: Run sync functions in a thread executor ---
+                # This prevents synchronous, blocking calls (like DNS queries)
+                # from stalling the entire asyncio event loop.
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(None, lambda: analysis_func(**func_kwargs))
         except Exception as e:
             console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
             if args.verbose:
