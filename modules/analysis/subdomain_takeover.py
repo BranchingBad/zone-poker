@@ -53,8 +53,8 @@ async def check_subdomain_takeover(records: Dict[str, List[Dict[str, Any]]], **k
                                 "service": service,
                             })
                             return # Found a vulnerability, no need to check further
-            except httpx.RequestError:
-                pass # Ignore connection errors, timeouts, etc.
+            except httpx.RequestError as e:
+                logger.debug(f"Subdomain takeover check for {url} failed: {e}")
 
     tasks = [check_cname(rec) for rec in cname_records]
     await asyncio.gather(*tasks)

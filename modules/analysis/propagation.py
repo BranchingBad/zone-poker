@@ -9,9 +9,9 @@ async def propagation_check(domain: str, timeout: int, **kwargs) -> Dict[str, st
     results = {}
     
     async def check_resolver(name, ip):
-        # --- THIS IS THE FIX ---
-        # Create a resolver with configure=False to avoid sending DNSSEC OK (DO)
-        # bits, which can cause SERVFAIL for unsigned domains on some resolvers.
+        # Create a resolver with configure=False. This prevents it from automatically
+        # reading /etc/resolv.conf and, more importantly, stops it from sending
+        # DNSSEC OK (DO) bits, which can cause SERVFAIL responses from some public resolvers.
         resolver = dns.resolver.Resolver(configure=False)
         resolver.timeout = timeout
         resolver.lifetime = timeout

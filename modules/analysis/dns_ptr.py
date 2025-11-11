@@ -25,11 +25,10 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
         except Exception as e:
             ptr_results[ip] = f"Error: {e}"
 
-    # --- THIS BLOCK IS THE FIX ---
-    # Use a sequential loop to avoid rate-limiting
+    # Sequentially query PTR records to avoid potential rate-limiting from DNS servers
+    # that might occur with a large number of concurrent requests via asyncio.gather().
     for ip in ips_to_check:
         if ip:
             await query_ptr(ip)
-    # --- END OF FIX ---
     
     return ptr_results

@@ -42,22 +42,21 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
 
         for ns_ip in ns_ips:
             try:
-                # --- THIS IS THE FIX for AttributeError ---
-                # The blocking I/O and generator consumption must
-                # all happen inside the same thread.
+                # The dns.query.xfr function is blocking and returns a generator.
+                # Both the query and the consumption of the generator by dns.zone.from_xfr
+                # must occur within the same thread to work correctly with asyncio.
                 def _do_xfr():
                     try:
-                        # dns.query.xfr returns a generator of messages
                         xfr_generator = dns.query.xfr(ns_ip, domain, timeout=timeout)
-                        # dns.zone.from_xfr consumes this generator to build the zone
                         return dns.zone.from_xfr(xfr_generator)
                     except dns.exception.FormError:
-                        return None # Signal a protocol-level failure (Refused)
+                        # A FormError during from_xfr often indicates a "Refused" response.
+                        return None
 
                 zone = await asyncio.to_thread(_do_xfr)
                 
-                # --- THIS IS THE FIX for AttributeError ---
-                # If the zone transfer was refused, zone will be None.
+                # If the zone transfer was refused or failed at the protocol level,
+                # _do_xfr returns None, which we can use to raise a specific exception.
                 if zone is None:
                     raise dns.exception.FormError("Zone is None, likely refused.")
 
@@ -70,7 +69,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                 }
                 return 
             except dns.exception.FormError:
-                # This is a definitive failure for this NS, so we stop trying other IPs.
+                # A FormError (e.g., "Refused") is a definitive failure for this nameserver.
                 axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
                 return
             except (dns.exception.Timeout, asyncio.TimeoutError):

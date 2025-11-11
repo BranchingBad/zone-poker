@@ -18,14 +18,12 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
         info = {"ips": []}
         ns_ips = []
         try:
-            # --- THIS IS THE FIX ---
             a_answers = await asyncio.to_thread(resolver.resolve, ns_name, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
         
         try:
-            # --- THIS IS THE FIX ---
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns_name, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):

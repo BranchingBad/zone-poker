@@ -43,11 +43,14 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[str]
         url = f"http://{bucket_name}.s3.amazonaws.com"
         try:
             async with httpx.AsyncClient() as client:
+                # A HEAD request is a lightweight way to check for existence.
+                # A 404 status code means the bucket does not exist or is private.
+                # Other status codes (like 200, 403) indicate the bucket name is taken.
                 response = await client.head(url, timeout=5, follow_redirects=False)
                 if response.status_code != 404:
                     results["s3_buckets"].append(url)
-        except httpx.RequestError:
-            pass # Ignore connection errors, timeouts, etc.
+        except httpx.RequestError as e:
+            logger.debug(f"S3 check for '{bucket_name}' failed: {e}")
 
     async def check_azure_blob(account_name):
         # Azure storage account names must be 3-24 chars, lowercase letters and numbers.
@@ -57,14 +60,14 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[str]
         url = f"https://{account_name}.blob.core.windows.net"
         try:
             async with httpx.AsyncClient() as client:
-                # A request to a non-existent storage account will fail to resolve.
-                # A HEAD request to the base URL of an existing one often returns 400 (Bad Request),
-                # which still indicates existence. 404 means it likely doesn't exist.
+                # A request to a non-existent storage account typically fails DNS resolution.
+                # A HEAD request to an existing account's base URL often returns 400 (Bad Request)
+                # because a container isn't specified, which still confirms the account's existence.
                 response = await client.head(url, timeout=5, follow_redirects=False)
                 if response.status_code != 404:
                     results["azure_blobs"].append(url)
-        except httpx.RequestError:
-            pass # Ignore connection/resolution errors
+        except httpx.RequestError as e:
+            logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")
 
     s3_tasks = [check_s3_bucket(p) for p in permutations]
     azure_tasks = [check_azure_blob(p) for p in sanitized_permutations]

@@ -31,11 +31,9 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
             if verbose:
                 console.print(f"Error querying {rtype} for {domain}: {e}")
 
-    # --- THIS BLOCK IS THE FIX ---
-    # We use a sequential for loop instead of asyncio.gather()
-    # to avoid being rate-limited by public DNS servers.
+    # We use a sequential for loop here instead of asyncio.gather() to avoid potential
+    # rate-limiting issues from DNS servers when sending many concurrent requests.
     for rtype in types_to_query:
         await query_type(rtype)
-    # --- END OF FIX ---
     
     return records
