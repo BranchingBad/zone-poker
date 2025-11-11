@@ -21,15 +21,16 @@ from modules.analysis.smtp_analysis import analyze_smtp_servers
 from modules.analysis.reputation import analyze_reputation
 from modules.analysis.content_hash import get_content_hashes
 from modules.analysis.ct_logs import search_ct_logs
+from modules.analysis.waf_detection import detect_waf
 
 # Import all display and export functions
 from modules.display import (
     display_dns_records_table, display_ptr_lookups, display_axfr_results, display_email_security,
     display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, export_txt_records,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, export_txt_records,
     export_txt_ptr, export_txt_zone, export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security,
     display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation,
-    export_txt_content_hash, export_txt_ct_logs
+    export_txt_content_hash, export_txt_ct_logs, export_txt_waf_detection
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -170,6 +171,14 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_ct_logs,
         "description": "Searching Certificate Transparency logs...",
         "arg_info": {"short": None, "long": "--ct", "help": "Find subdomains from Certificate Transparency logs."}
+    },
+    "waf": {
+        "data_key": "waf_detection",
+        "analysis_func": detect_waf,
+        "display_func": display_waf_detection,
+        "export_func": export_txt_waf_detection,
+        "description": "Detecting Web Application Firewall...",
+        "arg_info": {"short": None, "long": "--waf", "help": "Attempt to identify a Web Application Firewall."}
     }
 }
 

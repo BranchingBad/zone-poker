@@ -128,6 +128,7 @@ Run specific modules by adding their flags.
 | `--reputation` | IP Reputation | Check IP reputation using AbuseIPDB. |
 | `--hashes` | Content Hashes | Get Murmur32 favicon and SHA256 page content hashes. |
 | `--ct` | CT Log Analysis | Find subdomains from Certificate Transparency logs. |
+| `--waf` | WAF Detection | Attempt to identify a Web Application Firewall. |
 
 ---
 

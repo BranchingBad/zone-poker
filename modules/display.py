@@ -508,6 +508,28 @@ def display_ct_logs(data: dict, quiet: bool):
     console.print(tree)
     console.print()
 
+def display_waf_detection(data: dict, quiet: bool):
+    """Displays WAF Detection results in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="WAF Detection", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    detected_waf = data.get("detected_waf", "None")
+    if detected_waf != "None":
+        color = "green"
+        reason = data.get("details", {}).get("reason", "")
+        message = f"Identified [bold]{detected_waf}[/bold]. [dim]({reason})[/dim]"
+    else:
+        color = "dim"
+        message = "No WAF identified."
+    console.print(Panel(f"[{color}]{message}[/{color}]", title="WAF Detection", box=box.ROUNDED))
+    console.print()
+
 def display_summary(data: dict, quiet: bool):
     """Displays a high-level summary of findings."""
     if quiet:
@@ -732,6 +754,21 @@ def export_txt_ct_logs(data: Dict[str, Any]) -> str:
             report.append(f"  - {item}")
     else:
         report.append("No subdomains found in CT logs.")
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_waf_detection(data: Dict[str, Any]) -> str:
+    """Formats WAF Detection analysis for the text report."""
+    report = ["--- WAF Detection ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+    else:
+        detected_waf = data.get("detected_waf", "None")
+        if detected_waf != "None":
+            reason = data.get("details", {}).get("reason", "")
+            report.append(f"Identified: {detected_waf} (Reason: {reason})")
+        else:
+            report.append("No WAF identified from response headers.")
     report.append("\n")
     return "\n".join(report)
 
