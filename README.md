@@ -22,6 +22,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 - **Flexible Configuration**: Use a `JSON` config file to manage all your scan options and API keys, with a clear priority system (CLI > Config > Defaults).
 - **Bulk Analysis**: Scan multiple domains at once by providing a JSON file.
 - **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports to a configurable directory.
+- **Advanced Logging**: Control console verbosity (`-v`, `-q`) and save detailed debug logs to a file (`--log-file`).
 
 ---
 
@@ -47,7 +48,7 @@ Zone-Poker can be configured using a `JSON` file (passed with `-c` or `--config`
 The tool uses a 3-tiered priority system for settings, processed in the following order:
 1.  **Program Defaults**: The lowest priority, built-in settings.
 2.  **Config File**: Medium priority; values in the config file (e.g., `{"timeout": 5}`) override the defaults.
-3.  **Command-Line Arguments**: The highest priority; flags on the command line (e.g., `--timeout 10`) override everything else.
+3.  **Command-Line Arguments**: The highest priority; flags explicitly set on the command line (e.g., `--timeout 10`) override both the config file and defaults.
 
 An argument on the command line will *always* override a setting in the config file.
 
@@ -83,6 +84,9 @@ python3 zone-poker.py example.com --all --export -O /home/user/reports/
 
 # Query for only A and MX records
 python3 zone-poker.py example.com --records --types A,MX
+
+# Run a quiet scan but save all debug information to a log file
+python3 zone-poker.py example.com --all -q --log-file scan.log
 ```
 
 ## Command-Line Arguments
