@@ -101,3 +101,27 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
             elif part in ("-all", "~all", "+all", "?all"):
                 analysis["all_policy"] = part
     return analysis
+
+def is_valid_domain(domain: str) -> bool:
+    """
+    Checks if a given string is a syntactically valid domain name.
+    This is a basic check and does not guarantee the domain exists or is resolvable.
+    """
+    if not isinstance(domain, str):
+        return False
+    # Remove trailing dot if present
+    domain = domain.rstrip('.')
+    
+    # Regex for a valid domain name (simplified for common cases)
+    # Allows alphanumeric, hyphens (not at start/end), and dots.
+    # Each label (part between dots) must be 1-63 characters.
+    # Total length should not exceed 253 characters.
+    # TLD must be at least 2 characters.
+    domain_regex = re.compile(
+        r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$"
+    )
+    
+    if len(domain) > 253:
+        return False
+    
+    return bool(domain_regex.match(domain))

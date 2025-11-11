@@ -5,3 +5,4 @@ ipwhois
 rich
 beautifulsoup4
 mmh3
+PyYAML
