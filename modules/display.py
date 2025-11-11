@@ -341,6 +341,127 @@ def display_osint_results(data: dict, quiet: bool):
     console.print(tree)
     console.print()
 
+def display_ssl_info(data: dict, quiet: bool):
+    """Displays SSL/TLS Certificate analysis in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="SSL/TLS Certificate Analysis", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    tree = Tree(f"[bold]Subject:[/bold] {data.get('subject', 'N/A')}")
+    tree.add(f"[bold]Issuer:[/bold] {data.get('issuer', 'N/A')}")
+
+    # Validity
+    valid_from_ts = data.get('valid_from')
+    valid_until_ts = data.get('valid_until')
+    now = datetime.datetime.now().timestamp()
+
+    if valid_from_ts and valid_until_ts:
+        valid_from_dt = datetime.datetime.fromtimestamp(valid_from_ts).strftime('%Y-%m-%d')
+        valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
+        
+        if now > valid_until_ts:
+            validity_str = f"[red]Expired on {valid_until_dt}[/red]"
+        elif now < valid_from_ts:
+            validity_str = f"[yellow]Not yet valid (starts {valid_from_dt})[/yellow]"
+        else:
+            validity_str = f"[green]Valid from {valid_from_dt} to {valid_until_dt}[/green]"
+        tree.add(f"[bold]Validity:[/bold] {validity_str}")
+
+    # SANs
+    sans = data.get('sans', [])
+    if sans:
+        sans_tree = tree.add(f"Subject Alternative Names ({len(sans)} found)")
+        for s in sans:
+            sans_tree.add(f"[green]{s}[/green]")
+
+    # Connection Info
+    tree.add(f"[bold]TLS Version:[/bold] {data.get('tls_version', 'N/A')}")
+
+    console.print(Panel(tree, title="SSL/TLS Certificate Analysis", box=box.ROUNDED))
+    console.print()
+
+def display_smtp_info(data: dict, quiet: bool):
+    """Displays Mail Server (SMTP) analysis in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="Mail Server (SMTP) Analysis", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    tree = Tree("[bold]SMTP Server Analysis[/bold]")
+    for server, info in data.items():
+        if info.get("error"):
+            tree.add(f"✗ [red]{server}[/red]: {info['error']}")
+            continue
+
+        node = tree.add(f"✓ [green]{server}[/green]")
+        node.add(f"Banner: [dim]{info.get('banner', 'N/A')}[/dim]")
+        
+        starttls_status = info.get('starttls', 'Unknown')
+        color = "green" if starttls_status == "Supported" else "yellow"
+        node.add(f"STARTTLS: [{color}]{starttls_status}[/{color}]")
+
+        cert_info = info.get('certificate')
+        if cert_info:
+            cert_tree = node.add("[bold]Certificate Info[/bold]")
+            cert_tree.add(f"Subject: {cert_info.get('subject', 'N/A')}")
+            
+            valid_until_ts = cert_info.get('valid_until')
+            if valid_until_ts:
+                now = datetime.datetime.now().timestamp()
+                valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
+                if now > valid_until_ts:
+                    cert_tree.add(f"Validity: [red]Expired on {valid_until_dt}[/red]")
+                else:
+                    cert_tree.add(f"Validity: [green]Valid until {valid_until_dt}[/green]")
+
+    console.print(Panel(tree, title="Mail Server (SMTP) Analysis", box=box.ROUNDED))
+    console.print()
+
+def display_reputation_info(data: dict, quiet: bool):
+    """Displays IP Reputation analysis in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="IP Reputation Analysis (AbuseIPDB)", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    tree = Tree("[bold]IP Reputation Analysis (AbuseIPDB)[/bold]")
+    for ip, info in data.items():
+        if info.get("error"):
+            tree.add(f"✗ [red]{ip}[/red]: {info['error']}")
+            continue
+
+        score = info.get('abuseConfidenceScore', 0)
+        if score > 50:
+            color = "red"
+        elif score > 0:
+            color = "yellow"
+        else:
+            color = "green"
+        
+        node = tree.add(f"✓ [{color}]{ip}[/{color}]")
+        node.add(f"Abuse Score: [{color}]{score}[/{color}]")
+        node.add(f"Total Reports: {info.get('totalReports', 0)}")
+        
+        if info.get('lastReportedAt'):
+            last_reported = datetime.datetime.fromisoformat(info['lastReportedAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
+            node.add(f"Last Reported: {last_reported}")
+
+    console.print(Panel(tree, title="IP Reputation Analysis (AbuseIPDB)", box=box.ROUNDED))
+    console.print()
+
 def display_summary(data: dict, quiet: bool):
     """Displays a high-level summary of findings."""
     if quiet:
@@ -532,6 +653,85 @@ def export_txt_osint(data: Dict[str, Any]) -> str:
         report.append("\nPassive DNS:")
         for item in passive_dns:
             report.append(f"  - {item.get('hostname')} -> {item.get('ip')} (Last: {item.get('last_seen')})")
+
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_ssl(data: Dict[str, Any]) -> str:
+    """Formats SSL/TLS analysis for the text report."""
+    report = ["--- SSL/TLS Certificate Analysis ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+        report.append("\n")
+        return "\n".join(report)
+
+    report.append(f"Subject: {data.get('subject', 'N/A')}")
+    report.append(f"Issuer: {data.get('issuer', 'N/A')}")
+
+    valid_from_ts = data.get('valid_from')
+    if valid_from_ts:
+        report.append(f"Valid From: {datetime.datetime.fromtimestamp(valid_from_ts).strftime('%Y-%m-%d %H:%M:%S')}")
+    valid_until_ts = data.get('valid_until')
+    if valid_until_ts:
+        report.append(f"Valid Until: {datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d %H:%M:%S')}")
+
+    if data.get('sans'):
+        report.append("\nSubject Alternative Names:")
+        for s in data['sans']:
+            report.append(f"  - {s}")
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_smtp(data: Dict[str, Any]) -> str:
+    """Formats SMTP analysis for the text report."""
+    report = ["--- Mail Server (SMTP) Analysis ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+        report.append("\n")
+        return "\n".join(report)
+
+    for server, info in data.items():
+        report.append(f"\nServer: {server}")
+        if info.get("error"):
+            report.append(f"  - Error: {info['error']}")
+            continue
+        
+        report.append(f"  - Banner: {info.get('banner', 'N/A')}")
+        report.append(f"  - STARTTLS: {info.get('starttls', 'Unknown')}")
+
+        cert_info = info.get('certificate')
+        if cert_info:
+            report.append("  - Certificate:")
+            report.append(f"    - Subject: {cert_info.get('subject', 'N/A')}")
+            valid_until_ts = cert_info.get('valid_until')
+            if valid_until_ts:
+                valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
+                report.append(f"    - Valid Until: {valid_until_dt}")
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_reputation(data: Dict[str, Any]) -> str:
+    """Formats IP reputation analysis for the text report."""
+    report = ["--- IP Reputation Analysis (AbuseIPDB) ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+        report.append("\n")
+        return "\n".join(report)
+
+    for ip, info in data.items():
+        report.append(f"\nIP Address: {ip}")
+        if info.get("error"):
+            report.append(f"  - Error: {info['error']}")
+            continue
+        
+        report.append(f"  - Abuse Confidence Score: {info.get('abuseConfidenceScore', 'N/A')}")
+        report.append(f"  - Total Reports: {info.get('totalReports', 'N/A')}")
+        report.append(f"  - ISP: {info.get('isp', 'N/A')}")
+        report.append(f"  - Usage Type: {info.get('usageType', 'N/A')}")
+        
+        if info.get('lastReportedAt'):
+            last_reported = datetime.datetime.fromisoformat(info['lastReportedAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M:%S')
+            report.append(f"  - Last Reported: {last_reported}")
 
     report.append("\n")
     return "\n".join(report)

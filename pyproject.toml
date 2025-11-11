@@ -41,5 +41,6 @@ zone-poker = "zone_poker:main_wrapper"
 # --- THIS IS THE FIX ---
 [tool.setuptools]
 py-modules = ["zone_poker"]
-# This line tells setuptools to find and install the 'modules' package
-packages = ["modules"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modules*"]

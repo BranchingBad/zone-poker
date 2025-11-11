@@ -5,22 +5,28 @@ This file acts as the central configuration for all available modules.
 """
 import argparse
 
-# Import all analysis functions
-from .analysis import (
-    get_dns_records, reverse_ptr_lookups, attempt_axfr, email_security_analysis,
-    whois_lookup, nameserver_analysis, propagation_check, security_audit,
-    detect_technologies, osint_enrichment
-)
+# --- THIS IS THE FIX: Import analysis functions from their specific modules ---
+from modules.analysis.dns_records import get_dns_records
+from modules.analysis.dns_ptr import reverse_ptr_lookups
+from modules.analysis.dns_zone import attempt_axfr
+from modules.analysis.email_sec import email_security_analysis
+from modules.analysis.whois import whois_lookup
+from modules.analysis.ns_info import nameserver_analysis
+from modules.analysis.propagation import propagation_check
+from modules.analysis.security_audit import security_audit
+from modules.analysis.tech import detect_technologies
+from modules.analysis.osint import osint_enrichment
+from modules.analysis.ssl_analysis import analyze_ssl_certificate
+from modules.analysis.smtp_analysis import analyze_smtp_servers
+from modules.analysis.reputation import analyze_reputation
 
 # Import all display and export functions
-from .display import (
-    display_dns_records_table, display_ptr_lookups, display_axfr_results,
-    display_email_security, display_whois_info, display_nameserver_analysis,
-    display_propagation, display_security_audit, display_technology_info, 
-    display_osint_results,
-    export_txt_records, export_txt_ptr, export_txt_zone, export_txt_mail,
-    export_txt_whois, export_txt_nsinfo, export_txt_propagation,
-    export_txt_security, export_txt_tech, export_txt_osint
+from modules.display import (
+    display_dns_records_table, display_ptr_lookups, display_axfr_results, display_email_security,
+    display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit, display_technology_info,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, export_txt_records,
+    export_txt_ptr, export_txt_zone, export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation,
+    export_txt_security, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -119,6 +125,32 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_osint,
         "description": "Gathering OSINT data...",
         "arg_info": {"short": "-o", "long": "--osint", "help": "Enrich data with passive DNS and other OSINT sources."}
+    },
+    "ssl": {
+        "data_key": "ssl_info",
+        "analysis_func": analyze_ssl_certificate,
+        "display_func": display_ssl_info,
+        "export_func": export_txt_ssl,
+        "description": "Analyzing SSL/TLS certificate...",
+        "arg_info": {"short": None, "long": "--ssl", "help": "Analyze the SSL/TLS certificate."}
+    },
+    "smtp": {
+        "data_key": "smtp_info",
+        "analysis_func": analyze_smtp_servers,
+        "display_func": display_smtp_info,
+        "export_func": export_txt_smtp,
+        "description": "Analyzing mail server (SMTP) configuration...",
+        "dependencies": ["records"],
+        "arg_info": {"short": None, "long": "--smtp", "help": "Analyze mail servers (banner, STARTTLS)."}
+    },
+    "reputation": {
+        "data_key": "reputation_info",
+        "analysis_func": analyze_reputation,
+        "display_func": display_reputation_info,
+        "export_func": export_txt_reputation,
+        "description": "Checking IP reputation (AbuseIPDB)...",
+        "dependencies": ["records"],
+        "arg_info": {"short": None, "long": "--reputation", "help": "Check IP reputation using AbuseIPDB."}
     }
 }
 

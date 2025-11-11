@@ -13,12 +13,15 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 - **Zone Transfer Attempts (AXFR)**: Tries to perform a DNS zone transfer against each authoritative nameserver over both IPv4 and IPv6.
 - **Email Security Analysis**: Checks for `SPF`, `DMARC`, and `DKIM` records and analyzes their policies for potential misconfigurations.
 - **WHOIS & IP Intelligence**: Fetches `WHOIS` data for the domain and runs `IPWHOIS` lookups on nameserver IP addresses to find ASN details.
+- **SSL/TLS Certificate Analysis**: Retrieves and analyzes the SSL/TLS certificate for the domain, including validity, issuer, and Subject Alternative Names (SANs).
+- **SMTP Server Analysis**: Connects to mail servers to check for STARTTLS support and retrieve banners.
 - **Nameserver & DNSSEC Analysis**: Gathers information about the domain's nameservers (IPv4/IPv6) and checks for DNSSEC records (`DNSKEY`, `DS`).
 - **Global DNS Propagation Check**: Verifies DNS resolution against common public resolvers (Google, Cloudflare, Quad9).
 - **Technology Detection**: Identifies web technologies, server types, and security headers on the domain's HTTP/HTTPS services.
 - **Security Audit**: Performs basic security checks for common DNS misconfigurations.
 - **OSINT Enrichment**: Gathers related data from open-source intelligence sources (e.g., AlienVault OTX).
-- **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels in the terminal.
+- **IP Reputation**: Checks the reputation of discovered IP addresses against the AbuseIPDB database.
+- **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels.
 - **Flexible Configuration**: Use a `JSON` config file to manage all your scan options and API keys, with a clear priority system (CLI > Config > Defaults).
 - **Bulk Analysis**: Scan multiple domains at once by providing a JSON file.
 - **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports to a configurable directory.
@@ -34,9 +37,9 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
     cd zone-poker
     ```
 
-2.  Install the required Python packages:
+2.  Install the project and its dependencies. This will also install the `zone-poker` command.
     ```bash
-    pip install -r requirements.txt
+    pip install .
     ```
 
 ---
@@ -58,11 +61,12 @@ For modules that use third-party APIs (like OSINT enrichment), you can provide A
 **Example `my-scan.json`:**
 ```jsonc
 {
-  "timeout": 10,
-  "verbose": true,
-  "api_keys": {
-    "otx": "your_alienvault_otx_api_key_here"
-  }
+    "timeout": 10,
+    "verbose": true,
+    "api_keys": {
+        "otx": "your_alienvault_otx_api_key_here",
+        "abuseipdb": "your_abuseipdb_api_key_here"
+    }
 }
 ```
 ---
@@ -119,6 +123,9 @@ Run specific modules by adding their flags.
 | `-s`, `--security` | Security Audit | Run a basic audit for DNS security misconfigurations. |
 | `-t`, `--tech` | Tech Detection | Detect web technologies, CMS, and security headers. |
 | `-o`, `--osint` | OSINT | Enrich data with passive DNS and other OSINT sources. |
+| `--ssl` | SSL/TLS Analysis | Analyze the SSL/TLS certificate for the domain. |
+| `--smtp` | SMTP Analysis | Analyze mail servers (banner, STARTTLS). |
+| `--reputation` | IP Reputation | Check IP reputation using AbuseIPDB. |
 
 ---
 
