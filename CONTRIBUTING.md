@@ -75,19 +75,32 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 -   **Separation of Concerns**: The project maintains a strict separation between data gathering (analysis) and data presentation (display/output).
     -   **Analysis Modules (`modules/analysis/`)**: These modules should *only* contain the logic for gathering and processing data. They must not contain any `print()` statements or `rich` components. Their sole responsibility is to perform a task and return a data dictionary.
     -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing output. It contains functions to display data in the console (using `rich`) and corresponding functions to format data for text reports (prefixed with `export_txt_`).
+        -   **Console Display**: Display functions (e.g., `display_dns_records_table`) should be decorated with `@console_display_handler`. They must **return** a `rich` renderable object (like a `Table` or `Panel`) instead of printing it. The orchestrator handles the printing.
+        -   **TXT Export**: The `display.py` module also contains formatters for the plain text (`.txt`) report.
 
 -   **Adding a New Analysis Module**: To add a new module, you'll typically need to:
     1.  Create the analysis function in a new file under `modules/analysis/`.
-    2.  Create a corresponding display function (e.g., `display_my_module`) in `modules/display.py`.
-    3.  Create a text export function (e.g., `export_txt_my_module`) in `modules/display.py`.
+    2.  Create a corresponding display function (e.g., `display_my_module`) in `modules/display.py`. It must be decorated with `@console_display_handler` and return a `rich` object.
+    3.  Create two functions for the TXT export in `modules/display.py`:
+        - A private formatter `_format_my_module_txt(data: dict) -> List[str]` that handles the actual formatting logic.
+        - A public `export_txt_my_module(data: dict) -> str` function that calls the `_create_report_section` helper with your new formatter.
     4.  Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`, linking the module name, functions, dependencies, and command-line flag.
     5.  Write a unit test for your new analysis function in the `tests/` directory.
 
--   **Adding a New Output Module** (e.g., for XML, HTML):
-    1.  Create a new file in `modules/output/` (e.g., `xml.py`).
-    2.  Inside this file, create a function `output(all_data: Dict[str, Any])` that takes the complete scan data and prints it to the console in the desired format.
-    3.  Add the name of your new format (e.g., `'xml'`) to the `choices` list for the `--output` argument in `modules/parser_setup.py`.
-    4.  Add a unit test for your new output module in `tests/test_output_modules.py`.
+-   **Adding a New Output Format**:
+    -   **For Console Output (e.g., XML, CSV):**
+        1.  Create a new file in `modules/output/` (e.g., `xml.py`).
+        2.  Inside this file, create a function `output(all_data: Dict[str, Any])` that takes the complete scan data and **prints** it to the console.
+        3.  Add the name of your new format (e.g., `'xml'`) to the `choices` list for the `--output` argument in `modules/parser_setup.py`.
+    -   **For File Export (e.g., HTML, Markdown):**
+        1.  Create a new file in `modules/output/` (e.g., `html.py`).
+        2.  Inside this file, create a function `output(all_data: Dict[str, Any])`. This function should:
+            - Retrieve the target file path from `all_data['export_filepath']`.
+            - Generate the report content.
+            - Write the content to the specified file path.
+            - It should **not** print to the console.
+        3.  Add a new command-line argument (e.g., `--html-file`) in `modules/parser_setup.py` to enable your new export format.
+        4.  Update the `export_reports` function in `modules/export.py` to recognize and handle your new argument.
 
 ## Code of Conduct
 
