@@ -10,7 +10,7 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     
     async def check_resolver(name, ip):
         resolver = dns.resolver.Resolver(configure=False) 
-        # resolver.set_flags(0) # <-- THIS LINE WAS THE BUG. REMOVED.
+        # resolver.set_flags(0) # <-- REMOVED
         resolver.timeout = timeout
         resolver.lifetime = timeout
         resolver.nameservers = [ip]

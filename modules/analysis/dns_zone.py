@@ -4,17 +4,16 @@ import dns.resolver
 import dns.query
 import dns.zone
 import dns.exception
-import dns.asyncquery
+# import dns.asyncquery # No longer needed
 from typing import Dict, List, Any
 from ..config import console
-from ..utils import _get_resolver
+# from ..utils import _get_resolver # No longer needed
 
-async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
+async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, timeout: int, verbose: bool) -> Dict[str, Any]:
     """
     Attempts a zone transfer (AXFR) against all authoritative nameservers.
     Checks both A and AAAA records for nameservers.
     """
-    resolver = _get_resolver(timeout)
     axfr_results = {"status": "Not Attempted", "servers": {}}
     ns_records = records.get("NS", [])
     if not ns_records:
@@ -29,13 +28,13 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         try:
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
         
         try:
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
             
         if not ns_ips:
@@ -44,7 +43,11 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
 
         for ns_ip in ns_ips:
             try:
-                zone = await dns.zone.from_xfr(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
+                # --- THIS IS THE FIX ---
+                # Use the blocking query.xfr and zone.from_xfr inside to_thread
+                m = await asyncio.to_thread(dns.query.xfr, ns_ip, domain, timeout=timeout)
+                zone = await asyncio.to_thread(dns.zone.from_xfr, m)
+                # --- END FIX ---
                 
                 nodes = zone.nodes.keys()
                 axfr_results["servers"][ns] = {

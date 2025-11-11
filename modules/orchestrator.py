@@ -7,7 +7,7 @@ and displaying results.
 import asyncio
 import argparse
 import inspect
-import dns.resolver 
+import dns.resolver # --- THIS IS THE FIX (reverted to standard resolver) ---
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -36,9 +36,19 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()}
     }
 
+    # --- Centralized Resolver RE-ADDED ---
+    # Use the standard SYNCHRONOUS resolver. We will call it via asyncio.to_thread
+    resolver = dns.resolver.Resolver(configure=False)
+    # DO NOT set_flags(0) - this was the bug causing SERVFAIL
+    resolver.timeout = args.timeout
+    resolver.lifetime = args.timeout
+    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
+    # --- END ---
+
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
+        "resolver": resolver, # --- THIS IS THE FIX ---
         "all_data": all_data, # Allows functions to access results from other modules
         "args": args, # Added to pass full args namespace to functions
         **vars(args) # Add timeout, verbose, etc.

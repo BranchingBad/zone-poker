@@ -13,15 +13,7 @@ import dns.resolver # Added import
 # Import the shared console object
 from .config import console
 
-# --- THIS FUNCTION IS MOVED FROM ANALYSIS.PY ---
-def _get_resolver(timeout: int) -> dns.resolver.Resolver:
-    """Helper function to create a robust, standard resolver."""
-    resolver = dns.resolver.Resolver(configure=False)
-    # resolver.set_flags(0) # <-- THIS LINE WAS THE BUG. REMOVED.
-    resolver.timeout = timeout
-    resolver.lifetime = timeout
-    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
-    return resolver
+# --- _get_resolver function REMOVED ---
 
 def get_desktop_path() -> Path:
     """
