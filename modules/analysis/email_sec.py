@@ -2,10 +2,11 @@
 import asyncio
 import dns.resolver
 from typing import Dict, List, Any
-from ..utils import _parse_spf_record, join_txt_chunks
+from ..utils import _get_resolver, _parse_spf_record, join_txt_chunks
 
-async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver) -> Dict[str, Any]:
+async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
+    resolver = _get_resolver(timeout)
     analysis = {}
 
     # SPF (No network call needed, uses existing records)
@@ -24,6 +25,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
          try:
+            # --- THIS IS THE FIX ---
             answers = await asyncio.to_thread(resolver.resolve, dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):

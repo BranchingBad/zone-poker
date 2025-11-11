@@ -4,7 +4,7 @@ import dns.resolver
 import dns.query
 import dns.zone
 import dns.exception
-import dns.asyncquery
+# import dns.asyncquery # No longer needed
 from typing import Dict, List, Any
 from ..config import console
 from ..utils import _get_resolver
@@ -27,15 +27,17 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     async def try_axfr(ns):
         ns_ips = []
         try:
+            # --- THIS IS THE FIX ---
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
         
         try:
+            # --- THIS IS THE FIX ---
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
             
         if not ns_ips:
@@ -44,7 +46,16 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
 
         for ns_ip in ns_ips:
             try:
-                zone = await dns.zone.from_xfr(await dns.asyncquery.xfr(ns_ip, domain, timeout=timeout))
+                # --- THIS IS THE FIX for AttributeError ---
+                # This function runs the blocking I/O and generator consumption
+                # in a separate thread, returning the final zone object.
+                def _do_xfr():
+                    m = dns.query.xfr(ns_ip, domain, timeout=timeout)
+                    # We must consume the generator to pass it to from_xfr
+                    return dns.zone.from_xfr(list(m))
+
+                zone = await asyncio.to_thread(_do_xfr)
+                # --- END FIX ---
                 
                 nodes = zone.nodes.keys()
                 axfr_results["servers"][ns] = {
@@ -63,11 +74,8 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
                 if verbose:
                     console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
 
-    # --- THIS BLOCK IS THE FIX ---
-    # Use a sequential loop to avoid rate-limiting
     for ns in nameservers:
         await try_axfr(ns)
-    # --- END OF FIX ---
     
     if any(s.get("status") == "Successful" for s in axfr_results["servers"].values()):
         axfr_results["summary"] = "Vulnerable (Zone Transfer Successful)"
