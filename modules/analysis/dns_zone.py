@@ -5,16 +5,14 @@ import dns.query
 import dns.zone
 import dns.exception
 # import dns.asyncquery # No longer needed
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from ..config import console
-from ..utils import _get_resolver
 
-async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
+async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, timeout: int, verbose: bool, **kwargs) -> Dict[str, Any]:
     """
     Attempts a zone transfer (AXFR) against all authoritative nameservers.
     Checks both A and AAAA records for nameservers.
     """
-    resolver = _get_resolver(timeout)
     axfr_results = {"status": "Not Attempted", "servers": {}}
     ns_records = records.get("NS", [])
     if not ns_records:
@@ -28,16 +26,16 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         ns_ips = []
         try:
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
-            ns_ips.extend([str(a) for a in a_answers])
+            ns_ips.extend([str(a) for a in a_answers]) # type: ignore
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
         
         try:
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
-            ns_ips.extend([str(a) for a in aaaa_answers])
+            ns_ips.extend([str(a) for a in aaaa_answers]) # type: ignore
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
-            
+
         if not ns_ips:
             axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
             return
@@ -46,13 +44,20 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
             try:
                 # --- THIS IS THE FIX for AttributeError ---
                 # The blocking I/O and generator consumption must
-                # all happen inside the thread.
+                # all happen inside the same thread.
                 def _do_xfr():
-                    m = dns.query.xfr(ns_ip, domain, timeout=timeout)
-                    return dns.zone.from_xfr(m) # Pass the generator directly
+                    try:
+                        # dns.query.xfr returns a generator of messages
+                        xfr_generator = dns.query.xfr(ns_ip, domain, timeout=timeout)
+                        # dns.zone.from_xfr consumes this generator to build the zone
+                        return dns.zone.from_xfr(xfr_generator)
+                    except AttributeError:
+                        # This can happen internally in dnspython on malformed responses.
+                        # Catch it here and return None to signal a protocol-level failure.
+                        return None
 
                 zone = await asyncio.to_thread(_do_xfr)
-                # --- END FIX ---
+                if zone is None: raise dns.exception.FormError("Protocol Error")
                 
                 nodes = zone.nodes.keys()
                 axfr_results["servers"][ns] = {
@@ -63,7 +68,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
                 }
                 return 
             except dns.exception.FormError:
-                axfr_results["servers"][ns] = {"status": "Failed (Refused)", "ip_tried": ns_ip}
+                axfr_results["servers"][ns] = {"status": "Failed (Refused or ProtocolError)", "ip_tried": ns_ip}
             except (dns.exception.Timeout, asyncio.TimeoutError):
                 axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:

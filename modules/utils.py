@@ -13,7 +13,6 @@ import dns.resolver # Added import
 # Import the shared console object
 from .config import console
 
-# --- _get_resolver function REMOVED ---
 
 def get_desktop_path() -> Path:
     """

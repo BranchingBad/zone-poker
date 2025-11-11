@@ -2,11 +2,10 @@
 import asyncio
 import dns.resolver
 from typing import Dict, List, Any
-from ..utils import _get_resolver, _parse_spf_record, join_txt_chunks
+from ..utils import _parse_spf_record, join_txt_chunks
 
-async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int) -> Dict[str, Any]:
+async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, **kwargs) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
-    resolver = _get_resolver(timeout)
     analysis = {}
 
     # SPF (No network call needed, uses existing records)

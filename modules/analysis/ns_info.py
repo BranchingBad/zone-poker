@@ -4,11 +4,9 @@ import dns.resolver
 from typing import Dict, List, Any
 from ipwhois import IPWhois
 from ..config import console
-from ..utils import _get_resolver
 
-async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
+async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool, **kwargs) -> Dict[str, Any]:
     """Analyzes nameservers, checking IPs (A and AAAA) and DNSSEC support."""
-    resolver = _get_resolver(timeout)
     ns_info = {}
     ns_records = records.get("NS", [])
     if not ns_records:

@@ -37,15 +37,14 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     }
 
     # --- Centralized Resolver RE-ADDED ---
-    # Use the standard SYNCHRONOUS resolver. We will call it via asyncio.to_thread
-    from dns import flags
-    resolver = dns.resolver.Resolver(configure=False)
+    # Use the standard SYNCHRONOUS resolver. We will call it via asyncio.to_thread.
+    # By not setting any flags, we avoid sending the DNSSEC OK (DO) bit,
+    # which was causing SERVFAIL errors from public resolvers when querying
+    # for records on unsigned domains (like the _dmarc record).
     # --- THIS IS THE FIX ---
-    # Explicitly set flags to Recursion Desired (RD) ONLY.
-    # This disables the default 'DNSSEC OK' (DO) flag that dnspython sets,
-    # which was causing SERVFAIL errors from public resolvers like 8.8.8.8
-    # when they couldn't validate a response for an unsigned domain.
-    resolver.set_flags(flags.RD)
+    # The default resolver sets `want_dnssec=True`. We must explicitly disable it.
+    resolver = dns.resolver.Resolver(configure=False) # Start with a clean resolver
+    resolver.want_dnssec = False # Explicitly disable DNSSEC queries
     resolver.timeout = args.timeout
     resolver.lifetime = args.timeout
     resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']

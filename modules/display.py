@@ -103,7 +103,7 @@ def display_axfr_results(data: dict, quiet: bool):
     for server, info in servers.items():
         status = info.get('status', 'Unknown')
         if status == 'Successful':
-            node = tree.add(f"✓ [green]{server}: {status} ({info.get('record_count', 0)} records)[/green]")
+            node = tree.add(f"✓ [green]{server}: {status} ({info.get('record_count', 0)} records via {info.get('ip_used')})[/green]")
         elif "Refused" in status:
             node = tree.add(f"✗ [yellow]{server}: {status}[/yellow]")
         else:

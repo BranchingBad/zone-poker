@@ -9,8 +9,10 @@ async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
     results = {}
     
     async def check_resolver(name, ip):
-        resolver = dns.resolver.Resolver(configure=False) 
-        # resolver.set_flags(0) # <-- REMOVED
+        # Use the default resolver configuration, which does not set the
+        # 'DNSSEC OK' (DO) bit. This prevents SERVFAIL errors from resolvers
+        # when querying unsigned domains.
+        resolver = dns.resolver.Resolver(configure=False)
         resolver.timeout = timeout
         resolver.lifetime = timeout
         resolver.nameservers = [ip]
