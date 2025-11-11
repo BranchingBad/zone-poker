@@ -29,6 +29,12 @@ def console_display_handler(title: str):
             if quiet or not data:
                 return
 
+            # --- THIS IS THE FIX ---
+            # Ensure data is a dictionary before trying to call .get() on it.
+            if not isinstance(data, dict):
+                console.print(Panel(f"[dim]Could not display data. Received unexpected format: {str(data)}[/dim]", title=title, box=box.ROUNDED, border_style="dim"))
+                return
+
             if data.get("error"):
                 panel = Panel(f"[dim]{data['error']}[/dim]", title=title, box=box.ROUNDED, border_style="dim")
                 console.print(panel)
@@ -94,6 +100,10 @@ def display_ptr_lookups(ptr_records: Dict[str, str], quiet: bool = False):
     table = Table(title="Reverse DNS (PTR) Lookups", box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("IP Address", width=20)
     table.add_column("Hostname", max_width=60)
+
+    if not ptr_records or "error" in ptr_records:
+        console.print(Panel("[dim]No PTR records to display.[/dim]", title="Reverse DNS (PTR) Lookups", box=box.ROUNDED))
+        return
 
     for ip, hostname in ptr_records.items():
         table.add_row(ip, hostname)
@@ -218,16 +228,12 @@ def display_nameserver_analysis(data: dict, quiet: bool = False):
         # Check if info is a dictionary before trying to access it.
         # This handles the case where the 'records' module fails and
         # 'nameserver_analysis' returns {"error": "..."}
-        if isinstance(info, dict):
-            if "error" in info:
-                table.add_row(ns, f"[red]{info['error']}[/red]", "")
-            else:
-                ip_list = info.get('ips', [])
-                ip_str = "\n".join(ip_list) if ip_list else "N/A"
-                table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
-        elif ns == "error":
-            # Handle the top-level error from nameserver_analysis
-            table.add_row(f"[red]{ns.title()}[/red]", f"[red]{info}[/red]", "")
+        if isinstance(info, dict) and "error" in info:
+            table.add_row(ns, f"[red]{info['error']}[/red]", "")
+        elif isinstance(info, dict):
+            ip_list = info.get('ips', [])
+            ip_str = "\n".join(ip_list) if ip_list else "N/A"
+            table.add_row(ns, ip_str, info.get('asn_description', 'N/A'))
             
     console.print(table)
 
@@ -533,7 +539,7 @@ def display_critical_findings(data: dict, quiet: bool):
 
     # High IP Reputation Abuse Score
     reputation_info = data.get('reputation_info', {})
-    high_risk_ips = [ip for ip, info in reputation_info.items() if info.get('abuseConfidenceScore', 0) > 75]
+    high_risk_ips = [ip for ip, info in reputation_info.items() if isinstance(info, dict) and info.get('abuseConfidenceScore', 0) > 75]
     if high_risk_ips:
         critical_findings.append(f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)}).")
 
@@ -903,6 +909,10 @@ def display_port_scan(data: dict, quiet: bool = False):
     table = Table(title="Open Port Scan", box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("IP Address", style="bold", width=20)
     table.add_column("Open Ports")
+
+    if not data or "error" in data:
+        console.print(Panel("[dim]No port scan data to display.[/dim]", title="Open Port Scan", box=box.ROUNDED))
+        return
 
     for ip, ports in data.items():
         ports_str = ", ".join(map(str, ports))
