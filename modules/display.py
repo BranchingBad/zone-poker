@@ -855,6 +855,52 @@ def display_port_scan(data: dict, quiet: bool):
     console.print(table)
     console.print()
 
+def display_subdomain_takeover(data: dict, quiet: bool):
+    """Displays Subdomain Takeover results in a panel."""
+    if quiet:
+        return
+
+    vulnerable = data.get("vulnerable", [])
+    
+    if not vulnerable:
+        panel = Panel("[green]✓ No potential subdomain takeovers found.[/green]", title="Subdomain Takeover", box=box.ROUNDED)
+    else:
+        tree = Tree(f"[bold red]✗ Found {len(vulnerable)} potential subdomain takeovers![/bold red]")
+        for item in vulnerable:
+            node = tree.add(f"[yellow]{item['subdomain']}[/yellow]")
+            node.add(f"Service: [bold]{item['service']}[/bold]")
+            node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
+        panel = Panel(tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red")
+
+    console.print(panel)
+    console.print()
+
+def display_cloud_enum(data: dict, quiet: bool):
+    """Displays Cloud Enumeration results in a panel."""
+    if quiet:
+        return
+
+    s3_buckets = data.get("s3_buckets", [])
+    azure_blobs = data.get("azure_blobs", [])
+    
+    if not s3_buckets and not azure_blobs:
+        panel = Panel("[dim]No public S3 buckets found based on common permutations.[/dim]", title="Cloud Service Enumeration", box=box.ROUNDED)
+    else:
+        tree = Tree("[bold]Cloud Service Enumeration[/bold]")
+        if s3_buckets:
+            s3_tree = tree.add(f"Discovered S3 Buckets ({len(s3_buckets)}):")
+            for bucket_url in s3_buckets:
+                s3_tree.add(f"✓ [green]{bucket_url}[/green]")
+        if azure_blobs:
+            azure_tree = tree.add(f"Discovered Azure Blob Containers ({len(azure_blobs)}):")
+            for blob_url in azure_blobs:
+                azure_tree.add(f"✓ [cyan]{blob_url}[/cyan]")
+        panel = Panel(tree, title="Cloud Service Enumeration", box=box.ROUNDED)
+
+    console.print(panel)
+    console.print()
+
+
 def export_txt_dane(data: Dict[str, Any]) -> str:
     """Formats DANE/TLSA analysis for the text report."""
     report = ["--- DANE/TLSA Record Analysis ---"]
@@ -972,6 +1018,43 @@ def export_txt_port_scan(data: Dict[str, Any]) -> str:
     report.append("\n")
     return "\n".join(report)
 
+def export_txt_cloud_enum(data: Dict[str, Any]) -> str:
+    """Formats Cloud Enumeration for the text report."""
+    report = ["--- Cloud Service Enumeration ---"]
+    s3_buckets = data.get("s3_buckets", [])
+    azure_blobs = data.get("azure_blobs", [])
+
+    if not s3_buckets and not azure_blobs:
+        report.append("No public S3 or Azure Blob containers found based on common permutations.")
+    
+    if s3_buckets:
+        report.append("Discovered S3 Buckets:")
+        for bucket_url in s3_buckets:
+            report.append(f"  - {bucket_url}")
+    
+    if azure_blobs:
+        report.append("\nDiscovered Azure Blob Containers:")
+        for blob_url in azure_blobs:
+            report.append(f"  - {blob_url}")
+
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
+    """Formats Subdomain Takeover for the text report."""
+    report = ["--- Subdomain Takeover ---"]
+    vulnerable = data.get("vulnerable", [])
+    if not vulnerable:
+        report.append("No potential subdomain takeovers found.")
+    else:
+        report.append(f"Found {len(vulnerable)} potential subdomain takeovers:")
+        for item in vulnerable:
+            report.append(f"\n  - Subdomain: {item['subdomain']}")
+            report.append(f"    Service: {item['service']}")
+            report.append(f"    CNAME Target: {item['cname_target']}")
+
+    report.append("\n")
+    return "\n".join(report)
 
 def export_txt_smtp(data: Dict[str, Any]) -> str:
     """Formats SMTP analysis for the text report."""

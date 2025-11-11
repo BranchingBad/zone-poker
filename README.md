@@ -133,6 +133,8 @@ Run specific modules by adding their flags.
 | `--geo` | IP Geolocation | Geolocate IP addresses from A/AAAA records. |
 | `--headers` | HTTP Headers | Perform an in-depth analysis of HTTP security headers. |
 | `--ports` | Port Scan | Scan for common open TCP ports on discovered IPs. |
+| `--takeover` | Subdomain Takeover | Check for potential subdomain takeovers on CNAME records. |
+| `--cloud` | Cloud Enumeration | Enumerate common cloud services (e.g., S3 buckets). |
 
 ---
 

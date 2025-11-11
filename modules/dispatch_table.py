@@ -26,14 +26,16 @@ from modules.analysis.dane_analysis import analyze_dane_records
 from modules.analysis.ip_geolocation import geolocate_ips
 from modules.analysis.http_headers import analyze_http_headers
 from modules.analysis.port_scan import scan_ports
+from modules.analysis.subdomain_takeover import check_subdomain_takeover
+from modules.analysis.cloud_enum import enumerate_cloud_services
 
 # Import all display and export functions
 from modules.display import (
     display_dns_records_table, display_ptr_lookups, display_axfr_results, display_email_security,
     display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_ip_geolocation, display_http_headers, display_port_scan, export_txt_records,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_ip_geolocation, display_http_headers, display_port_scan, display_subdomain_takeover, display_cloud_enum, export_txt_records,
     export_txt_ptr, export_txt_zone, export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security,
-    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation, export_txt_dane, export_txt_geolocation, export_txt_http_headers, export_txt_port_scan,
+    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation, export_txt_dane, export_txt_geolocation, export_txt_http_headers, export_txt_port_scan, export_txt_subdomain_takeover, export_txt_cloud_enum,
     export_txt_content_hash, export_txt_ct_logs, export_txt_waf_detection
 )
 
@@ -217,6 +219,23 @@ MODULE_DISPATCH_TABLE = {
         "description": "Scanning for open ports...",
         "dependencies": ["records"],
         "arg_info": {"short": None, "long": "--ports", "help": "Scan for common open TCP ports on discovered IPs."}
+    },
+    "takeover": {
+        "data_key": "takeover_info",
+        "analysis_func": check_subdomain_takeover,
+        "display_func": display_subdomain_takeover,
+        "export_func": export_txt_subdomain_takeover,
+        "description": "Checking for subdomain takeovers...",
+        "dependencies": ["records"],
+        "arg_info": {"short": None, "long": "--takeover", "help": "Check for potential subdomain takeovers on CNAME records."}
+    },
+    "cloud": {
+        "data_key": "cloud_enum_info",
+        "analysis_func": enumerate_cloud_services,
+        "display_func": display_cloud_enum,
+        "export_func": export_txt_cloud_enum,
+        "description": "Enumerating cloud services...",
+        "arg_info": {"short": None, "long": "--cloud", "help": "Enumerate common cloud services (e.g., S3 buckets)."}
     }
 }
 
