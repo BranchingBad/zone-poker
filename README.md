@@ -29,6 +29,15 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 
 ---
 
+## 📋 Prerequisites
+
+- Python 3.8+
+- `pip` for installing dependencies
+
+- Some modules require API keys for full functionality (e.g., AbuseIPDB, AlienVault OTX).
+
+---
+
 ## 🚀 Installation
 
 1.  Clone the repository:
@@ -37,7 +46,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
     cd zone-poker
     ```
 
-2.  Install the project and its dependencies. This will also install the `zone-poker` command.
+2.  Install the project and its dependencies. This will also make the `zone-poker` command available in your environment.
     ```bash
     pip install .
     ```
@@ -75,10 +84,19 @@ For modules that use third-party APIs (like OSINT enrichment), you can provide A
 ### Basic Commands
 ```bash
 # Scan a single domain, run all modules, and export reports
-python3 zone-poker.py example.com --all --export
+zone-poker example.com --all --export
 
 # Scan multiple domains from a file and run a security audit
-python3 zone-poker.py -f domains.json --security
+zone-poker -f domains.json --security
+
+# Use a configuration file to define scan parameters
+zone-poker example.com -c my-scan.json
+
+# Scan and save reports to a specific directory
+zone-poker example.com --all --export -O /home/user/reports/
+
+# Query for only A and MX records
+zone-poker example.com --records --types A,MX
 
 # Use a configuration file to define scan parameters
 python3 zone-poker.py example.com -c my-scan.json
