@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Set
 
 logger = logging.getLogger(__name__)
 
-async def geolocate_ips(records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Dict[str, Any]]:
+async def geolocate_ips(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Dict[str, Any]]:
     """
     Performs IP geolocation for discovered A and AAAA records using ip-api.com.
     """
@@ -18,7 +18,7 @@ async def geolocate_ips(records: Dict[str, List[Dict[str, Any]]], **kwargs) -> D
 
     # Flatten all A and AAAA records into a set of unique IPs
     for r_type in ["A", "AAAA"]:
-        for record in records.get(r_type, []):
+        for record in records_info.get(r_type, []):
             if record.get("value"):
                 ips_to_check.add(record["value"])
 

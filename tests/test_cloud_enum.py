@@ -46,7 +46,7 @@ async def test_enumerate_cloud_services_found(mock_routes):
 
     # Override the default 404 for specific "found" routes
     mock_routes.head("http://example-prod.s3.amazonaws.com").respond(200)  # Public
-    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(403) # Forbidden
+    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(403) # Forbidden (Private)
     mock_routes.head("https://example.blob.core.windows.net").respond(400) # Found
 
     results = await enumerate_cloud_services(domain)

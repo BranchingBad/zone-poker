@@ -6,19 +6,19 @@ import smtplib
 import ssl
 import socket
 
-def analyze_smtp_servers(domain: str, timeout: int, records: dict, **kwargs) -> dict:
+def analyze_smtp_servers(domain: str, timeout: int, records_info: dict, **kwargs) -> dict:
     """
     Connects to mail servers from MX records to analyze their SMTP configuration.
 
     Args:
-        records: The dictionary of DNS records from the 'records' module.
+        records_info: The dictionary of DNS records from the 'records' module.
         domain: The target domain, used for the EHLO command.
         timeout: Connection timeout in seconds.
 
     Returns:
         A dictionary containing analysis results for each mail server.
     """
-    mx_records = records.get("MX", [])
+    mx_records = records_info.get("MX", [])
     if not mx_records:
         return {"error": "No MX records found to analyze."}
 

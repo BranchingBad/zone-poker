@@ -2,9 +2,9 @@
 from typing import Dict, List, Any
 
 def security_audit(
-    records: Dict[str, List[Dict[str, Any]]],
-    email_security: Dict[str, Any],
-    nameserver_info: Dict[str, Any],
+    records_info: Dict[str, List[Dict[str, Any]]],
+    mail_info: Dict[str, Any],
+    nsinfo_info: Dict[str, Any],
     zone_info: Dict[str, Any],
     **kwargs
 ) -> Dict[str, Dict[str, str]]:
@@ -12,7 +12,7 @@ def security_audit(
     audit: Dict[str, Dict[str, str]] = {}
     
     # SPF Policy
-    spf_data = email_security.get("spf", {})
+    spf_data = mail_info.get("spf", {})
     if "warning" in spf_data:
         audit["SPF Record"] = {"status": "Weak", "details": spf_data["warning"]}
     elif spf_data.get("all_policy") == "?all":
@@ -25,7 +25,7 @@ def security_audit(
         audit["SPF Policy"] = {"status": "Weak", "details": "No SPF record or 'all' mechanism found."}
 
     # DMARC Policy
-    dmarc_data = email_security.get("dmarc", {})
+    dmarc_data = mail_info.get("dmarc", {})
     if dmarc_data.get("p") == "none":
         details = "Policy 'p=none' is in monitoring mode and does not prevent spoofing."
         if not dmarc_data.get("rua"):
@@ -37,13 +37,13 @@ def security_audit(
         audit["DMARC Policy"] = {"status": "Weak", "details": "No DMARC record found or policy is misconfigured."}
 
     # CAA Record
-    if records.get("CAA"):
+    if records_info.get("CAA"):
         audit["CAA Record"] = {"status": "Secure", "details": "Present, restricting which CAs can issue certificates."}
     else:
         audit["CAA Record"] = {"status": "Weak", "details": "Not found, allowing any Certificate Authority to issue certificates."}
 
     # DNSSEC
-    dnssec_status = nameserver_info.get("dnssec", "Not Enabled")
+    dnssec_status = nsinfo_info.get("dnssec", "Not Enabled")
     if dnssec_status.startswith("Enabled"):
         dnssec_final_status = "Secure"
     elif dnssec_status.startswith("Partial"):

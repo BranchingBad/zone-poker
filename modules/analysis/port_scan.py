@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 # A list of common ports to check
 COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 3306, 3389, 5900, 8080, 8443]
 
-async def scan_ports(records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
+async def scan_ports(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
     Scans for common open TCP ports on discovered IP addresses.
     """
     results: Dict[str, List[int]] = {}
     ips_to_check: Set[str] = {
-        rec["value"] for rec_type in ["A", "AAAA"] for rec in records.get(rec_type, []) if rec.get("value")
+        rec["value"] for rec_type in ["A", "AAAA"] for rec in records_info.get(rec_type, []) if rec.get("value")
     }
 
     if not ips_to_check:

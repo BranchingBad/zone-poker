@@ -17,25 +17,25 @@ from modules.analysis.whois import whois_lookup
 def mock_secure_data():
     """Provides mock data representing a secure configuration."""
     return {
-        "records": {"CAA": [{"value": "0 issue 'letsencrypt.org'"}]},
-        "email_security": {
+        "records_info": {"CAA": [{"value": "0 issue 'letsencrypt.org'"}]},
+        "mail_info": {
             "spf": {"all_policy": "-all"},
             "dmarc": {"p": "reject", "rua": "mailto:dmarc@example.com"}
         },
-        "ns_info": {"dnssec": "Enabled (DNSKEY and DS records found)"},
-        "zone_info": {"summary": "Secure (No successful transfers)"}
+        "nsinfo_info": {"dnssec": "Enabled (DNSKEY and DS records found)"},
+        "zone_info": {"summary": "Secure (No successful transfers)"},
     }
 
 @pytest.fixture
 def mock_weak_data():
     """Provides mock data representing a weak or misconfigured setup."""
     return {
-        "records": {}, # No CAA record
-        "email_security": {
+        "records_info": {}, # No CAA record
+        "mail_info": {
             "spf": {"all_policy": "?all"},
             "dmarc": {"p": "none"} # No rua address
         },
-        "ns_info": {"dnssec": "Not Enabled (No DNSKEY or DS records)"},
+        "nsinfo_info": {"dnssec": "Not Enabled (No DNSKEY or DS records)"},
         "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"}
     }
 
@@ -107,8 +107,8 @@ async def test_whois_lookup_success():
     mock_whois_data.text = "raw whois text"
     # Simulate the data structure returned by the python-whois library
     mock_whois_data.items.return_value = [
-        ("domain_name", ["EXAMPLE.COM"]),
-        ("creation_date", datetime(2020, 1, 1)),
+        ("domain_name", ["EXAMPLE.COM"]), # whois can return a list
+        ("creation_date", [datetime(2020, 1, 1)]),
         ("registrar", "Test Registrar"),
         ("emails", ["abuse@example.com", "admin@example.com"])
     ]
@@ -117,11 +117,11 @@ async def test_whois_lookup_success():
         mock_to_thread.return_value = mock_whois_data
         result = await whois_lookup(domain="example.com", verbose=False)
 
-    assert result["domain_name"] == "EXAMPLE.COM"
-    assert result["creation_date"] == "2020-01-01T00:00:00"
+    assert result["domain_name"] == "EXAMPLE.COM" # Check that the first item in the list is taken
+    assert result["creation_date"] == "2020-01-01T00:00:00" # Check that datetime is formatted to string
     assert result["registrar"] == "Test Registrar"
-    assert result["emails"] == "abuse@example.com"  # Check that only the first email is taken
-    assert "error" not in result
+    assert result["emails"] == "abuse@example.com, admin@example.com"  # Check that emails are joined
+    assert "error" not in result # type: ignore
 
 @pytest.mark.asyncio
 async def test_whois_lookup_no_data_returned():

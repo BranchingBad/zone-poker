@@ -214,14 +214,16 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
         if result.get("ips"):
             all_ips.update(result["ips"])
 
-    color_map = {ip: f"color({i+1})" for i, ip in enumerate(all_ips)}
+    # Sort all unique IPs to ensure stable color assignment
+    color_map = {ip: f"color({i+1})" for i, ip in enumerate(sorted(list(all_ips)))}
 
     for server, result in data.items():
         if error := result.get("error"):
             table.add_row(server, f"[red]{error}[/red]")
         else:
             ip_text = Text()
-            for ip in result.get("ips", []):
+            # Sort the IPs for each resolver to ensure consistent display order
+            for ip in sorted(result.get("ips", [])):
                 color = color_map.get(ip, "white")
                 ip_text.append(f"[{color}]{ip}[/{color}]\n")
             table.add_row(server, ip_text)

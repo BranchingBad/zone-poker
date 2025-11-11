@@ -27,11 +27,11 @@ TAKEOVER_FINGERPRINTS = {
     "Intercom": ["this page is reserved for a new intercom app."],
 }
 
-async def check_subdomain_takeover(records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
+async def check_subdomain_takeover(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
     Checks for potential subdomain takeovers via dangling CNAME records.
     """
-    cname_records = records.get("CNAME", [])
+    cname_records = records_info.get("CNAME", [])
 
     if not cname_records:
         return {"vulnerable": []}

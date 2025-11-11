@@ -58,7 +58,7 @@ from modules.display import (
 # - dependencies: A list of other modules that must run before this one.
 MODULE_DISPATCH_TABLE = {
     "records": {
-        "data_key": "records",
+        "data_key": "records_info",
         "analysis_func": get_dns_records,
         "display_func": display_dns_records_table,
         "export_func": export_txt_records,
@@ -66,7 +66,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-r", "long": "--records", "help": "Query all standard DNS record types."}
     },
     "ptr": {
-        "data_key": "ptr_lookups",
+        "data_key": "ptr_info",
         "analysis_func": reverse_ptr_lookups,
         "display_func": display_ptr_lookups,
         "export_func": export_txt_ptr,
@@ -80,11 +80,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_axfr_results,
         "export_func": export_txt_zone,
         "description": "Attempting zone transfer (AXFR)...",
-        "dependencies": ["records"], # This was the fix
+        "dependencies": ["records"],
         "arg_info": {"short": "-z", "long": "--zone", "help": "Attempt a zone transfer (AXFR) against nameservers."}
     },
     "mail": {
-        "data_key": "email_security",
+        "data_key": "mail_info",
         "analysis_func": email_security_analysis,
         "display_func": display_email_security,
         "export_func": export_txt_mail,
@@ -93,7 +93,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-m", "long": "--mail", "help": "Analyze email security records (SPF, DMARC, DKIM)."}
     },
     "whois": {
-        "data_key": "whois",
+        "data_key": "whois_info",
         "analysis_func": whois_lookup,
         "display_func": display_whois_info,
         "export_func": export_txt_whois,
@@ -101,7 +101,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-w", "long": "--whois", "help": "Perform an extended WHOIS lookup on the domain."}
     },
     "nsinfo": {
-        "data_key": "nameserver_info",
+        "data_key": "nsinfo_info",
         "analysis_func": nameserver_analysis,
         "display_func": display_nameserver_analysis,
         "export_func": export_txt_nsinfo,
@@ -110,7 +110,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-n", "long": "--nsinfo", "help": "Analyze nameserver information and check for DNSSEC."}
     },
     "propagation": {
-        "data_key": "propagation",
+        "data_key": "propagation_info",
         "analysis_func": propagation_check,
         "display_func": display_propagation,
         "export_func": export_txt_propagation,
@@ -118,7 +118,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-p", "long": "--propagation", "help": "Check DNS propagation across public resolvers."}
     },
     "security": {
-        "data_key": "security",
+        "data_key": "security_info",
         "analysis_func": security_audit,
         "display_func": display_security_audit,
         "export_func": export_txt_security,
@@ -127,7 +127,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-s", "long": "--security", "help": "Run a basic audit for DNS security misconfigurations."}
     },
     "tech": {
-        "data_key": "technology",
+        "data_key": "tech_info",
         "analysis_func": detect_technologies,
         "display_func": display_technology_info,
         "export_func": export_txt_tech,
@@ -135,7 +135,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": "-t", "long": "--tech", "help": "Detect web technologies, CMS, and security headers."}
     },
     "osint": {
-        "data_key": "osint",
+        "data_key": "osint_info",
         "analysis_func": osint_enrichment,
         "display_func": display_osint_results,
         "export_func": export_txt_osint,
@@ -160,7 +160,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--smtp", "help": "Analyze mail servers (banner, STARTTLS)."}
     },
     "reputation": {
-        "data_key": "reputation_info",
+        "data_key": "reputation_info", # This one already follows the convention
         "analysis_func": analyze_reputation,
         "display_func": display_reputation_info,
         "export_func": export_txt_reputation,
@@ -169,7 +169,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--reputation", "help": "Check IP reputation using AbuseIPDB."}
     },
     "hashes": {
-        "data_key": "content_hashes",
+        "data_key": "hashes_info",
         "analysis_func": get_content_hashes,
         "display_func": display_content_hash_info,
         "export_func": export_txt_content_hash,
@@ -177,7 +177,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--hashes", "help": "Get Murmur32 favicon and SHA256 page content hashes."}
     },
     "ct": {
-        "data_key": "ct_logs",
+        "data_key": "ct_info",
         "analysis_func": search_ct_logs,
         "display_func": display_ct_logs,
         "export_func": export_txt_ct_logs,
@@ -185,7 +185,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--ct", "help": "Find subdomains from Certificate Transparency logs."}
     },
     "waf": {
-        "data_key": "waf_detection",
+        "data_key": "waf_info",
         "analysis_func": detect_waf,
         "display_func": display_waf_detection,
         "export_func": export_txt_waf_detection,
@@ -201,7 +201,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--dane", "help": "Check for DANE (TLSA) records for HTTPS."}
     },
     "geolocation": {
-        "data_key": "geolocation_info",
+        "data_key": "geo_info",
         "analysis_func": geolocate_ips,
         "display_func": display_ip_geolocation,
         "export_func": export_txt_geolocation,
@@ -210,7 +210,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--geo", "help": "Geolocate IP addresses from A/AAAA records."}
     },
     "http_headers": {
-        "data_key": "http_headers_info",
+        "data_key": "headers_info",
         "analysis_func": analyze_http_headers,
         "display_func": display_http_headers,
         "export_func": None, # This module has a complex structure not suited for the simple TXT report
@@ -236,7 +236,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {"short": None, "long": "--takeover", "help": "Check for potential subdomain takeovers on CNAME records."}
     },
     "cloud": {
-        "data_key": "cloud_enum_info",
+        "data_key": "cloud_info",
         "analysis_func": enumerate_cloud_services,
         "display_func": display_cloud_enum,
         "export_func": export_txt_cloud_enum,
@@ -261,11 +261,15 @@ def register_module_args(parser: argparse.ArgumentParser):
     for name, details in MODULE_DISPATCH_TABLE.items():
         arg_info = details.get("arg_info")
         if arg_info:
-            args = [arg for arg in [arg_info.get("short"), arg_info.get("long")] if arg]
+            # Simplify argument creation by convention.
+            # The long argument is assumed to be '--<module_name>' unless specified otherwise.
+            long_arg = arg_info.get("long", f"--{name}")
+            
+            args = [arg for arg in [arg_info.get("short"), long_arg] if arg]
             if args:
                 parser.add_argument(
                     *args,
-                    dest=name,  # Ensure args.name corresponds to the module name
+                    dest=name,
                     action="store_true",
                     help=arg_info.get("help", "")
                 )

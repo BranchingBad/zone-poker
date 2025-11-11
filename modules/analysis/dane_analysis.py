@@ -2,13 +2,14 @@
 """
 Zone-Poker - DANE (TLSA) Analysis Module
 """
+import asyncio
 import logging
 from dns.resolver import Resolver, NoAnswer, NXDOMAIN
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
-def analyze_dane_records(domain: str, resolver: Resolver, **kwargs) -> Dict[str, Any]:
+async def analyze_dane_records(domain: str, resolver: Resolver, **kwargs) -> Dict[str, Any]:
     """
     Checks for DANE/TLSA records to validate TLS certificates via DNS.
     """
@@ -18,7 +19,7 @@ def analyze_dane_records(domain: str, resolver: Resolver, **kwargs) -> Dict[str,
     logger.debug(f"Querying TLSA records for {target}")
 
     try:
-        answers = resolver.resolve(target, "TLSA")
+        answers = await asyncio.to_thread(resolver.resolve, target, "TLSA")
         tlsa_records = [str(r) for r in answers]
         if tlsa_records:
             results["records"] = tlsa_records

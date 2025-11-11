@@ -19,15 +19,15 @@ DNSBL_PROVIDERS = [
     "b.barracudacentral.org",
 ]
 
-async def check_dnsbl(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
+async def check_dnsbl(records_info: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Checks IP addresses from A/AAAA records against common DNSBL services.
     """
     results: Dict[str, List[Dict]] = {"listed_ips": []}
     
     # Collect all unique IP addresses from A and AAAA records
-    a_records = records.get("A", [])
-    aaaa_records = records.get("AAAA", [])
+    a_records = records_info.get("A", [])
+    aaaa_records = records_info.get("AAAA", [])
     all_ips = list(set([rec.get("value") for rec in a_records + aaaa_records if rec.get("value")]))
 
     if not all_ips:

@@ -4,14 +4,14 @@ import dns.resolver
 import dns.reversename
 from typing import Dict, List, Any
  
-async def reverse_ptr_lookups(resolver: dns.resolver.Resolver, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, str]:
+async def reverse_ptr_lookups(resolver: dns.resolver.Resolver, records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
     """
     ptr_results = {}
     ips_to_check = []
     for rtype in ("A", "AAAA"):
-        for record in records.get(rtype, []):
+        for record in records_info.get(rtype, []):
             if record.get("value"):
                 ips_to_check.append(record["value"])
 

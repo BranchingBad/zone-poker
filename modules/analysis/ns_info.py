@@ -50,10 +50,10 @@ async def _analyze_single_ns(resolver: dns.resolver.Resolver, verbose: bool, ns_
     
     return info
 
-async def nameserver_analysis(resolver: dns.resolver.Resolver, verbose: bool, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
+async def nameserver_analysis(resolver: dns.resolver.Resolver, verbose: bool, records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """Analyzes nameservers, checking IPs (A and AAAA) and DNSSEC support."""
     results: Dict[str, Any] = {}
-    ns_records = records.get("NS", [])
+    ns_records = records_info.get("NS", [])
     if not ns_records:
         return {"error": "No NS records found."}
 
@@ -65,9 +65,9 @@ async def nameserver_analysis(resolver: dns.resolver.Resolver, verbose: bool, re
         results[ns_name] = result_data
     
     # Check DNSSEC
-    if records.get("DNSKEY") and records.get("DS"):
+    if records_info.get("DNSKEY") and records_info.get("DS"):
         results["dnssec"] = "Enabled (DNSKEY and DS records found)"
-    elif records.get("DNSKEY"):
+    elif records_info.get("DNSKEY"):
         results["dnssec"] = "Partial (DNSKEY found, but no DS record)"
     else:
         results["dnssec"] = "Not Enabled (No DNSKEY or DS records)"
