@@ -5,10 +5,11 @@ import dns.reversename
 from typing import Dict, List, Any
 from ..utils import _get_resolver
 
-async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, str]:
+async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
     """
+    resolver = _get_resolver(timeout)
     ptr_results = {}
     ips_to_check = []
     for rtype in ("A", "AAAA"):
@@ -26,8 +27,11 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
         except Exception as e:
             ptr_results[ip] = f"Error: {e}"
 
+    # --- THIS BLOCK IS THE FIX ---
+    # Use a sequential loop to avoid rate-limiting
     for ip in ips_to_check:
         if ip:
             await query_ptr(ip)
+    # --- END OF FIX ---
     
     return ptr_results

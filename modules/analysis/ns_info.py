@@ -54,8 +54,11 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], timeout:
                 console.print(f"Error analyzing NS {ns_name}: {e}")
         ns_info[ns_name] = info
 
+    # --- THIS BLOCK IS THE FIX ---
+    # Use a sequential loop to avoid rate-limiting
     for ns in ns_records:
         await analyze_ns(ns)
+    # --- END OF FIX ---
     
     # Check DNSSEC
     if records.get("DNSKEY") and records.get("DS"):
