@@ -485,6 +485,29 @@ def display_content_hash_info(data: dict, quiet: bool):
     console.print(Panel(table, title="Content & Favicon Hashes", box=box.ROUNDED, expand=False))
     console.print()
 
+def display_ct_logs(data: dict, quiet: bool):
+    """Displays Certificate Transparency Log results in a tree."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="Certificate Transparency Log Analysis", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    subdomains = data.get('subdomains', [])
+    tree = Tree(f"[bold]Certificate Transparency Log Analysis ({len(subdomains)} found)[/bold]")
+
+    if subdomains:
+        for s in subdomains:
+            tree.add(f"[green]{s}[/green]")
+    else:
+        tree.add("[dim]No subdomains found in CT logs.[/dim]")
+
+    console.print(tree)
+    console.print()
+
 def display_summary(data: dict, quiet: bool):
     """Displays a high-level summary of findings."""
     if quiet:
@@ -693,6 +716,22 @@ def export_txt_content_hash(data: Dict[str, Any]) -> str:
     if data.get("page_sha256_hash"):
         report.append(f"Page Content SHA256: {data['page_sha256_hash']}")
 
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_ct_logs(data: Dict[str, Any]) -> str:
+    """Formats CT Log analysis for the text report."""
+    report = ["--- Certificate Transparency Log Analysis ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+    
+    subdomains = data.get('subdomains', [])
+    if subdomains:
+        report.append(f"Found {len(subdomains)} subdomains:")
+        for item in subdomains:
+            report.append(f"  - {item}")
+    else:
+        report.append("No subdomains found in CT logs.")
     report.append("\n")
     return "\n".join(report)
 
