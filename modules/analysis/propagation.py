@@ -4,14 +4,14 @@ import dns.resolver
 from typing import Dict
 from ..config import PUBLIC_RESOLVERS
 
-async def propagation_check(domain: str, timeout: int) -> Dict[str, str]:
+async def propagation_check(domain: str, timeout: int, **kwargs) -> Dict[str, str]:
     """Checks domain 'A' record propagation against public resolvers."""
     results = {}
     
     async def check_resolver(name, ip):
-        # Use the default resolver configuration, which does not set the
-        # 'DNSSEC OK' (DO) bit. This prevents SERVFAIL errors from resolvers
-        # when querying unsigned domains.
+        # --- THIS IS THE FIX ---
+        # Create a resolver with configure=False to avoid sending DNSSEC OK (DO)
+        # bits, which can cause SERVFAIL for unsigned domains on some resolvers.
         resolver = dns.resolver.Resolver(configure=False)
         resolver.timeout = timeout
         resolver.lifetime = timeout

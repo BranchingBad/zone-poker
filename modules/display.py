@@ -174,8 +174,12 @@ def display_whois_info(data: dict, quiet: bool):
         if key in EXCLUDE_KEYS or not value:
             continue
             
+        # --- THIS IS THE FIX for duplicate WHOIS data ---
+        # If the value is a list, take the first element to deduplicate.
         if isinstance(value, list):
-            value_str = "\n".join(str(v) for v in value)
+            if not value: continue
+            value = value[0]
+
         elif 'date' in key and isinstance(value, str):
             try:
                 dt = datetime.datetime.fromisoformat(value)

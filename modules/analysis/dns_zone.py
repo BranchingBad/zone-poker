@@ -51,13 +51,10 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                         xfr_generator = dns.query.xfr(ns_ip, domain, timeout=timeout)
                         # dns.zone.from_xfr consumes this generator to build the zone
                         return dns.zone.from_xfr(xfr_generator)
-                    except AttributeError:
-                        # This can happen internally in dnspython on malformed responses.
-                        # Catch it here and return None to signal a protocol-level failure.
-                        return None
+                    except dns.exception.FormError:
+                        return None # Signal a protocol-level failure (Refused)
 
                 zone = await asyncio.to_thread(_do_xfr)
-                if zone is None: raise dns.exception.FormError("Protocol Error")
                 
                 nodes = zone.nodes.keys()
                 axfr_results["servers"][ns] = {
@@ -67,8 +64,12 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                     "records": [str(n) for n in nodes]
                 }
                 return 
-            except dns.exception.FormError:
-                axfr_results["servers"][ns] = {"status": "Failed (Refused or ProtocolError)", "ip_tried": ns_ip}
+            # --- THIS IS THE FIX ---
+            # Catch both FormError and AttributeError here, as both indicate a refusal.
+            except (dns.exception.FormError, AttributeError):
+                # This is a definitive failure for this NS, so we stop trying other IPs.
+                axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
+                return
             except (dns.exception.Timeout, asyncio.TimeoutError):
                 axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
