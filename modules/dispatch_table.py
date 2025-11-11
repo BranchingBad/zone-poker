@@ -58,7 +58,7 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_axfr_results,
         "export_func": export_txt_zone,
         "description": "Attempting zone transfer (AXFR)...",
-        "dependencies": ["records"],
+        "dependencies": ["records"], # This was the fix
         "arg_info": {"short": "-z", "long": "--zone", "help": "Attempt a zone transfer (AXFR) against nameservers."}
     },
     "mail": {
