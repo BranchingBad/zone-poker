@@ -530,6 +530,30 @@ def display_waf_detection(data: dict, quiet: bool):
     console.print(Panel(f"[{color}]{message}[/{color}]", title="WAF Detection", box=box.ROUNDED))
     console.print()
 
+def display_dane_analysis(data: dict, quiet: bool):
+    """Displays DANE/TLSA analysis in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="DANE/TLSA Record Analysis", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    status = data.get("status", "Not Found")
+    if status == "Present":
+        color = "green"
+        tree = Tree(f"✓ [{color}]DANE/TLSA records found for _443._tcp (HTTPS)[/{color}]")
+        for record in data.get("records", []):
+            tree.add(f"[dim]{record}[/dim]")
+    else:
+        color = "dim"
+        tree = Tree(f"[{color}]No DANE/TLSA records found for _443._tcp (HTTPS)[/{color}]")
+
+    console.print(Panel(tree, title="DANE/TLSA Record Analysis", box=box.ROUNDED))
+    console.print()
+
 def display_summary(data: dict, quiet: bool):
     """Displays a high-level summary of findings."""
     if quiet:
@@ -772,6 +796,46 @@ def export_txt_waf_detection(data: Dict[str, Any]) -> str:
     report.append("\n")
     return "\n".join(report)
 
+def export_txt_dane(data: Dict[str, Any]) -> str:
+    """Formats DANE/TLSA analysis for the text report."""
+    report = ["--- DANE/TLSA Record Analysis ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+    else:
+        status = data.get("status", "Not Found")
+        report.append(f"Status for _443._tcp (HTTPS): {status}")
+        records = data.get("records", [])
+        if records:
+            report.append("\nRecords:")
+            for record in records:
+                report.append(f"  - {record}")
+    report.append("\n")
+    return "\n".join(report)
+
+def display_ip_geolocation(data: dict, quiet: bool):
+    """Displays IP Geolocation results in a table."""
+    if quiet or not data:
+        return
+
+    table = Table(title="IP Geolocation", box=box.ROUNDED, show_header=True, header_style=None)
+    table.add_column("IP Address", style="bold", width=20)
+    table.add_column("Country")
+    table.add_column("City")
+    table.add_column("ISP")
+
+    for ip, info in data.items():
+        if info.get("error"):
+            table.add_row(ip, f"[red]{info['error']}[/red]", "", "")
+        else:
+            table.add_row(
+                ip,
+                info.get("country", "N/A"),
+                info.get("city", "N/A"),
+                info.get("isp", "N/A"),
+            )
+    console.print(table)
+    console.print()
+
 def export_txt_ssl(data: Dict[str, Any]) -> str:
     """Formats SSL/TLS analysis for the text report."""
     report = ["--- SSL/TLS Certificate Analysis ---"]
@@ -794,6 +858,22 @@ def export_txt_ssl(data: Dict[str, Any]) -> str:
         report.append("\nSubject Alternative Names:")
         for s in data['sans']:
             report.append(f"  - {s}")
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_geolocation(data: Dict[str, Any]) -> str:
+    """Formats IP Geolocation for the text report."""
+    report = ["--- IP Geolocation ---"]
+    if not data:
+        report.append("No IP addresses were geolocated.")
+    for ip, info in data.items():
+        if info.get("error"):
+            report.append(f"  - {ip}: Error - {info['error']}")
+        else:
+            country = info.get('country', 'N/A')
+            city = info.get('city', 'N/A')
+            isp = info.get('isp', 'N/A')
+            report.append(f"  - {ip}: {city}, {country} (ISP: {isp})")
     report.append("\n")
     return "\n".join(report)
 

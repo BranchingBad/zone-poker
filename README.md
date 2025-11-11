@@ -129,6 +129,8 @@ Run specific modules by adding their flags.
 | `--hashes` | Content Hashes | Get Murmur32 favicon and SHA256 page content hashes. |
 | `--ct` | CT Log Analysis | Find subdomains from Certificate Transparency logs. |
 | `--waf` | WAF Detection | Attempt to identify a Web Application Firewall. |
+| `--dane` | DANE/TLSA Analysis | Check for DANE (TLSA) records for HTTPS. |
+| `--geo` | IP Geolocation | Geolocate IP addresses from A/AAAA records. |
 
 ---
 

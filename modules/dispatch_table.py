@@ -22,14 +22,16 @@ from modules.analysis.reputation import analyze_reputation
 from modules.analysis.content_hash import get_content_hashes
 from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.waf_detection import detect_waf
+from modules.analysis.dane_analysis import analyze_dane_records
+from modules.analysis.ip_geolocation import geolocate_ips
 
 # Import all display and export functions
 from modules.display import (
     display_dns_records_table, display_ptr_lookups, display_axfr_results, display_email_security,
     display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, export_txt_records,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_ip_geolocation, export_txt_records,
     export_txt_ptr, export_txt_zone, export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security,
-    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation,
+    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation, export_txt_dane, export_txt_geolocation,
     export_txt_content_hash, export_txt_ct_logs, export_txt_waf_detection
 )
 
@@ -179,6 +181,23 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_waf_detection,
         "description": "Detecting Web Application Firewall...",
         "arg_info": {"short": None, "long": "--waf", "help": "Attempt to identify a Web Application Firewall."}
+    },
+    "dane": {
+        "data_key": "dane_info",
+        "analysis_func": analyze_dane_records,
+        "display_func": display_dane_analysis,
+        "export_func": export_txt_dane,
+        "description": "Checking for DANE (TLSA) records...",
+        "arg_info": {"short": None, "long": "--dane", "help": "Check for DANE (TLSA) records for HTTPS."}
+    },
+    "geolocation": {
+        "data_key": "geolocation_info",
+        "analysis_func": geolocate_ips,
+        "display_func": display_ip_geolocation,
+        "export_func": export_txt_geolocation,
+        "description": "Geolocating IP addresses...",
+        "dependencies": ["records"],
+        "arg_info": {"short": None, "long": "--geo", "help": "Geolocate IP addresses from A/AAAA records."}
     }
 }
 
