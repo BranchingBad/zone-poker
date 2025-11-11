@@ -16,7 +16,7 @@ from .config import console
 # Import the central configuration
 from .dispatch_table import MODULE_DISPATCH_TABLE
 # Import the one display function this module calls directly
-from .display import display_summary
+from .display import display_summary, display_critical_findings
 
 
 async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any) -> Dict[str, Any]:
@@ -131,7 +131,9 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     for module in list(modules_to_run):
         await execute_module(module)
 
+    display_critical_findings(all_data, args.quiet)
     display_summary(all_data, args.quiet)
+
     if not args.quiet:
         console.print(f"✓ Scan completed for {domain}")
         console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

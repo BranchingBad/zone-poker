@@ -15,8 +15,8 @@ from typing import List
 from modules.orchestrator import run_analysis_modules
 from modules.dispatch_table import MODULE_DISPATCH_TABLE, register_module_args
 # --- END UPDATED IMPORTS ---
-from modules.export import export_reports
-from modules.config_manager import get_final_config
+from modules.export import export_reports # --- THIS IS THE FIX: Renamed import
+from modules.config_manager import setup_configuration_and_domains
 from modules.logger_config import initialize_logging
 from modules.config import console
 import dns.resolver
@@ -45,6 +45,7 @@ Examples:
     parser.add_argument("-c", "--config", help="Path to a JSON config file with scan options.")
     parser.add_argument("-a", "--all", action="store_true", help="Run all analysis modules")
     parser.add_argument("--timeout", type=int, default=5, help="Set DNS query timeout (default 5)")
+    parser.add_argument("--retries", type=int, default=0, help="Number of times to retry a failed domain scan (default: 0)")
     
     # Output Options
     parser.add_argument("-e", "--export", action="store_true", help="Export JSON and TXT reports")
@@ -58,36 +59,6 @@ Examples:
     # Let modules register their own command-line arguments
     register_module_args(parser)
     return parser
-
-def get_domains_to_scan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> List[str]:
-    """Gets the list of domains to scan from CLI args or config file."""
-    domains_to_scan = []
-    domain_input = getattr(args, 'domain', None)
-    file_input = getattr(args, 'file', None)
-
-    if file_input:
-        try:
-            with open(file_input, 'r') as f:
-                domains_from_file = json.load(f)
-            if not isinstance(domains_from_file, list):
-                console.print(f"[bold red]Error: The JSON file '{file_input}' must contain a list of domain strings.[/bold red]")
-                return []
-            domains_to_scan.extend(domains_from_file)
-        except FileNotFoundError:
-            console.print(f"[bold red]Error: The file '{file_input}' was not found.[/bold red]")
-            return []
-        except json.JSONDecodeError:
-            console.print(f"[bold red]Error: Could not decode JSON from the file '{file_input}'. Please check the format.[/bold red]")
-            return []
-    elif domain_input:
-        domains_to_scan.append(domain_input)
-
-    if not domains_to_scan:
-        console.print("[bold red]Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.[/bold red]")
-        parser.print_help()
-        return []
-    
-    return domains_to_scan
 
 async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run: List[str], progress: Progress = None, task_id=None):
     """
@@ -117,19 +88,18 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
 
 async def main():
     parser = setup_parser()
-    cli_args = parser.parse_args()
-    
-    # --- THIS IS THE FIX: Initialize logging first ---
-    initialize_logging(cli_args)
+    # Initialize logging based on raw CLI args before full config merge
+    initialize_logging(parser.parse_known_args()[0])
 
-    try:
-        # Get the final configuration, merging defaults, config file, and CLI arguments
-        args = get_final_config(parser, cli_args)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return # Error message is printed by the config manager
+    # Get the final configuration and the list of domains to scan.
+    args, domains_to_scan = setup_configuration_and_domains(parser)
 
-    domains_to_scan = get_domains_to_scan(args, parser)
+    if args is None: # An error occurred during config loading
+        return
+
     if not domains_to_scan:
+        console.print("[bold red]Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.[/bold red]")
+        parser.print_help()
         return
     
     # Determine which modules to run (only need to do this once)
@@ -146,19 +116,47 @@ async def main():
         disable=args.quiet or len(domains_to_scan) == 1, # Don't show for one domain
     ) as progress:
         if len(domains_to_scan) > 1:
-            scan_task_id = progress.add_task("[cyan]Scanning domains...", total=len(domains_to_scan))
-            tasks = []
-            for domain_name in domains_to_scan:
-                # We pass the progress bar and task ID to each task
-                task = scan_domain(domain_name, args, modules_to_run, progress, scan_task_id)
-                tasks.append(task)
-            
-            # Run all scans concurrently
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for i, result in enumerate(results):
-                if isinstance(result, Exception) and not isinstance(result, KeyboardInterrupt):
-                    console.print(f"[bold red]Scan for domain '{domains_to_scan[i]}' failed.[/bold red]")
-                progress.advance(scan_task_id)
+            main_task_id = progress.add_task("[cyan]Scanning domains...", total=len(domains_to_scan))
+            domains_to_retry = list(domains_to_scan)
+            num_retries = getattr(args, 'retries', 0)
+
+            for attempt in range(num_retries + 1):
+                if not domains_to_retry:
+                    break # All domains succeeded
+
+                if attempt > 0:
+                    console.print(f"\n[bold yellow]Retrying {len(domains_to_retry)} failed domains (Attempt {attempt}/{num_retries})...[/bold yellow]")
+                    await asyncio.sleep(2) # Wait a moment before retrying
+
+                tasks = [
+                    scan_domain(domain, args, modules_to_run, progress, main_task_id)
+                    for domain in domains_to_retry
+                ]
+
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                currently_failed_domains = []
+                for i, result in enumerate(results):
+                    domain_name = domains_to_retry[i]
+                    if isinstance(result, Exception):
+                        if not isinstance(result, KeyboardInterrupt):
+                            currently_failed_domains.append(domain_name)
+                            # Only print the final error on the last attempt
+                            if attempt == num_retries:
+                                console.print(f"[bold red]Scan for domain '{domain_name}' failed permanently: {result}[/bold red]")
+                                if getattr(args, 'verbose', False):
+                                    # The traceback is already printed inside scan_domain for most errors,
+                                    # but this catches exceptions from the gather/asyncio layer itself.
+                                    console.print(f"[dim]{traceback.format_exc()}[/dim]")
+                        else:
+                            # Propagate KeyboardInterrupt
+                            raise result
+                    else:
+                        # On the first successful scan for this domain, advance the progress bar.
+                        if domain_name not in domains_to_scan or domain_name in domains_to_retry:
+                             progress.advance(main_task_id)
+                
+                domains_to_retry = currently_failed_domains
         elif domains_to_scan:
             # If only one domain, run it without the progress bar overhead
             await scan_domain(domains_to_scan[0], args, modules_to_run)

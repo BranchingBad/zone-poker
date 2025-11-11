@@ -12,7 +12,8 @@ from pathlib import Path
 from .config import console
 from .utils import get_desktop_path
 # Import the dispatch table as the single source of truth
-from .orchestrator import MODULE_DISPATCH_TABLE
+from .dispatch_table import MODULE_DISPATCH_TABLE
+from .display import export_txt_summary, export_txt_critical_findings
 
 def export_reports(domain: str, all_data: Dict[str, Any]):
     """
@@ -60,7 +61,16 @@ def export_reports(domain: str, all_data: Dict[str, Any]):
     report_content = []
     report_content.append(f"DNS Intelligence Report for: {domain}")
     report_content.append(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    report_content.append("="*50 + "\n")
+    report_content.append("="*50)
+
+    # Add the critical findings section to the top
+    critical_string = export_txt_critical_findings(all_data)
+    if critical_string:
+        report_content.append(critical_string + "\n")
+
+    # --- THIS IS THE FIX: Add the summary section to the top ---
+    summary_string = export_txt_summary(all_data)
+    report_content.append(summary_string + "\n")
 
     # Loop through the dispatch table to build the report
     # This ensures the report follows the same order as the scan
@@ -75,7 +85,7 @@ def export_reports(domain: str, all_data: Dict[str, Any]):
             try:
                 # Call the module's specific export function
                 report_string = export_func(data)
-                report_content.append(report_string)
+                report_content.append(report_string + "\n") # Add newline after each section
             except Exception as e:
                 console.print(f"[bold red]Error generating report for {module_name}: {e}[/bold red]")
                 report_content.append(f"--- Error exporting {module_name} data ---")

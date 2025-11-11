@@ -23,8 +23,9 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 - **IP Reputation**: Checks the reputation of discovered IP addresses against the AbuseIPDB database.
 - **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels.
 - **Flexible Configuration**: Use a `JSON` config file to manage all your scan options and API keys, with a clear priority system (CLI > Config > Defaults).
-- **Bulk Analysis**: Scan multiple domains at once by providing a JSON file.
+- **Concurrent Bulk Analysis**: Scan multiple domains concurrently for significant performance gains.
 - **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports to a configurable directory.
+- **Resilient Scanning**: Automatically retry failed domain scans to handle transient network errors.
 - **Advanced Logging**: Control console verbosity (`-v`, `-q`) and save detailed debug logs to a file (`--log-file`).
 
 ---
@@ -123,6 +124,7 @@ python3 zone-poker.py example.com --all -q --log-file scan.log
 | `-q`,	`--quiet` |	Show minimal console output (suppresses tables, headers, and progress bars).
 | `--log-file` | Path to a file to save detailed, verbose logs.
 | `--timeout`	| Set the DNS query timeout in seconds (default: 5).
+| `--retries` | Number of times to retry a failed domain scan (default: 0).
 | `--types`	| Comma-separated list of specific DNS record types to query (e.g., `A,MX,TXT`).
 
 ## Analysis Modules
