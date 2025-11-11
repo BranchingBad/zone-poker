@@ -27,14 +27,12 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     async def try_axfr(ns):
         ns_ips = []
         try:
-            # --- THIS IS THE FIX ---
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
             pass 
         
         try:
-            # --- THIS IS THE FIX ---
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
@@ -47,12 +45,11 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         for ns_ip in ns_ips:
             try:
                 # --- THIS IS THE FIX for AttributeError ---
-                # This function runs the blocking I/O and generator consumption
-                # in a separate thread, returning the final zone object.
+                # The blocking I/O and generator consumption must
+                # all happen inside the thread.
                 def _do_xfr():
                     m = dns.query.xfr(ns_ip, domain, timeout=timeout)
-                    # We must consume the generator to pass it to from_xfr
-                    return dns.zone.from_xfr(list(m))
+                    return dns.zone.from_xfr(m) # Pass the generator directly
 
                 zone = await asyncio.to_thread(_do_xfr)
                 # --- END FIX ---
