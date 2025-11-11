@@ -48,3 +48,27 @@ def test_xml_output_generation(mock_console_print, sample_scan_data):
     assert root.find("whois/registrar").text == "Test Registrar Inc."
     assert root.find("empty_module") is None # Ensure empty modules are not added
     assert root.find("zone_info") is None # Ensure None modules are not added
+
+
+@patch('importlib.import_module')
+def test_handle_output_dynamic_dispatch(mock_import_module, sample_scan_data):
+    """
+    Tests that handle_output correctly dispatches to the specified output module.
+    """
+    from modules.export import handle_output
+
+    # Mock the dynamically imported module and its 'output' function
+    mock_output_function = MagicMock()
+    mock_import_module.return_value = MagicMock(output=mock_output_function)
+
+    # Call handle_output for 'json'
+    handle_output(sample_scan_data, "json")
+
+    # Assert that the correct module was imported and its output function was called
+    mock_import_module.assert_called_once_with(".output.json", package="modules")
+    mock_output_function.assert_called_once_with(sample_scan_data)
+
+    # Test that 'table' format does nothing, as expected
+    mock_import_module.reset_mock()
+    handle_output(sample_scan_data, "table")
+    mock_import_module.assert_not_called()

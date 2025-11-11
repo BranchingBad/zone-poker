@@ -12,13 +12,16 @@ WAF_FINGERPRINTS = {
     "AWS WAF": {"server": "awselb", "headers": ["x-amz-cf-id"]},
     "Sucuri": {"server": "Sucuri/Cloudproxy", "headers": ["x-sucuri-id"]},
     "Incapsula": {"headers": ["x-iinfo", "x-cdn"]},
+    "Imperva": {"headers": ["x-iinfo"]},
+    "Fortinet": {"headers": ["fortiwafsid"]},
+    "F5 BIG-IP": {"headers": ["ts.*", "f5-irule-*"]},
 }
 
 async def detect_waf(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
     """
     Attempts to detect a Web Application Firewall (WAF) by inspecting HTTP headers.
     """
-    results: Dict[str, Any] = {"detected_waf": "None", "details": {}, "error": None}
+    results: Dict[str, Any] = {"detected_wafs": [], "details": {}, "error": None}
     url = f"https://{domain}"
     headers = {"User-Agent": "Zone-Poker/1.0"}
 
@@ -30,14 +33,18 @@ async def detect_waf(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
         server_header = response_headers.get("server", "").lower()
 
         for waf_name, fingerprints in WAF_FINGERPRINTS.items():
+            detected = False
             if "server" in fingerprints and fingerprints["server"] in server_header:
-                results["detected_waf"] = waf_name
-                results["details"]["reason"] = f"Server header contains '{server_header}'"
-                return results
-            if any(h in response_headers for h in fingerprints.get("headers", [])):
-                results["detected_waf"] = waf_name
-                results["details"]["reason"] = f"Found a characteristic header."
-                return results
+                results["detected_wafs"].append(waf_name)
+                results["details"][waf_name] = f"Server header contains '{server_header}'"
+                detected = True
+            
+            # Check for headers only if not already detected by server header
+            if not detected and any(h in response_headers for h in fingerprints.get("headers", [])):
+                results["detected_wafs"].append(waf_name)
+                found_headers = [h for h in fingerprints.get("headers", []) if h in response_headers]
+                results["details"][waf_name] = f"Found characteristic header(s): {', '.join(found_headers)}"
+
 
     except httpx.RequestError as e:
         results["error"] = f"Could not connect to {url}: {e}"

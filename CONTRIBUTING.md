@@ -33,32 +33,46 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     python3 -m venv venv
     source venv/bin/activate
 
-    # Install the project in editable mode with development dependencies
+    # Install the project in editable mode with development dependencies.
+    # The `[dev]` part installs extra tools for testing and linting, like pytest and flake8.
     pip install -e .[dev]
     ```
 
-3.  **Make your changes**. Please adhere to the existing code style.
+3.  **(Optional but Recommended) Set up pre-commit hooks.** This will automatically run linters and formatters on your code before you commit, ensuring it meets our style guidelines.
+    ```bash
+    pre-commit install
+    ```
 
-4.  **Add or update tests**.
+4.  **Make your changes**. Please adhere to the existing code style (see Code Style section below).
+
+5.  **Add or update tests**.
     - If you're adding a new feature (like an analysis module), please include unit tests in the `tests/` directory.
     - If you're fixing a bug, add a test that catches the bug to prevent regressions.
 
-5.  **Ensure all tests pass** before submitting your changes.
+6.  **Ensure all tests pass** before submitting your changes.
     ```bash
     pytest
     ```
 
-6.  **Write clear commit messages**. We follow the Conventional Commits specification. This helps us automatically generate changelogs.
+7.  **Update documentation if needed**. If you've added a new module or changed a command-line argument, please update the `README.md` file to reflect this.
+
+8.  **Write clear commit messages**. We follow the Conventional Commits specification. This helps us automatically generate changelogs.
     -   `feat(analysis): Add new module for CAA record checking`
     -   `fix(display): Correctly format output for empty results`
     -   `docs(readme): Update usage examples`
     -   `test(orchestrator): Add test for module dependency resolution`
 
-7.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues.
+9.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues.
 
 ## Development Guidelines
 
--   **Separation of Concerns**: The project maintains a strict separation between analysis logic and presentation (display) logic.
+-   **Code Style**: We use `black` for code formatting and `flake8` for linting to maintain a consistent style. If you set up `pre-commit` as suggested, these checks will run automatically. Otherwise, you can run them manually:
+    ```bash
+    black .
+    flake8 .
+    ```
+
+-   **Separation of Concerns**: The project maintains a strict separation between data gathering (analysis) and data presentation (display/output).
     -   **Analysis Modules (`modules/analysis/`)**: These modules should *only* contain the logic for gathering and processing data. They must not contain any `print()` statements or `rich` components. Their sole responsibility is to perform a task and return a data dictionary.
     -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing output. It contains functions to display data in the console (using `rich`) and corresponding functions to format data for text reports (prefixed with `export_txt_`).
 
@@ -68,6 +82,12 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     3.  Create a text export function (e.g., `export_txt_my_module`) in `modules/display.py`.
     4.  Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`, linking the module name, functions, dependencies, and command-line flag.
     5.  Write a unit test for your new analysis function in the `tests/` directory.
+
+-   **Adding a New Output Module** (e.g., for XML, HTML):
+    1.  Create a new file in `modules/output/` (e.g., `xml.py`).
+    2.  Inside this file, create a function `output(all_data: Dict[str, Any])` that takes the complete scan data and prints it to the console in the desired format.
+    3.  Add the name of your new format (e.g., `'xml'`) to the `choices` list for the `--output` argument in `modules/parser_setup.py`.
+    4.  Add a unit test for your new output module in `tests/test_output_modules.py`.
 
 ## Code of Conduct
 

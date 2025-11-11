@@ -13,13 +13,18 @@ logger = logging.getLogger(__name__)
 TAKEOVER_FINGERPRINTS = {
     "Amazon S3": "The specified bucket does not exist",
     "GitHub Pages": "There isn't a GitHub Pages site here.",
-    "Heroku": "No such app",
+    "Heroku": "no such app",
     "Shopify": "Sorry, this shop is currently unavailable.",
     "Fastly": "Fastly error: unknown domain",
     "Ghost": "The thing you were looking for is no longer here, or never was",
     "Bitbucket": "Repository not found",
     "Surge.sh": "project not found",
     "Netlify": "Not Found",
+    "Campaign Monitor": "Trying to access your account?",
+    "Readme.io": "Project Not Found",
+    "UserVoice": "This UserVoice instance is not available.",
+    "Kajabi": "404 Not Found",
+    "Intercom": "This page is reserved for a new Intercom app.",
 }
 
 async def check_subdomain_takeover(records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, List[Dict[str, Any]]]:
@@ -45,8 +50,9 @@ async def check_subdomain_takeover(records: Dict[str, List[Dict[str, Any]]], **k
             try:
                 async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
                     response = await client.get(url, timeout=10)
+                    response_text_lower = response.text.lower()
                     for service, fingerprint in TAKEOVER_FINGERPRINTS.items():
-                        if fingerprint in response.text:
+                        if fingerprint.lower() in response_text_lower:
                             results["vulnerable"].append({
                                 "subdomain": subdomain,
                                 "cname_target": record.get("value"),

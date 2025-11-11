@@ -15,6 +15,19 @@ from .config import console, RECORD_TYPES
 from .display_utils import console_display_handler
 from typing import Dict, List, Any, Callable
 
+def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
+    """Helper to format the 'Extra' column for the DNS records table."""
+    if rtype == "MX" and "priority" in record:
+        return f"Priority: {record['priority']}"
+    if rtype == "SRV":
+        return f"P:{record.get('priority')} W:{record.get('weight')} Port:{record.get('port')}"
+    if rtype == "SOA":
+        return f"Serial: {record.get('serial')}"
+    if rtype == "CAA":
+        return f"Tag: {record.get('tag')}"
+    return ""
+
+
 @console_display_handler("DNS Records Discovery")
 def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False):
     """Display DNS records in a beautiful table."""
@@ -40,14 +53,7 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False
                 value = record.get("value", "")
                 ttl = str(record.get("ttl", "N/A"))
                 
-                extra = ""
-                if rtype == "MX" and "priority" in record:
-                    extra = f"Priority: {record['priority']}"
-                elif rtype == "SRV":
-                    extra = f"P:{record.get('priority')} W:{record.get('weight')} Port:{record.get('port')}"
-                elif rtype == "SOA":
-                    extra = f"Serial: {record.get('serial')}"
-                
+                extra = _get_record_extra_info(rtype, record)
                 type_display = rtype if idx == 0 else ""
                 
                 if len(value) > 50:
@@ -415,14 +421,17 @@ def display_ct_logs(data: dict, quiet: bool = False):
 @console_display_handler("WAF Detection")
 def display_waf_detection(data: dict, quiet: bool = False):
     """Displays WAF Detection results in a panel."""
-    detected_waf = data.get("detected_waf", "None")
-    if detected_waf != "None":
+    detected_wafs = data.get("detected_wafs", [])
+    details = data.get("details", {})
+    
+    if detected_wafs:
         color = "green"
-        reason = data.get("details", {}).get("reason", "")
-        message = f"Identified [bold]{detected_waf}[/bold]. [dim]({reason})[/dim]"
+        waf_list_str = ", ".join([f"[bold]{waf}[/bold]" for waf in detected_wafs])
+        reasons = "; ".join([details.get(waf, "") for waf in detected_wafs if waf in details])
+        message = f"Identified: {waf_list_str}. [dim]({reasons})[/dim]"
     else:
         color = "dim"
-        message = "No WAF identified."
+        message = "No WAF identified from response headers."
     console.print(Panel(f"[{color}]{message}[/{color}]", title="WAF Detection", box=box.ROUNDED))
 
 @console_display_handler("DANE/TLSA Record Analysis")
@@ -445,32 +454,29 @@ def display_summary(data: dict, quiet: bool):
     if quiet:
         return
         
-    table = Table(title="Scan Summary", box=box.ROUNDED, show_header=False, header_style=None)
+    table = Table(title="Scan Summary", box=box.ROUNDED, show_header=False)
     table.add_column("Module", style="bold cyan")
     table.add_column("Finding")
     
     # Zone Transfer
-    zone_info = data.get('zone_info', {})
-    axfr_summary = zone_info.get('summary', 'N/A') if isinstance(zone_info, dict) else 'Error'
+    axfr_summary = data.get('zone_info', {}).get('summary', 'N/A')
     axfr_color = "bold red" if "Vulnerable" in axfr_summary else "green"
     table.add_row("Zone Transfer", f"[{axfr_color}]{axfr_summary}[/{axfr_color}]")
     
     # SPF
-    email_sec = data.get('email_security', {})
-    spf_data = email_sec.get('spf', {}) if isinstance(email_sec, dict) else {}
-    spf_policy = spf_data.get('all_policy', 'Not Found') if isinstance(spf_data, dict) else 'Error'
+    spf_policy = data.get('email_security', {}).get('spf', {}).get('all_policy', 'Not Found')
     spf_color = "red" if spf_policy in ["?all", "Not Found"] else "yellow" if spf_policy == "~all" else "green"
     table.add_row("SPF Policy", f"[{spf_color}]{spf_policy}[/{spf_color}]")
     
     # DMARC
-    dmarc_data = email_sec.get('dmarc', {}) if isinstance(email_sec, dict) else {}
-    dmarc_policy = dmarc_data.get('p', 'Not Found') if isinstance(dmarc_data, dict) else 'Error'
+    dmarc_policy = data.get('email_security', {}).get('dmarc', {}).get('p', 'Not Found')
     dmarc_color = "red" if dmarc_policy in ["none", "Not Found", "Error"] else "green"
     table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
 
     # Security Audit
-    audit_findings = data.get('security', {})
-    if isinstance(audit_findings, dict):
+    audit_findings = data.get('security')
+    # Ensure audit_findings is a dictionary before processing
+    if isinstance(audit_findings, dict) and audit_findings:
         weak_findings = [k for k, v in audit_findings.items() if isinstance(v, str) and ("Weak" in v or "Not Found" in v)]
         if weak_findings:
             table.add_row("Security Audit", f"[red]Found {len(weak_findings)} issues[/red] ({', '.join(weak_findings)})")
@@ -478,7 +484,7 @@ def display_summary(data: dict, quiet: bool):
             table.add_row("Security Audit", "[green]All checks passed[/green]")
     else:
         table.add_row("Security Audit", "[bold red]Error processing audit data[/bold red]")
-
+        
     console.print(table)
     console.print()
 
@@ -812,10 +818,12 @@ def export_txt_ct_logs(data: Dict[str, Any]) -> str:
 
 def _format_waf_detection_txt(data: Dict[str, Any]) -> List[str]:
     """Formats WAF Detection analysis for the text report."""
-    detected_waf = data.get("detected_waf", "None")
-    if detected_waf != "None":
-        reason = data.get("details", {}).get("reason", "")
-        return [f"Identified: {detected_waf} (Reason: {reason})"]
+    detected_wafs = data.get("detected_wafs", [])
+    details = data.get("details", {})
+    if detected_wafs:
+        report = [f"Identified: {', '.join(detected_wafs)}"]
+        report.extend([f"  - {waf}: {details.get(waf, 'No details.')}" for waf in detected_wafs])
+        return report
     return ["No WAF identified from response headers."]
 
 def export_txt_waf_detection(data: Dict[str, Any]) -> str:
