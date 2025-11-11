@@ -14,19 +14,19 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
         whois_data = await asyncio.to_thread(whois_lib.whois, domain)
         
         if whois_data and whois_data.get('domain_name'):
-            # --- THIS IS THE FIX for corrupted WHOIS data ---
-            # The whois library can return lists for some keys. We need to
-            # intelligently deduplicate them, taking the first valid entry.
             cleaned_data = {}
             for k, v in whois_data.items():
+                value = v
+                # The python-whois library sometimes returns a list with the whois_server
+                # as the second element. We only want the first, actual value.
                 if isinstance(v, list) and v:
-                    # Take the first item from the list
                     value = v[0]
-                else:
-                    value = v
                 
                 # Convert datetime objects to strings for JSON serialization
-                cleaned_data[k] = value.isoformat() if isinstance(value, datetime) else value
+                if isinstance(value, datetime):
+                    cleaned_data[k] = value.isoformat()
+                else:
+                    cleaned_data[k] = value
             return cleaned_data
         else:
             return {"error": "No WHOIS data returned."}

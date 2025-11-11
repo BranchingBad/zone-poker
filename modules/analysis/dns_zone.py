@@ -56,7 +56,12 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
 
                 zone = await asyncio.to_thread(_do_xfr)
                 
-                nodes = zone.nodes.keys()
+                # --- THIS IS THE FIX for AttributeError ---
+                # If the zone transfer was refused, zone will be None.
+                if zone is None:
+                    raise dns.exception.FormError("Zone is None, likely refused.")
+
+                nodes = zone.nodes.keys() # type: ignore
                 axfr_results["servers"][ns] = {
                     "status": "Successful",
                     "ip_used": ns_ip,
@@ -64,9 +69,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                     "records": [str(n) for n in nodes]
                 }
                 return 
-            # --- THIS IS THE FIX ---
-            # Catch both FormError and AttributeError here, as both indicate a refusal.
-            except (dns.exception.FormError, AttributeError):
+            except dns.exception.FormError:
                 # This is a definitive failure for this NS, so we stop trying other IPs.
                 axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
                 return
