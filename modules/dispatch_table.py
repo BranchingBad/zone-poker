@@ -24,14 +24,15 @@ from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.waf_detection import detect_waf
 from modules.analysis.dane_analysis import analyze_dane_records
 from modules.analysis.ip_geolocation import geolocate_ips
+from modules.analysis.http_headers import analyze_http_headers
 
 # Import all display and export functions
 from modules.display import (
     display_dns_records_table, display_ptr_lookups, display_axfr_results, display_email_security,
     display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_ip_geolocation, export_txt_records,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_ip_geolocation, display_http_headers, export_txt_records,
     export_txt_ptr, export_txt_zone, export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security,
-    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation, export_txt_dane, export_txt_geolocation,
+    display_content_hash_info, export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation, export_txt_dane, export_txt_geolocation, export_txt_http_headers,
     export_txt_content_hash, export_txt_ct_logs, export_txt_waf_detection
 )
 
@@ -198,6 +199,14 @@ MODULE_DISPATCH_TABLE = {
         "description": "Geolocating IP addresses...",
         "dependencies": ["records"],
         "arg_info": {"short": None, "long": "--geo", "help": "Geolocate IP addresses from A/AAAA records."}
+    },
+    "http_headers": {
+        "data_key": "http_headers_info",
+        "analysis_func": analyze_http_headers,
+        "display_func": display_http_headers,
+        "export_func": export_txt_http_headers,
+        "description": "Analyzing HTTP security headers...",
+        "arg_info": {"short": None, "long": "--headers", "help": "Perform an in-depth analysis of HTTP security headers."}
     }
 }
 

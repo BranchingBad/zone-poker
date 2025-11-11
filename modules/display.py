@@ -796,6 +796,46 @@ def export_txt_waf_detection(data: Dict[str, Any]) -> str:
     report.append("\n")
     return "\n".join(report)
 
+def display_http_headers(data: dict, quiet: bool):
+    """Displays HTTP Security Header analysis in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="HTTP Security Headers Analysis", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    tree = Tree(f"[bold]HTTP Security Headers Analysis[/bold]\n[dim]Final URL: {data.get('final_url')}[/dim]")
+
+    analysis = data.get("analysis", {})
+    for header, info in analysis.items():
+        status = info.get("status", "Unknown")
+        value = info.get("value", "")
+
+        if status == "Strong" or status == "Present":
+            color = "green"
+            icon = "✓"
+        elif status == "Weak":
+            color = "yellow"
+            icon = "!"
+        else: # Missing or Invalid
+            color = "red"
+            icon = "✗"
+
+        display_value = f": [dim]{value}[/dim]" if value else ""
+        tree.add(f"{icon} [{color}]{header}[/{color}] - {status}{display_value}")
+
+    recommendations = data.get("recommendations", [])
+    if recommendations:
+        rec_tree = tree.add("[bold cyan]Recommendations[/bold cyan]")
+        for rec in recommendations:
+            rec_tree.add(f"• {rec}")
+
+    console.print(Panel(tree, title="HTTP Security Headers Analysis", box=box.ROUNDED))
+    console.print()
+
 def export_txt_dane(data: Dict[str, Any]) -> str:
     """Formats DANE/TLSA analysis for the text report."""
     report = ["--- DANE/TLSA Record Analysis ---"]
@@ -876,6 +916,30 @@ def export_txt_geolocation(data: Dict[str, Any]) -> str:
             report.append(f"  - {ip}: {city}, {country} (ISP: {isp})")
     report.append("\n")
     return "\n".join(report)
+
+def export_txt_http_headers(data: Dict[str, Any]) -> str:
+    """Formats HTTP Security Headers for the text report."""
+    report = ["--- HTTP Security Headers Analysis ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+    else:
+        report.append(f"Final URL: {data.get('final_url')}\n")
+        analysis = data.get("analysis", {})
+        for header, info in analysis.items():
+            status = info.get("status", "Unknown")
+            value = info.get("value", "")
+            value_str = f" - Value: {value}" if value else ""
+            report.append(f"  - {header}: {status}{value_str}")
+
+        recommendations = data.get("recommendations", [])
+        if recommendations:
+            report.append("\nRecommendations:")
+            for rec in recommendations:
+                report.append(f"  • {rec}")
+
+    report.append("\n")
+    return "\n".join(report)
+
 
 def export_txt_smtp(data: Dict[str, Any]) -> str:
     """Formats SMTP analysis for the text report."""

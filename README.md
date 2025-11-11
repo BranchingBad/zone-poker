@@ -131,6 +131,7 @@ Run specific modules by adding their flags.
 | `--waf` | WAF Detection | Attempt to identify a Web Application Firewall. |
 | `--dane` | DANE/TLSA Analysis | Check for DANE (TLSA) records for HTTPS. |
 | `--geo` | IP Geolocation | Geolocate IP addresses from A/AAAA records. |
+| `--headers` | HTTP Headers | Perform an in-depth analysis of HTTP security headers. |
 
 ---
 
