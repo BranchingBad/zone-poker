@@ -105,14 +105,20 @@ def handle_output(all_data: Dict[str, Any], output_format: str):
     Dynamically handles the output of scan data based on the specified format.
     It loads the appropriate module from the `modules.output` package.
     """
+    args = all_data.get("args_namespace")
+    html_filepath = getattr(args, 'html_file', None)
+
     # The 'table' format is handled directly by the orchestrator during the scan.
-    if output_format == "table":
+    # If we are only saving to an HTML file and not changing the console output, we can exit early.
+    if output_format == "table" and not html_filepath:
         return
 
+    # If --html-file is used, we always want to run the html output module.
+    output_format_to_run = "html" if html_filepath else output_format
     try:
         # Dynamically import the requested output module
         output_module = importlib.import_module(
-            f".output.{output_format}", package="modules"
+            f".output.{output_format_to_run}", package="modules"
         )
         # Call the 'output' function within that module
         output_module.output(all_data)

@@ -34,10 +34,11 @@ Examples:
     output_group = parser.add_argument_group('Output Control')
     output_group.add_argument("-e", "--export", action="store_true", help="Export JSON and TXT reports.")
     output_group.add_argument("-O", "--output-dir", help="Directory to save reports (defaults to Desktop).")
+    output_group.add_argument("--html-file", help="Path to save the HTML report directly to a file.")
     output_group.add_argument("--log-file", help="Path to a file to save detailed, verbose logs.")
     output_group.add_argument("-v", "--verbose", action="store_true", help="Show detailed error logs during the scan.")
-    output_group.add_argument("-q", "--quiet", action="store_true", help="Show minimal console output (suppresses tables and headers).")
-    output_group.add_argument("--output", choices=['table', 'json', 'csv', 'xml'], default='table', help="Console output format. 'table' for human-readable, 'json'/'csv'/'xml' for machine-readable.")
+    output_group.add_argument("-q", "--quiet", action="store_true", help="Show minimal console output (suppresses tables and headers). This does not affect file-based exports.")
+    output_group.add_argument("--output", choices=['table', 'json', 'csv', 'xml', 'html'], default='table', help="Console output format. 'table' for human-readable, others for machine-readable.")
 
     # --- Analysis Modules ---
     module_group = parser.add_argument_group('Analysis Modules', 'Run specific modules by adding their flags.')

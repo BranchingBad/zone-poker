@@ -21,52 +21,18 @@ def console_display_handler(title: str):
     """
     def decorator(func: Callable):
         @wraps(func)
-        def wrapper(data: dict, quiet: bool, output_format: str = 'table', *args, **kwargs):
+        def wrapper(data: dict, quiet: bool, *args, **kwargs) -> Panel | None:
             if quiet or not data or not isinstance(data, dict):
-                return
+                return None
 
             if error := data.get("error"):
-                console.print(Panel(f"[dim]{error}[/dim]", title=title, box=box.ROUNDED, border_style="dim"),)
-                return
+                # Return an error panel instead of printing it
+                return Panel(f"[dim]{error}[/dim]", title=f"{title} - Error", box=box.ROUNDED, border_style="dim")
 
-            if output_format == 'json':
-                import json
-                console.print(json.dumps(data, indent=2, default=str))
-            elif output_format == 'csv':
-                import csv
-                import io
-
-                # Handle simple cases: list of dicts
-                if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-                    if not data:
-                        return
-                    output = io.StringIO()
-                    writer = csv.DictWriter(output, fieldnames=data[0].keys())
-                    writer.writeheader()
-                    writer.writerows(data)
-                    console.print(output.getvalue())
-                # Handle dict of dicts
-                elif isinstance(data, dict) and all(isinstance(item, dict) for item in data.values()):
-                    if not data:
-                        return
-                    # We can assume the keys of the inner dicts are the same
-                    first_key = list(data.keys())[0]
-                    fieldnames = ['key'] + list(data[first_key].keys())
-                    
-                    output = io.StringIO()
-                    writer = csv.DictWriter(output, fieldnames=fieldnames)
-                    writer.writeheader()
-                    for key, row_data in data.items():
-                        row = {'key': key}
-                        row.update(row_data)
-                        writer.writerow(row)
-                    console.print(output.getvalue())
-                else:
-                    console.print(f"CSV output not supported for this data structure: {title}")
-
-            else: # table format
-                func(data, quiet, *args, **kwargs)
-            
-            console.print()
+            # Call the original display function (e.g., display_dns_records_table)
+            # It now returns a rich object (Table, Panel, etc.)
+            renderable = func(data, quiet, *args, **kwargs)
+            # Return the renderable object to the caller
+            return renderable
         return wrapper
     return decorator

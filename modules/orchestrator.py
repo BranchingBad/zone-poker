@@ -13,11 +13,9 @@ from typing import Dict, Any, List
 
 # Import shared config for the console object
 from .config import console
-# Import the central configuration
+# Import the central configuration and display functions
 from .dispatch_table import MODULE_DISPATCH_TABLE
-# Import the one display function this module calls directly
 from .display import display_summary, display_critical_findings
-
 
 async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any) -> Dict[str, Any]:
     """
@@ -120,19 +118,24 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         completed_modules.add(module_name)
 
         # Display results immediately after analysis, if the output format is 'table'
-        if not args.quiet and args.output == 'table':
-            display_func(result, args.quiet)
+        if not args.quiet and args.output == 'table' and display_func:
+            renderable = display_func(result, quiet=False)
+            if renderable:
+                console.print(renderable)
+                console.print() # Add a newline for spacing
 
     # Execute all modules based on the dependency graph
     # We must iterate over a copy, as dependencies might add modules to run
     for module in list(modules_to_run): # Iterate over a copy because dependencies might add modules to run
         await execute_module(module)
 
-    display_critical_findings(all_data, args.quiet)
-    display_summary(all_data, args.quiet)
-
-    if not args.quiet:
+    # Display summary information if not in quiet mode and output is 'table'
+    if not args.quiet and args.output == 'table':
+        if critical_renderable := display_critical_findings(all_data, quiet=False):
+            console.print(critical_renderable)
+        if summary_renderable := display_summary(all_data, quiet=False):
+            console.print(summary_renderable)
         console.print(f"✓ Scan completed for {domain}")
         console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    
+
     return all_data

@@ -1,56 +1,48 @@
 # Zone-Poker
 
-```
+**A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.**
 
- _____                      ____       _             
-|__  /___  _ __   ___      |  _ \ ___ | | _____ _ __ 
-  / // _ \| '_ \ / _ \_____| |_) / _ \| |/ / _ \ '__|
- / /| (_) | | | |  __/_____|  __/ (_) |   <  __/ |   
-/____\___/|_| |_|\___|     |_|   \___/|_|\_\___|_|   
-                                                               
-A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.
-```
+Zone-Poker is a powerful, all-in-one command-line tool designed for security professionals, system administrators, and researchers to perform in-depth analysis of a domain's DNS and web infrastructure. It aggregates data from dozens of modules to provide a holistic view of a target's configuration and security posture.
 
-**Zone-Poker** is a powerful and feature-rich DNS intelligence and reconnaissance tool, designed to provide a comprehensive overview of a domain's DNS configuration, security posture, and related OSINT data from a single command.
+![Zone-Poker Demo](https://user-images.githubusercontent.com/12345/placeholder.gif) <!-- Placeholder: Replace with an actual demo GIF -->
 
-The tool gathers data from various sources, analyzes it, and presents it in a clean, human-readable format in your terminal. It also exports the complete findings to `JSON` and `TXT` files for easy record-keeping and further analysis.
 
----
+## Features
 
-## ✨ Key Features
+Zone-Poker combines numerous reconnaissance techniques into a single, fast, and extensible tool.
 
-- **Comprehensive DNS Record Enumeration**: Queries over a dozen record types, including `A`, `AAAA`, `MX`, `NS`, `SOA`, `TXT`, `SRV`, `CAA`, and more.
-- **Reverse DNS Lookups**: Automatically performs PTR lookups for discovered `A` and `AAAA` records.
-- **Zone Transfer Attempts (AXFR)**: Tries to perform a DNS zone transfer against each authoritative nameserver over both IPv4 and IPv6.
-- **Email Security Analysis**: Checks for `SPF`, `DMARC`, and `DKIM` records and analyzes their policies for potential misconfigurations.
-- **WHOIS & IP Intelligence**: Fetches `WHOIS` data for the domain and runs `IPWHOIS` lookups on nameserver IP addresses to find ASN details.
-- **SSL/TLS Certificate Analysis**: Retrieves and analyzes the SSL/TLS certificate for the domain, including validity, issuer, and Subject Alternative Names (SANs).
-- **SMTP Server Analysis**: Connects to mail servers to check for STARTTLS support and retrieve banners.
-- **Nameserver & DNSSEC Analysis**: Gathers information about the domain's nameservers (IPv4/IPv6) and checks for DNSSEC records (`DNSKEY`, `DS`).
-- **Global DNS Propagation Check**: Verifies DNS resolution against common public resolvers (Google, Cloudflare, Quad9).
-- **Technology Detection**: Identifies web technologies, server types, and security headers on the domain's HTTP/HTTPS services.
-- **Security Audit**: Performs basic security checks for common DNS misconfigurations.
-- **OSINT Enrichment**: Gathers related data from open-source intelligence sources (e.g., AlienVault OTX).
-- **IP Reputation**: Checks the reputation of discovered IP addresses against the AbuseIPDB database.
-- **Rich Console Output**: Uses the `rich` library to display results in beautifully formatted tables, trees, and panels.
-- **Flexible Configuration**: Use a `JSON` config file to manage all your scan options and API keys, with a clear priority system (CLI > Config > Defaults).
-- **Concurrent Bulk Analysis**: Scan multiple domains concurrently for significant performance gains.
-- **Data Export**: Automatically exports all findings to structured `JSON` and detailed `TXT` reports to a configurable directory.
-- **Resilient Scanning**: Automatically retry failed domain scans to handle transient network errors.
-- **Advanced Logging**: Control console verbosity (`-v`, `-q`) and save detailed debug logs to a file (`--log-file`).
+### DNS Analysis
+- **DNS Records**: Queries for all common record types (A, AAAA, MX, TXT, CNAME, SOA, NS, etc.).
+- **Reverse DNS**: Performs PTR lookups for discovered IP addresses.
+- **Zone Transfer (AXFR)**: Attempts to perform a full zone transfer against the domain's nameservers.
+- **Nameserver Analysis**: Gathers information about nameservers, their IPs, and ASN details.
+- **DNSSEC Validation**: Checks if DNSSEC is enabled for the domain.
+- **DNS Propagation**: Checks DNS resolution consistency across multiple public resolvers.
+- **DANE/TLSA Records**: Looks for records related to DNS-Based Authentication of Named Entities.
 
----
+### Security & Vulnerability Analysis
+- **Email Security**: Analyzes SPF, DMARC, and DKIM configurations.
+- **SSL/TLS Analysis**: Inspects the SSL certificate, including validity, issuer, and Subject Alternative Names (SANs).
+- **HTTP Security Headers**: Checks for the presence and configuration of key security headers.
+- **Subdomain Takeover**: Scans CNAME records for fingerprints of services vulnerable to takeover.
+- **Cloud Service Enumeration**: Discovers potential public S3 buckets and Azure Blob containers.
+- **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist.
+- **DNS Blocklist (DNSBL)**: Checks IPs against common real-time spam blocklists.
+- **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
+- **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use.
+- **General Security Audit**: Runs a series of checks for common misconfigurations.
 
-## 📋 Prerequisites
-
-- Python 3.8+
-- `pip` for installing dependencies
-
-- Some modules require API keys for full functionality (e.g., AbuseIPDB, AlienVault OTX).
+### OSINT & Enumeration
+- **WHOIS Lookup**: Retrieves detailed registration information for the domain.
+- **Technology Detection**: Identifies web server software, frameworks, and other technologies.
+- **OSINT Enrichment**: Gathers subdomains and passive DNS data from external sources.
+- **Certificate Transparency**: Finds subdomains by searching CT logs.
+- **IP Geolocation**: Determines the physical location, city, and ISP of IP addresses.
+- **Content Hashing**: Calculates Murmur32 (favicon) and SHA256 (page content) hashes for hunting related infrastructure.
 
 ---
 
-## 🚀 Installation
+## Installation
 
 1.  Clone the repository:
     ```bash
@@ -58,117 +50,132 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
     cd zone-poker
     ```
 
-2.  Install the project and its dependencies. This will also make the `zone-poker` command available in your environment.
+2.  Install the required dependencies (it is recommended to do this in a virtual environment):
     ```bash
     pip install .
     ```
 
+## Usage
+
+The simplest way to run a full scan on a domain is with the `--all` flag.
+
+```bash
+zone-poker example.com --all
+```
+
+### Examples
+
+**Run all modules and export reports:**
+```bash
+zone-poker example.com --all --export
+```
+
+**Run specific modules and save reports to a custom directory:**
+```bash
+zone-poker example.com --mail --whois --export -O /path/to/reports/
+```
+
+**Query for specific DNS record types:**
+```bash
+zone-poker example.com --records --types A,MX,TXT
+```
+
+**Scan multiple domains from a file and generate an HTML report:**
+```bash
+zone-poker -f domains.txt --all --output html > report.html
+```
+
 ---
-## ⚙️ Configuration
 
-Zone-Poker can be configured using a `JSON` or `YAML` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can, including API keys.
+## Options
 
-### Configuration Priority
-The tool uses a 3-tiered priority system for settings, processed in the following order:
-1.  **Program Defaults**: The lowest priority, built-in settings.
-2.  **Config File**: Medium priority; values in the config file (e.g., `{"timeout": 5}`) override the defaults.
-3.  **Command-Line Arguments**: The highest priority; flags explicitly set on the command line (e.g., `--timeout 10`) override both the config file and defaults.
+### Input Configuration
+| Argument | Description |
+| :--- | :--- |
+| `domain` | Target domain to analyze (e.g., example.com). |
+| `-f`, `--file` | Path to a file (JSON or YAML) containing a list of domains to analyze. |
+| `-c`, `--config` | Path to a JSON or YAML config file with scan options. |
 
-An argument on the command line will *always* override a setting in the config file.
+### Scan Control
+| Flag | Description |
+| :--- | :--- |
+| `-a`, `--all` | Run all available analysis modules. |
+| `--timeout` | Set network request timeout in seconds (default: 5). |
+| `--retries` | Number of times to retry a failed domain scan (default: 0). |
+| `--types` | Comma-separated list of DNS record types to query (e.g., 'A,MX,TXT'). |
 
-### API Keys
-For modules that use third-party APIs (like OSINT enrichment), you can provide API keys in your config file to avoid rate-limiting.
+### Output Control
+| Flag | Description |
+| :--- | :--- |
+| `-e`, `--export` | Export JSON and TXT reports to your Desktop or a specified directory. |
+| `-O`, `--output-dir` | Directory to save exported reports. |
+| `--html-file` | Path to save the HTML report directly to a file. |
+| `--output` | Console output format. Choices: `table`, `json`, `csv`, `xml`, `html`. |
+| `-q`, `--quiet` | Show minimal console output (suppresses tables and headers). |
+| `-v`, `--verbose` | Show detailed error logs during the scan. |
+| `--log-file` | Path to a file to save detailed, verbose logs. |
+
+### Analysis Modules
+| Flag | Description |
+| :--- | :--- |
+| `-r`, `--records` | Query all standard DNS record types. |
+| `--ptr` | Perform reverse DNS (PTR) lookups for A/AAAA records. |
+| `-z`, `--zone` | Attempt a zone transfer (AXFR) against nameservers. |
+| `-m`, `--mail` | Analyze email security records (SPF, DMARC, DKIM). |
+| `-w`, `--whois` | Perform an extended WHOIS lookup on the domain. |
+| `-n`, `--nsinfo` | Analyze nameserver information and check for DNSSEC. |
+| `-p`, `--propagation` | Check DNS propagation across public resolvers. |
+| `-s`, `--security` | Run a basic audit for DNS security misconfigurations. |
+| `-t`, `--tech` | Detect web technologies, CMS, and security headers. |
+| `-o`, `--osint` | Enrich data with passive DNS and other OSINT sources. |
+| `--ssl` | Analyze the SSL/TLS certificate. |
+| `--smtp` | Analyze mail servers (banner, STARTTLS). |
+| `--reputation` | Check IP reputation using AbuseIPDB. |
+| `--hashes` | Get Murmur32 favicon and SHA256 page content hashes. |
+| `--ct` | Find subdomains from Certificate Transparency logs. |
+| `--waf` | Attempt to identify a Web Application Firewall. |
+| `--dane` | Check for DANE (TLSA) records for HTTPS. |
+| `--geo` | Geolocate IP addresses from A/AAAA records. |
+| `--headers` | Perform an in-depth analysis of HTTP security headers. |
+| `--ports` | Scan for common open TCP ports on discovered IPs. |
+| `--takeover` | Check for potential subdomain takeovers on CNAME records. |
+| `--cloud` | Enumerate common cloud services (e.g., S3 buckets). |
+| `--dnsbl` | Check discovered IPs against common DNS blocklists. |
+
+---
+
+## Output Formats
+
+Zone-Poker supports multiple output formats for both console display and file exports.
+- **JSON, CSV, XML, HTML**: Machine-readable formats that can be selected with the `--output` flag. By default, these are printed to standard output, but the HTML report can be saved directly to a file using the `--html-file` argument.
+
+
+## Configuration File
+
+You can use a YAML or JSON configuration file to manage your scan settings, which is useful for complex scans or for managing API keys.
 
 **Example `config.yaml`:**
 ```yaml
 timeout: 10
-verbose: true
+retries: 1
+output: json
 api_keys:
-  otx: "your_alienvault_otx_api_key_here"
-  abuseipdb: "your_abuseipdb_api_key_here"
+  abuseipdb: "YOUR_ABUSEIPDB_API_KEY"
 ```
----
-## 🚀 Usage
 
-### Basic Commands
+**Usage:**
 ```bash
-# Scan a single domain, run all modules, and export reports
-zone-poker example.com --all --export
-
-# Scan multiple domains from a file and run a security audit
-zone-poker -f domains.json --security
-
-# Use a configuration file to define scan parameters
-zone-poker example.com -c my-scan.json
-
-# Scan and save reports to a specific directory
-zone-poker example.com --all --export -O /home/user/reports/
-
-# Query for only A and MX records
-zone-poker example.com --records --types A,MX
-
-# Run a quiet scan but save all debug information to a log file
-zone-poker example.com --all -q --log-file scan.log
+zone-poker example.com --all -c config.yaml
 ```
 
-## Command-Line Arguments
-| Flag | Description |
-|---|---|
-| `-a`,	`--all` |	Run all analysis modules.
-| `-f`,	`--file` |	Path to a file (JSON or YAML) containing a list of domains to analyze.
-| `-c`,	`--config` |	Path to a config file (JSON or YAML) with scan options.
-| `-e`,	`--export` |	Export JSON and TXT reports.
-| `-O`,	`--output-dir` |	Path to a directory for saving reports (default: Desktop).
-| `-v`,	`--verbose` |	Show detailed error logs and debug messages during the scan.
-| `-q`,	`--quiet` |	Show minimal console output (suppresses tables, headers, and progress bars).
-| `--log-file` | Path to a file to save detailed, verbose logs.
-| `--output` | Console output format (`table`, `json`, `csv`).
-| `--timeout`	| Set the DNS query timeout in seconds (default: 5).
-| `--retries` | Number of times to retry a failed domain scan (default: 0).
-| `--types`	| Comma-separated list of specific DNS record types to query (e.g., `A,MX,TXT`).
-
-## Analysis Modules
-
-Run specific modules by adding their flags.
-
-| Flag | Module | Description |
-|---|---|---|
-| `-r`, `--records` | Records | Query all standard DNS record types. |
-| `--ptr` | PTR Lookups | Perform reverse DNS (PTR) lookups for A/AAAA records. |
-| `-z`, `--zone` | Zone Transfer | Attempt a zone transfer (AXFR) against nameservers. |
-| `-m`, `--mail` | Email Security | Analyze email security records (SPF, DMARC, DKIM). |
-| `-w`, `--whois` | WHOIS | Perform an extended WHOIS lookup on the domain. |
-| `-n`, `--nsinfo` | Nameserver Info | Analyze nameserver information and check for DNSSEC. |
-| `-p`, `--propagation` | Propagation | Check DNS propagation across public resolvers. |
-| `-s`, `--security` | Security Audit | Run a basic audit for DNS security misconfigurations. |
-| `-t`, `--tech` | Tech Detection | Detect web technologies, CMS, and security headers. |
-| `-o`, `--osint` | OSINT | Enrich data with passive DNS and other OSINT sources. |
-| `--ssl` | SSL/TLS Analysis | Analyze the SSL/TLS certificate for the domain. |
-| `--smtp` | SMTP Analysis | Analyze mail servers (banner, STARTTLS). |
-| `--reputation` | IP Reputation | Check IP reputation using AbuseIPDB. |
-| `--hashes` | Content Hashes | Get Murmur32 favicon and SHA256 page content hashes. |
-| `--ct` | CT Log Analysis | Find subdomains from Certificate Transparency logs. |
-| `--waf` | WAF Detection | Attempt to identify a Web Application Firewall. |
-| `--dane` | DANE/TLSA Analysis | Check for DANE (TLSA) records for HTTPS. |
-| `--geo` | IP Geolocation | Geolocate IP addresses from A/AAAA records. |
-| `--headers` | HTTP Headers | Perform an in-depth analysis of HTTP security headers. |
-| `--ports` | Port Scan | Scan for common open TCP ports on discovered IPs. |
-| `--takeover` | Subdomain Takeover | Check for potential subdomain takeovers on CNAME records. |
-| `--cloud` | Cloud Enumeration | Enumerate common cloud services (e.g., S3 buckets). |
-| `--dnsbl` | DNSBL Check | Check discovered IPs against common DNS blocklists. |
+Command-line arguments will always override settings from a configuration file.
 
 ---
 
-## 📁 Exporting Results
+## Contributing
 
-All scans automatically generate two report files on your Desktop (or the directory specified with `-O`), timestamped for uniqueness:
+Contributions are welcome! Whether it's reporting a bug, suggesting a new feature, or submitting a pull request, your help is appreciated. Please see the CONTRIBUTING.md file for detailed guidelines.
 
-`{domain}_dnsint_{timestamp}`.json: A structured JSON file containing all the raw data gathered during the scan. Ideal for programmatic access or ingestion into other tools.
+## License
 
-`{domain}_dnsint_{timestamp}.txt`: A detailed text report that mirrors the information displayed in the console, suitable for manual review and sharing.
-
----
-
-## ⚖️ License
-
-This project is licensed under the Apache Version 2.0 License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.

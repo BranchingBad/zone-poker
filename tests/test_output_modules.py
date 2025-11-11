@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from unittest.mock import patch, MagicMock
 
 from modules.output import xml as xml_output
-
+from modules.output import html as html_output
 
 @pytest.fixture
 def sample_scan_data():
@@ -72,3 +72,28 @@ def test_handle_output_dynamic_dispatch(mock_import_module, sample_scan_data):
     mock_import_module.reset_mock()
     handle_output(sample_scan_data, "table")
     mock_import_module.assert_not_called()
+
+
+@patch('builtins.print')
+def test_html_output_generation(mock_print, sample_scan_data):
+    """
+    Tests that the HTML output module correctly generates an HTML string
+    and that it contains expected data.
+    """
+    # Run the HTML output function
+    html_output.output(sample_scan_data)
+
+    # Ensure that the final print function was called
+    mock_print.assert_called_once()
+
+    # Get the generated HTML string
+    html_string = mock_print.call_args[0][0]
+
+    # Perform basic checks on the HTML content
+    assert "<html>" in html_string
+    assert "DNS Intelligence Report for: example.com" in html_string
+    assert "Scan Summary" in html_string # From display_summary
+    assert "WHOIS Information" in html_string # From a decorated display function
+    assert "Test Registrar Inc." in html_string # The actual data
+    assert "DNS Records Discovery" in html_string # From another decorated function
+    assert "93.184.216.34" in html_string # The actual data

@@ -441,11 +441,9 @@ def display_dane_analysis(data: dict, quiet: bool = False):
 
     return Panel(tree, title="DANE/TLSA Record Analysis", box=box.ROUNDED)
 
-def display_summary(data: dict, quiet: bool):
-    """Displays a high-level summary of findings."""
-    if quiet:
-        return
-        
+@console_display_handler("Scan Summary")
+def display_summary(data: dict, quiet: bool = False):
+    """Creates a rich Table for the high-level summary of findings."""
     table = Table(title="Scan Summary", box=box.ROUNDED, show_header=False)
     table.add_column("Module", style="bold cyan")
     table.add_column("Finding")
@@ -468,23 +466,19 @@ def display_summary(data: dict, quiet: bool):
     # Security Audit
     audit_findings = data.get('security')
     # Ensure audit_findings is a dictionary before processing
-    if isinstance(audit_findings, dict) and audit_findings:
+    if isinstance(audit_findings, dict) and audit_findings and "error" not in audit_findings:
         weak_findings = [k for k, v in audit_findings.items() if isinstance(v, str) and ("Weak" in v or "Not Found" in v)]
         if weak_findings:
             table.add_row("Security Audit", f"[red]Found {len(weak_findings)} issues[/red] ({', '.join(weak_findings)})")
         else:
             table.add_row("Security Audit", "[green]All checks passed[/green]")
     else:
-        table.add_row("Security Audit", "[bold red]Error processing audit data[/bold red]")
-        
-    console.print(table)
-    console.print()
+        table.add_row("Security Audit", "[dim]No audit data[/dim]")
+    return table
 
-def display_critical_findings(data: dict, quiet: bool):
-    """Displays a summary of only the most critical findings."""
-    if quiet:
-        return
-
+@console_display_handler("🚨 Critical Findings")
+def display_critical_findings(data: dict, quiet: bool = False):
+    """Creates a rich Panel for the most critical findings."""
     critical_findings = []
 
     # Zone Transfer Vulnerability
@@ -509,16 +503,14 @@ def display_critical_findings(data: dict, quiet: bool):
         critical_findings.append(f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)}).")
 
     if not critical_findings:
-        return # Don't display the panel if there's nothing critical
+        return None # Return nothing if there are no findings
 
     text = Text()
     for finding in critical_findings:
         text.append("• ", style="bold red")
         text.append(f"{finding}\n")
 
-    panel = Panel(text, title="[bold red]🚨 Critical Findings[/bold red]", box=box.ROUNDED, border_style="red")
-    console.print(panel)
-    console.print()
+    return Panel(text, title="[bold red]🚨 Critical Findings[/bold red]", box=box.ROUNDED, border_style="red")
 
 # -----------------------------------------------------------------
 # --- TXT REPORT EXPORT FUNCTIONS ---
@@ -541,6 +533,7 @@ def _format_critical_findings_txt(data: Dict[str, Any]) -> List[str]:
         if high_risk_ips := [ip for ip, info in reputation_info.items() if isinstance(info, dict) and info.get('abuseConfidenceScore', 0) > 75]:
             critical_findings.append(f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)}).")
     return [f"  • {finding}" for finding in critical_findings] if critical_findings else ["No critical findings to report."]
+
 
 def _create_report_section(title: str, data: Dict[str, Any], formatter: Callable[[Dict[str, Any]], List[str]]) -> str:
     """
@@ -1089,10 +1082,6 @@ def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
     """Formats Subdomain Takeover for the text report."""
     return _create_report_section("Subdomain Takeover", data, _format_subdomain_takeover_txt)
 
-def export_txt_smtp(data: Dict[str, Any]) -> str:
-    """Formats SMTP analysis for the text report."""
-    return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
-
 def _format_smtp_txt(data: Dict[str, Any]) -> List[str]:
     """Formats SMTP analysis for the text report."""
     if not data:
@@ -1117,36 +1106,9 @@ def _format_smtp_txt(data: Dict[str, Any]) -> List[str]:
             report.append(f"  - {server}: Unexpected data format - {str(info)}")
     return report
 
-def _format_geolocation_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats IP Geolocation for the text report."""
-    if not data:
-        return ["No IP addresses were geolocated."]
-    report = []
-    for ip, info in data.items():
-        if info.get("error"):
-            report.append(f"  - {ip}: Error - {info['error']}")
-        else:
-            country = info.get('country', 'N/A')
-            city = info.get('city', 'N/A')
-            isp = info.get('isp', 'N/A')
-            report.append(f"  - {ip}: {city}, {country} (ISP: {isp})")
-    return report
-
-def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats SSL/TLS analysis for the text report."""
-    report = [
-        f"Subject: {data['subject']}",
-        f"Issuer: {data['issuer']}",
-        f"Valid From: {datetime.datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Valid Until: {datetime.datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S')}"
-    ]
-    if data['sans']:
-        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
-    return report
-
-def export_txt_reputation(data: Dict[str, Any]) -> str:
-    """Formats IP reputation analysis for the text report."""
-    return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
+def export_txt_smtp(data: Dict[str, Any]) -> str:
+    """Formats SMTP analysis for the text report."""
+    return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
 
 def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
     """Formats IP reputation analysis for the text report."""
@@ -1161,9 +1123,25 @@ def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
             
             score = info.get('abuseConfidenceScore', 0)
             last_reported = info.get('lastReportedAt', 'N/A')
-            if last_reported != 'N/A':
+            if last_reported and last_reported != 'N/A':
                 last_reported = datetime.datetime.fromisoformat(last_reported.replace('Z', '+00:00')).strftime('%Y-%m-%d')
             report.append(f"  - {ip}: Score: {score}, Reports: {info.get('totalReports', 0)}, Last Reported: {last_reported}")
         else:
             report.append(f"  - {ip}: Unexpected data format - {str(info)}")
+    return report
+
+def export_txt_reputation(data: Dict[str, Any]) -> str:
+    """Formats IP reputation analysis for the text report."""
+    return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
+
+def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats SSL/TLS analysis for the text report."""
+    report = [
+        f"Subject: {data.get('subject', 'N/A')}",
+        f"Issuer: {data.get('issuer', 'N/A')}",
+        f"Valid From: {datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_from') else 'N/A'}",
+        f"Valid Until: {datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_until') else 'N/A'}"
+    ]
+    if data.get('sans'):
+        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
     return report
