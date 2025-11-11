@@ -5,7 +5,7 @@ import dns.query
 import dns.zone
 import dns.exception
 # import dns.asyncquery # No longer needed
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from ..config import console
  
 async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: int, verbose: bool, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
@@ -23,24 +23,27 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
     axfr_results["status"] = "Completed"
     
     lock = asyncio.Lock()
+
+    async def _resolve_ns_ips(ns: str, rtype: str) -> List[str]:
+        """Helper to resolve A or AAAA records for a nameserver."""
+        try:
+            answers = await asyncio.to_thread(resolver.resolve, ns, rtype)
+            return [str(a) for a in answers]
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
+            return []
+
     async def try_axfr(ns: str):
-        ns_ips = []
-        try:
-            a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
-            ns_ips.extend([str(a) for a in a_answers]) # type: ignore
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
-            pass 
-        
-        try:
-            aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
-            ns_ips.extend([str(a) for a in aaaa_answers]) # type: ignore
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers):
-            pass 
+        # Concurrently resolve A and AAAA records for the nameserver
+        a_records, aaaa_records = await asyncio.gather(
+            _resolve_ns_ips(ns, "A"),
+            _resolve_ns_ips(ns, "AAAA")
+        )
+        ns_ips = a_records + aaaa_records
 
         if not ns_ips:
             async with lock:
                 axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
-            return # No IPs to check for this nameserver
+            return
 
         for ns_ip in ns_ips:
             try:
@@ -73,18 +76,19 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
                 return # Success, no need to check other IPs for this NS
             except dns.exception.FormError:
                 # A FormError (e.g., "Refused") is a definitive failure for this IP.
-                # We'll record it and let the loop try the next IP if available.
-                async with lock:
-                    axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
+                # We record it but continue to try other IPs for the same NS.
+                failure_status = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
             except (dns.exception.Timeout, asyncio.TimeoutError):
-                async with lock:
-                    axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
+                failure_status = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
-                async with lock:
-                    axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
-                    if verbose:
-                        console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
-        # If the loop completes without success, the last failure status for the NS remains.
+                failure_status = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
+                if verbose:
+                    console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
+        
+        # If the loop completes without returning on success, it means all IPs failed.
+        # We record the last known failure for this nameserver.
+        async with lock:
+            axfr_results["servers"][ns] = failure_status
 
     tasks = [try_axfr(ns) for ns in nameservers]
     await asyncio.gather(*tasks)

@@ -8,6 +8,52 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+# --- Centralized Header Analysis Configuration ---
+
+def _evaluate_hsts(value: str) -> Dict[str, Any]:
+    """Evaluates the Strict-Transport-Security header."""
+    try:
+        max_age_str = next((part for part in value.split(';') if 'max-age' in part), None)
+        if max_age_str and int(max_age_str.split('=')[1].strip()) >= 31536000: # 1 year
+            return {"status": "Strong", "value": value}
+        return {"status": "Weak", "value": value, "recommendation": "HSTS 'max-age' should be at least one year (31536000)."}
+    except (ValueError, IndexError):
+        return {"status": "Invalid", "value": value, "recommendation": "HSTS 'max-age' is malformed."}
+
+def _evaluate_xcto(value: str) -> Dict[str, Any]:
+    """Evaluates the X-Content-Type-Options header."""
+    if value.lower() == 'nosniff':
+        return {"status": "Present", "value": value}
+    return {"status": "Invalid", "value": value, "recommendation": "Set X-Content-Type-Options to 'nosniff'."}
+
+def _evaluate_generic(value: str) -> Dict[str, Any]:
+    """Generic evaluation for headers that only need to be present."""
+    return {"status": "Present", "value": value}
+
+
+HEADER_CHECKS = {
+    "Strict-Transport-Security": {
+        "eval_func": _evaluate_hsts,
+        "recommendation": "Implement HSTS to enforce HTTPS."
+    },
+    "Content-Security-Policy": {
+        "eval_func": _evaluate_generic,
+        "recommendation": "Implement a Content-Security-Policy (CSP) to mitigate XSS and other injection attacks."
+    },
+    "X-Frame-Options": {
+        "eval_func": _evaluate_generic,
+        "recommendation": "Implement X-Frame-Options or CSP 'frame-ancestors' to prevent clickjacking."
+    },
+    "X-Content-Type-Options": {
+        "eval_func": _evaluate_xcto,
+        "recommendation": "Set X-Content-Type-Options to 'nosniff' to prevent MIME-sniffing attacks."
+    },
+    "Referrer-Policy": {
+        "eval_func": _evaluate_generic,
+        "recommendation": "Set a Referrer-Policy to control information leakage in the Referer header."
+    },
+}
+
 async def analyze_http_headers(domain: str, **kwargs) -> Dict[str, Any]:
     """
     Performs a detailed analysis of HTTP security headers.
@@ -18,66 +64,38 @@ async def analyze_http_headers(domain: str, **kwargs) -> Dict[str, Any]:
         "final_url": None,
         "error": None
     }
-    url = f"https://{domain}"
-    logger.debug(f"Analyzing HTTP headers for {url}")
+    urls_to_check = [f"https://{domain}", f"http://{domain}"]
+    logger.debug(f"Analyzing HTTP headers for {domain}")
 
-    try:
-        # Use verify=False to avoid SSL errors on misconfigured sites, which is common during recon
-        async with httpx.AsyncClient(follow_redirects=True, verify=False) as client:
-            response = await client.get(url, timeout=10)
-            response.raise_for_status()
+    async with httpx.AsyncClient(follow_redirects=True, verify=False) as client:
+        for url in urls_to_check:
+            try:
+                response = await client.get(url, timeout=10)
+                response.raise_for_status()
 
-            headers = {k.lower(): v for k, v in response.headers.items()}
-            results["final_url"] = str(response.url)
+                headers = {k.lower(): v for k, v in response.headers.items()}
+                results["final_url"] = str(response.url)
 
-            # 1. Strict-Transport-Security (HSTS)
-            hsts = headers.get('strict-transport-security')
-            if hsts:
-                max_age_str = next((part for part in hsts.split(';') if 'max-age' in part), None)
-                if max_age_str and int(max_age_str.split('=')[1].strip()) >= 31536000:
-                    results["analysis"]["Strict-Transport-Security"] = {"status": "Strong", "value": hsts}
-                else:
-                    results["analysis"]["Strict-Transport-Security"] = {"status": "Weak", "value": hsts}
-                    results["recommendations"].append("HSTS 'max-age' should be at least one year (31536000).")
-            else:
-                results["analysis"]["Strict-Transport-Security"] = {"status": "Missing"}
-                results["recommendations"].append("Implement HSTS to enforce HTTPS.")
+                for header_name, check_config in HEADER_CHECKS.items():
+                    header_value = headers.get(header_name.lower())
+                    if header_value:
+                        analysis_result = check_config["eval_func"](header_value)
+                        results["analysis"][header_name] = analysis_result
+                        if "recommendation" in analysis_result:
+                            results["recommendations"].append(analysis_result["recommendation"])
+                    else:
+                        results["analysis"][header_name] = {"status": "Missing"}
+                        results["recommendations"].append(check_config["recommendation"])
+                
+                # If we get a successful response, we can stop.
+                results["error"] = None # Clear any previous error from a failed HTTPS attempt
+                return results
 
-            # 2. Content-Security-Policy (CSP)
-            csp = headers.get('content-security-policy')
-            if csp:
-                results["analysis"]["Content-Security-Policy"] = {"status": "Present", "value": csp}
-            else:
-                results["analysis"]["Content-Security-Policy"] = {"status": "Missing"}
-                results["recommendations"].append("Implement a Content-Security-Policy to mitigate XSS.")
-
-            # 3. X-Frame-Options
-            xfo = headers.get('x-frame-options')
-            if xfo:
-                results["analysis"]["X-Frame-Options"] = {"status": "Present", "value": xfo}
-            else:
-                results["analysis"]["X-Frame-Options"] = {"status": "Missing"}
-                results["recommendations"].append("Implement X-Frame-Options or CSP 'frame-ancestors' to prevent clickjacking.")
-
-            # 4. X-Content-Type-Options
-            xcto = headers.get('x-content-type-options')
-            if xcto and xcto.lower() == 'nosniff':
-                results["analysis"]["X-Content-Type-Options"] = {"status": "Present", "value": xcto}
-            else:
-                results["analysis"]["X-Content-Type-Options"] = {"status": "Missing or Invalid"}
-                results["recommendations"].append("Set X-Content-Type-Options to 'nosniff'.")
-
-            # 5. Referrer-Policy
-            ref_policy = headers.get('referrer-policy')
-            if ref_policy:
-                results["analysis"]["Referrer-Policy"] = {"status": "Present", "value": ref_policy}
-            else:
-                results["analysis"]["Referrer-Policy"] = {"status": "Missing"}
-                results["recommendations"].append("Set a Referrer-Policy to control information leakage in the Referer header.")
-
-    except httpx.RequestError as e:
-        results["error"] = f"HTTP request to {url} failed: {type(e).__name__}"
-    except Exception as e:
-        results["error"] = f"An unexpected error occurred: {e}"
+            except httpx.RequestError as e:
+                error_message = f"HTTP request to {url} failed: {type(e).__name__}"
+                results["error"] = error_message
+                logger.debug(error_message)
+            except Exception as e:
+                results["error"] = f"An unexpected error occurred while checking {url}: {e}"
 
     return results

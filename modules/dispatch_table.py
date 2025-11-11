@@ -123,7 +123,7 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_security_audit,
         "export_func": export_txt_security,
         "description": "Auditing for security misconfigurations...",
-        "dependencies": ["records", "mail"], # Added dependency
+        "dependencies": ["records", "mail", "nsinfo", "zone"],
         "arg_info": {"short": "-s", "long": "--security", "help": "Run a basic audit for DNS security misconfigurations."}
     },
     "tech": {
@@ -213,7 +213,7 @@ MODULE_DISPATCH_TABLE = {
         "data_key": "http_headers_info",
         "analysis_func": analyze_http_headers,
         "display_func": display_http_headers,
-        "export_func": export_txt_http_headers,
+        "export_func": None, # This module has a complex structure not suited for the simple TXT report
         "description": "Analyzing HTTP security headers...",
         "arg_info": {"short": None, "long": "--headers", "help": "Perform an in-depth analysis of HTTP security headers."}
     },

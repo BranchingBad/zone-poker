@@ -32,9 +32,10 @@ Examples:
     
     # --- Output Control ---
     output_group = parser.add_argument_group('Output Control')
-    output_group.add_argument("-e", "--export", action="store_true", help="Export JSON and TXT reports.")
+    output_group.add_argument("-e", "--export", action="store_true", help="Export default reports (.json, .txt).")
     output_group.add_argument("-O", "--output-dir", help="Directory to save reports (defaults to Desktop).")
-    output_group.add_argument("--html-file", help="Path to save the HTML report directly to a file.")
+    output_group.add_argument("--filename-template", default="{domain}_dnsint_{timestamp}", help="Template for report filenames. Use {domain} and {timestamp}. Default: '{domain}_dnsint_{timestamp}'.")
+    output_group.add_argument("--html-file", help="Export an HTML report to the specified file path.")
     output_group.add_argument("--log-file", help="Path to a file to save detailed, verbose logs.")
     output_group.add_argument("-v", "--verbose", action="store_true", help="Show detailed error logs during the scan.")
     output_group.add_argument("-q", "--quiet", action="store_true", help="Show minimal console output (suppresses tables and headers). This does not affect file-based exports.")

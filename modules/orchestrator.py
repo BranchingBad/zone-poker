@@ -9,10 +9,10 @@ import argparse
 import inspect
 import dns.resolver # --- THIS IS THE FIX (reverted to standard resolver) ---
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 
 # Import shared config for the console object
-from .config import console
+from .config import console, PUBLIC_RESOLVERS
 # Import the central configuration and display functions
 from .dispatch_table import MODULE_DISPATCH_TABLE
 from .display import display_summary, display_critical_findings
@@ -43,11 +43,11 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     # The default resolver sets `want_dnssec=True`. We must explicitly disable it.
     resolver = dns.resolver.Resolver(configure=False) # Start with a clean resolver
     resolver.want_dnssec = False # Explicitly disable DNSSEC queries
-    resolver.timeout = args.timeout
-    resolver.lifetime = args.timeout
-    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
+    resolver.timeout = float(args.timeout)
+    resolver.lifetime = float(args.timeout)
+    resolver.nameservers = list(PUBLIC_RESOLVERS.values())
 
-
+    
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
@@ -59,7 +59,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     }
 
     # A set to keep track of which modules have been run to satisfy dependencies
-    completed_modules = set()
+    completed_modules: Set[str] = set()
 
     async def execute_module(module_name: str):
         """Recursively executes a module and its dependencies."""
@@ -78,36 +78,37 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         analysis_func = module_info["analysis_func"]
         data_key = module_info["data_key"]
         display_func = module_info["display_func"]
-        
-        # Prepare arguments for the analysis function dynamically
+
+        # --- Dynamic Argument Injection ---
+        # Build a pool of all available arguments for the analysis function
+        available_args = analysis_context.copy()
+        for dep_name in module_info.get("dependencies", []):
+            dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
+            available_args[dep_key] = all_data.get(dep_key, {})
+
+        # Inspect the function signature and build the kwargs it actually needs
+        func_sig = inspect.signature(analysis_func)
         func_kwargs: Dict[str, Any] = {}
+        for param in func_sig.parameters.values():
+            if param.name in available_args:
+                func_kwargs[param.name] = available_args[param.name]
 
-
-        # --- Handle special --types arg for 'records' module ---
+        # Handle special case for 'records' module and the --types argument
         if module_name == "records":
             record_types_str = getattr(args, 'types', None)
             if record_types_str:
                 func_kwargs['record_types'] = [t.strip().upper() for t in record_types_str.split(',')]
-        
-        # Populate dependencies
-        for dep_name in module_info.get("dependencies", []):
-            dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
-            # --- THIS IS THE FIX: Pass the actual data key as the kwarg name ---
-            # e.g., for a module depending on 'records', this makes the 'records'
-            # kwarg available to its analysis function.
-            func_kwargs[dep_key] = all_data.get(dep_key, {})
-        
+
         try:
             # Run async or sync analysis function
             if asyncio.iscoroutinefunction(analysis_func):
-                # Unpack the context and dependency kwargs into the function call
-                result = await analysis_func(**analysis_context, **func_kwargs)
+                result = await analysis_func(**func_kwargs)
             else:
                 # --- THIS IS THE FIX: Run sync functions in a thread executor ---
                 # This prevents synchronous, blocking calls (like DNS queries)
                 # from stalling the entire asyncio event loop.
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, lambda: analysis_func(**analysis_context, **func_kwargs))
+                result = await loop.run_in_executor(None, lambda: analysis_func(**func_kwargs))
         except Exception as e:
             console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
             if args.verbose:

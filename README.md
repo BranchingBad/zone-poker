@@ -108,6 +108,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | Flag | Description |
 | :--- | :--- |
 | `-e`, `--export` | Export JSON and TXT reports to your Desktop or a specified directory. |
+| `--filename-template` | Template for report filenames. Use `{domain}` and `{timestamp}`. |
 | `-O`, `--output-dir` | Directory to save exported reports. |
 | `--html-file` | Path to save the HTML report directly to a file. |
 | `--output` | Console output format. Choices: `table`, `json`, `csv`, `xml`, `html`. |

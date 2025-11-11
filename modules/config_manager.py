@@ -7,13 +7,26 @@ import argparse
 import json
 import logging
 import yaml # Import the PyYAML library
-import os # Import os for path manipulation
-from typing import Tuple, List, Optional, Any
+import os
+from typing import Tuple, List, Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 
 from .config import console
 from .utils import is_valid_domain # Import the new validation function
+
+def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recursively merges two dictionaries. 'new' values overwrite 'base' values.
+    If both values for a key are dictionaries, it merges them recursively.
+    """
+    merged = base.copy()
+    for key, value in new.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = deep_merge_dicts(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 def load_config_file(file_path: str) -> dict:
     """Loads a configuration file, supporting JSON and YAML."""
@@ -48,11 +61,11 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
     """
     cli_args = parser.parse_args()
 
-    # 1. Get defaults from the parser by parsing an empty list
+    # 1. Establish base configuration: Start with parser defaults
     defaults = vars(parser.parse_args([]))
+    final_config = defaults.copy()
 
-    # 2. Load config file data
-    config_data = {}
+    # 2. Layer config file settings over defaults
     config_file_path = cli_args.config
     if config_file_path:
         try:
@@ -64,26 +77,16 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
             console.print(f"[bold red]Error: Could not decode config file '{config_file_path}'. {e}[/bold red]")
             return None, []
 
-    # 3. Merge: Start with defaults, then layer config file
-    final_config = defaults.copy()
-    final_config.update(config_data)
-
-    # 4. Layer explicit CLI args over the top
+    # 3. Layer explicit CLI arguments over the top (highest priority)
     cli_vars = vars(cli_args)
+    cli_overrides = {}
     for key, value in cli_vars.items():
-        # Only override if the CLI value is different from the default
-        # This prevents CLI args that are implicitly set to their defaults from overriding config file values
-        if key in defaults and value != defaults[key]:
-            final_config[key] = value
-        # Handle boolean flags specifically: if a flag is present on CLI, it should override
-        # This is a common argparse behavior where `action='store_true'` sets a default of False
-        # If the flag is present, its value becomes True, which should override.
-        elif key in defaults and isinstance(defaults[key], bool) and value is True:
-            final_config[key] = value
-        # For other cases where CLI arg is not default (e.g., domain, file path)
-        elif key not in defaults:
-            final_config[key] = value
-    
+        # An argument was explicitly provided by the user if its value is not the default.
+        # This correctly handles flags (like --all) and value-based args (like --timeout 10).
+        if value != defaults.get(key):
+            cli_overrides[key] = value
+
+    final_config = deep_merge_dicts(final_config, cli_overrides)
     final_args = argparse.Namespace(**final_config)
 
     # 5. Load domains to scan using the final merged config

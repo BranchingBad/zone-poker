@@ -11,28 +11,21 @@ import argparse
 from rich.logging import RichHandler
 from .config import console
 
-def initialize_logging(cli_args: argparse.Namespace):
+def setup_logging(args: argparse.Namespace):
     """
-    Initial, pre-config logging setup based on raw CLI args.
-    This ensures logging is active before the config file is even read.
-    """
-    verbose = getattr(cli_args, 'verbose', False)
-    quiet = getattr(cli_args, 'quiet', False)
-    log_file = getattr(cli_args, 'log_file', None)
-    setup_logging(verbose, quiet, log_file)
-
-def setup_logging(verbose: bool, quiet: bool, log_file: Optional[str] = None):
-    """
-    Configures the root logger for the application.
+    Configures the root logger for the application based on the final,
+    merged configuration from command-line arguments and the config file.
 
     - Console logging level is set based on verbosity flags.
     - File logging is enabled if a log_file path is provided.
 
     Args:
-        verbose: If True, sets console level to DEBUG.
-        quiet: If True, sets console level to WARNING.
-        log_file: Path to a file where logs should be saved.
+        args: The final, merged argparse.Namespace object containing all configuration.
     """
+    verbose = getattr(args, 'verbose', False)
+    quiet = getattr(args, 'quiet', False)
+    log_file = getattr(args, 'log_file', None)
+
     # Determine the console logging level
     if quiet:
         console_level = logging.WARNING

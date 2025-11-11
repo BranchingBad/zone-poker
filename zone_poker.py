@@ -19,7 +19,7 @@ from modules.parser_setup import setup_parser
 # --- END UPDATED IMPORTS ---
 from modules.export import export_reports, handle_output
 from modules.config_manager import setup_configuration_and_domains
-from modules.logger_config import initialize_logging
+from modules.logger_config import setup_logging
 from modules.config import console
 import dns.resolver
 from rich.progress import Progress # Import Progress
@@ -41,8 +41,9 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
         if args.output != 'table':
             handle_output(all_data, args.output)
 
+        # The handle_output function now calls export_reports internally
         if getattr(args, 'export', False):
-            export_reports(domain, all_data)
+            handle_output(all_data, args.output)
 
     except dns.resolver.NXDOMAIN:
         logger.error(f"Error: The domain '{domain}' does not exist (NXDOMAIN).")
@@ -59,14 +60,15 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
 
 async def main():
     parser = setup_parser()
-    # Initialize logging based on raw CLI args before full config merge
-    initialize_logging(parser.parse_known_args()[0])
 
     # Get the final configuration and the list of domains to scan.
     args, domains_to_scan = setup_configuration_and_domains(parser)
 
     if args is None: # An error occurred during config loading
         return
+
+    # Initialize logging using the final, merged configuration
+    setup_logging(args)
 
     if not domains_to_scan:
         logger.error("Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.")

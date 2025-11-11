@@ -69,5 +69,4 @@ async def analyze_reputation(domain: str, args: argparse.Namespace, records: dic
     async with httpx.AsyncClient(timeout=args.timeout) as client:
         tasks = [check_ip(ip, client) for ip in set(ip_addresses)]
         await asyncio.gather(*tasks)
-
     return results

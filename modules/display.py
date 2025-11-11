@@ -205,33 +205,50 @@ def display_nameserver_analysis(data: dict, quiet: bool = False):
 @console_display_handler("DNS Propagation Check")
 def display_propagation(data: dict, quiet: bool = False, **kwargs):
     """Displays DNS Propagation check results in a table."""
-    table = Table(title="DNS Propagation Check", box=box.ROUNDED, show_header=True, header_style=None)
+    table = Table(title="DNS Propagation Check", box=box.ROUNDED, show_header=True, header_style=None, caption_justify="right")
     table.add_column("Resolver", style="bold")
-    table.add_column("IP Address")
+    table.add_column("IP Address(es)")
 
-    ips = set(data.values())
-    color_map = {ip: f"color({i+1})" for i, ip in enumerate(ips)}
-    
-    for server, ip in data.items():
-        if "Error" in ip:
-            table.add_row(server, f"[red]{ip}[/red]")
+    all_ips = set()
+    for result in data.values():
+        if result.get("ips"):
+            all_ips.update(result["ips"])
+
+    color_map = {ip: f"color({i+1})" for i, ip in enumerate(all_ips)}
+
+    for server, result in data.items():
+        if error := result.get("error"):
+            table.add_row(server, f"[red]{error}[/red]")
         else:
-            color = color_map.get(ip, "white")
-            table.add_row(server, f"[{color}]{ip}[/{color}]")
+            ip_text = Text()
+            for ip in result.get("ips", []):
+                color = color_map.get(ip, "white")
+                ip_text.append(f"[{color}]{ip}[/{color}]\n")
+            table.add_row(server, ip_text)
 
+    table.caption = f"Checked across {len(data)} resolvers."
     return table
 
 @console_display_handler("Security Audit")
 def display_security_audit(data: dict, quiet: bool = False):
     """Creates a rich Table of Security Audit results."""
-    table = Table(title="Security Audit", box=box.ROUNDED, show_header=True, header_style=None)
-    table.add_column("Check", style="bold")
-    table.add_column("Result", max_width=50)
+    table = Table(title="Security Audit", box=box.ROUNDED, show_header=True, header_style=None, show_edge=False)
+    table.add_column("Check", style="bold", width=20)
+    table.add_column("Status", width=12)
+    table.add_column("Details", max_width=60)
 
-    for check, result in data.items():
-        color = "red" if "Weak" in result or "Not Found" in result else "green" if "Secure" in result or "Present" in result else "yellow"
-        table.add_row(check, f"[{color}]{result}[/{color}]")
+    for check, info in data.items():
+        status = info.get("status", "Unknown")
+        details = info.get("details", "N/A")
 
+        if status == "Secure":
+            color = "green"
+        elif status in ("Weak", "Vulnerable"):
+            color = "red"
+        else: # Moderate
+            color = "yellow"
+        
+        table.add_row(check, f"[{color}]{status}[/{color}]", details)
     return table
 
 @console_display_handler("Technology Detection")
@@ -464,12 +481,11 @@ def display_summary(data: dict, quiet: bool = False):
     table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
 
     # Security Audit
-    audit_findings = data.get('security')
-    # Ensure audit_findings is a dictionary before processing
-    if isinstance(audit_findings, dict) and audit_findings and "error" not in audit_findings:
-        weak_findings = [k for k, v in audit_findings.items() if isinstance(v, str) and ("Weak" in v or "Not Found" in v)]
-        if weak_findings:
-            table.add_row("Security Audit", f"[red]Found {len(weak_findings)} issues[/red] ({', '.join(weak_findings)})")
+    audit_data = data.get('security', {})
+    if isinstance(audit_data, dict) and "error" not in audit_data:
+        weak_checks = [check for check, info in audit_data.items() if info.get("status") in ("Weak", "Vulnerable")]
+        if weak_checks:
+            table.add_row("Security Audit", f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})")
         else:
             table.add_row("Security Audit", "[green]All checks passed[/green]")
     else:
@@ -721,13 +737,16 @@ def export_txt_propagation(data: Dict[str, str]) -> str:
 def _format_security_txt(data: Dict[str, str]) -> List[str]:
     """Formats Security Audit for the text report."""
     return [f"  - {check:<25}: {result}" for check, result in data.items()]
-
-def export_txt_security(data: Dict[str, str]) -> str:
+    
+def export_txt_security(data: Dict[str, Dict[str, str]]) -> str:
     return _create_report_section("Security Audit", data, _format_security_txt)
 
 def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Technology Detection for the text report."""
     report = []
+    if data.get("error"):
+        return [f"  Error: {data['error']}"]
+
     if data.get("technologies"):
         report.append(f"  {'Technologies:':<20}: {', '.join(data['technologies'])}")
     if data.get("server"):
@@ -819,36 +838,39 @@ def export_txt_dane(data: Dict[str, Any]) -> str:
     return _create_report_section("DANE/TLSA Record Analysis", data, _format_dane_txt)
 
 @console_display_handler("HTTP Security Headers Analysis")
-def display_http_headers(data: dict, quiet: bool):
-    """Creates a rich Panel of HTTP Security Header analysis."""
-    
-    tree = Tree(f"[bold]HTTP Security Headers Analysis[/bold]\n[dim]Final URL: {data.get('final_url')}[/dim]")
+def display_http_headers(data: dict, quiet: bool = False):
+    """Creates a rich Table of HTTP Security Headers analysis."""
+    final_url = data.get("final_url", "N/A")
+    table = Table(
+        title=f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]",
+        box=box.ROUNDED,
+        show_header=True,
+        header_style=None,
+    )
+    table.add_column("Header", style="bold", width=28)
+    table.add_column("Status", width=10)
+    table.add_column("Value / Details", max_width=60)
 
     analysis = data.get("analysis", {})
     for header, info in analysis.items():
         status = info.get("status", "Unknown")
         value = info.get("value", "")
 
-        if status == "Strong" or status == "Present":
+        if status in ("Strong", "Present"):
             color = "green"
-            icon = "✓"
-        elif status == "Weak":
+        elif status in ("Weak", "Moderate"):
             color = "yellow"
-            icon = "!"
-        else: # Missing or Invalid
+        else: # Missing, Invalid
             color = "red"
-            icon = "✗"
 
-        display_value = f": [dim]{value}[/dim]" if value else ""
-        tree.add(f"{icon} [{color}]{header}[/{color}] - {status}{display_value}")
+        table.add_row(header, f"[{color}]{status}[/{color}]", value)
 
     recommendations = data.get("recommendations", [])
     if recommendations:
-        rec_tree = tree.add("[bold cyan]Recommendations[/bold cyan]")
-        for rec in recommendations:
-            rec_tree.add(f"• {rec}")
+        rec_text = "\n".join([f"• {rec}" for rec in recommendations])
+        table.caption = Text(rec_text, style="yellow")
 
-    return Panel(tree, title="HTTP Security Headers Analysis", box=box.ROUNDED)
+    return table
 
 @console_display_handler("Open Port Scan")
 def display_port_scan(data: dict, quiet: bool = False):

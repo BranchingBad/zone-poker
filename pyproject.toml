@@ -29,7 +29,8 @@ dependencies = [
     "rich",
     "beautifulsoup4",
     "mmh3",
-    "PyYAML"
+    "PyYAML",
+    "tldextract"
 ]
 
 [project.urls]

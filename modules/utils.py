@@ -7,6 +7,7 @@ import sys
 import re
 import os
 from pathlib import Path
+import tldextract # Import the tldextract library
 from typing import Dict, Any # Added imports for new functions
 import dns.resolver # Added import
 
@@ -45,13 +46,12 @@ def join_txt_chunks(chunks: list[str]) -> str:
 
 def get_parent_zone(domain: str) -> str | None:
     """Get the parent zone for a domain (for DS record lookup)"""
-    parts = domain.split('.')
-    # A valid domain for this purpose must have at least one dot (e.g., 'example.com')
-    # and not be a TLD itself that might be in public suffix lists (e.g., 'co.uk').
-    # A simple length check is a good first step.
-    if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) > 2): # Avoid 'co.uk' style TLDs
-        return '.'.join(parts[1:])
-    return None
+    # Use tldextract to reliably get the registered domain (e.g., 'example.co.uk')
+    # which serves as the parent zone for DS lookups.
+    extracted = tldextract.extract(domain)
+    if extracted.subdomain:
+        return extracted.registered_domain
+    return None # It's already a root domain, no parent zone to check
 
 # --- Helper Functions Moved from Analysis.py ---
 
@@ -109,19 +109,15 @@ def is_valid_domain(domain: str) -> bool:
     """
     if not isinstance(domain, str):
         return False
-    # Remove trailing dot if present
-    domain = domain.rstrip('.')
     
-    # Regex for a valid domain name (simplified for common cases)
-    # Allows alphanumeric, hyphens (not at start/end), and dots.
-    # Each label (part between dots) must be 1-63 characters.
-    # Total length should not exceed 253 characters.
-    # TLD must be at least 2 characters.
-    domain_regex = re.compile(
-        r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$"
-    )
+    # Use tldextract for robust parsing. A valid domain must have a domain part
+    # and a known TLD/suffix.
+    extracted = tldextract.extract(domain)
     
-    if len(domain) > 253:
+    # Check if the suffix is in the known list of TLDs.
+    # The `is_private` check handles internal domains like 'localhost'.
+    if not extracted.suffix or extracted.is_private:
         return False
-    
-    return bool(domain_regex.match(domain))
+
+    # A valid domain must have at least the domain and suffix parts.
+    return bool(extracted.domain and extracted.suffix)

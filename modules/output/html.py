@@ -112,7 +112,7 @@ def output(all_data: Dict[str, Any]):
         <p>Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
     </div>
     <div class="container">
-        <pre><code>{rich_html_body}</code></pre>
+        {rich_html_body}
     </div>
 </body>
 </html>"""

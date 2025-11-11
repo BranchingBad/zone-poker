@@ -7,14 +7,14 @@ from typing import Dict, Any
 
 # A simple dictionary of common WAF fingerprints
 WAF_FINGERPRINTS = {
-    "Cloudflare": {"server": "cloudflare", "headers": ["__cfduid", "cf-ray"]},
-    "Akamai": {"server": "AkamaiGHost", "headers": ["x-akamai-transformed"]},
-    "AWS WAF": {"server": "awselb", "headers": ["x-amz-cf-id"]},
-    "Sucuri": {"server": "Sucuri/Cloudproxy", "headers": ["x-sucuri-id"]},
-    "Incapsula": {"headers": ["x-iinfo", "x-cdn"]},
-    "Imperva": {"headers": ["x-iinfo"]},
-    "Fortinet": {"headers": ["fortiwafsid"]},
-    "F5 BIG-IP": {"headers": ["ts.*", "f5-irule-*"]},
+    "Cloudflare": {"server": ["cloudflare"], "headers": ["__cfduid", "cf-ray"], "body": ["cloudflare"]},
+    "Akamai": {"server": ["AkamaiGHost"], "headers": ["x-akamai-transformed"]},
+    "AWS WAF": {"server": ["awselb", "AWSALB"], "headers": ["x-amz-cf-id"]},
+    "Sucuri": {"server": ["Sucuri/Cloudproxy"], "headers": ["x-sucuri-id"], "body": ["sucuri_firewall"]},
+    "Incapsula": {"headers": ["x-iinfo", "x-cdn"], "body": ["incapsula"]},
+    "Imperva": {"headers": ["x-iinfo"], "body": ["Request unsuccessful"]},
+    "Fortinet": {"headers": ["fortiwafsid"], "body": ["fortiweb"]},
+    "F5 BIG-IP": {"headers": ["ts*", "f5-irule-*"]}, # Use * for prefix matching
 }
 
 async def detect_waf(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
@@ -22,32 +22,49 @@ async def detect_waf(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
     Attempts to detect a Web Application Firewall (WAF) by inspecting HTTP headers.
     """
     results: Dict[str, Any] = {"detected_wafs": [], "details": {}, "error": None}
-    url = f"https://{domain}"
-    headers = {"User-Agent": "Zone-Poker/1.0"}
+    # A simple payload that might trigger a WAF block page
+    malicious_url = f"https://{domain}/?s=<script>alert(1)</script>"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
 
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
-            response = await client.get(url, headers=headers)
+            response = await client.get(malicious_url, headers=headers)
 
         response_headers = {k.lower(): v for k, v in response.headers.items()}
         server_header = response_headers.get("server", "").lower()
+        response_body = response.text.lower()
 
         for waf_name, fingerprints in WAF_FINGERPRINTS.items():
-            detected = False
-            if "server" in fingerprints and fingerprints["server"] in server_header:
-                results["detected_wafs"].append(waf_name)
-                results["details"][waf_name] = f"Server header contains '{server_header}'"
-                detected = True
-            
-            # Check for headers only if not already detected by server header
-            if not detected and any(h in response_headers for h in fingerprints.get("headers", [])):
-                results["detected_wafs"].append(waf_name)
-                found_headers = [h for h in fingerprints.get("headers", []) if h in response_headers]
-                results["details"][waf_name] = f"Found characteristic header(s): {', '.join(found_headers)}"
+            reasons = []
+            # Check server header
+            if any(s.lower() in server_header for s in fingerprints.get("server", [])):
+                reasons.append(f"Server header matches '{server_header}'")
 
+            # Check headers (with wildcard support)
+            for h_pattern in fingerprints.get("headers", []):
+                if h_pattern.endswith('*'):
+                    # Prefix matching for wildcards
+                    if any(h.startswith(h_pattern[:-1]) for h in response_headers):
+                        reasons.append(f"Found header matching '{h_pattern}'")
+                elif h_pattern in response_headers:
+                    reasons.append(f"Found header '{h_pattern}'")
+
+            # Check response body
+            if any(b.lower() in response_body for b in fingerprints.get("body", [])):
+                reasons.append("Found fingerprint in response body")
+
+            if reasons:
+                if waf_name not in results["detected_wafs"]:
+                    results["detected_wafs"].append(waf_name)
+                
+                # Aggregate all reasons
+                if waf_name not in results["details"]:
+                    results["details"][waf_name] = "; ".join(reasons)
+                else:
+                    results["details"][waf_name] += "; " + "; ".join(reasons)
 
     except httpx.RequestError as e:
-        results["error"] = f"Could not connect to {url}: {e}"
+        results["error"] = f"Could not connect to {malicious_url}: {e}"
     except Exception as e:
         results["error"] = f"An unexpected error occurred: {e}"
 
