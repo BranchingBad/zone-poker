@@ -31,6 +31,9 @@ Examples:
     parser.add_argument("-O", "--output-dir", help="Path to a directory for saving reports (default: Desktop)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed error logs during the scan")
     parser.add_argument("-q", "--quiet", action="store_true", help="Show minimal console output (suppress tables and headers)")
+    parser.add_argument("--output", choices=['table', 'json', 'csv'], default='table', help="Specify output format (default: table)")
+    parser.add_argument("--json-output", help="Path to save JSON output file.")
+    parser.add_argument("--csv-output", help="Path to save CSV output file.")
 
     # Module-specific Options
     parser.add_argument("--types", help="Comma-separated list of DNS record types to query (e.g., A,MX,TXT)")

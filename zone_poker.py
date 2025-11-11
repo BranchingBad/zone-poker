@@ -17,7 +17,7 @@ from modules.orchestrator import run_analysis_modules
 from modules.dispatch_table import MODULE_DISPATCH_TABLE, register_module_args
 from modules.parser_setup import setup_parser
 # --- END UPDATED IMPORTS ---
-from modules.export import export_reports
+from modules.export import export_reports, handle_output
 from modules.config_manager import setup_configuration_and_domains
 from modules.logger_config import initialize_logging
 from modules.config import console
@@ -38,8 +38,11 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
         # The orchestrator will handle running analysis, managing dependencies, and displaying results.
         all_data = await run_analysis_modules(modules_to_run, domain, args)
         
+        if args.output != 'table':
+            handle_output(all_data, args.output, args.csv_output, args.json_output)
+
         if getattr(args, 'export', False):
-            export_reports(domain, all_data)
+            export_reports(domain, all_data, args.csv_output, args.json_output)
 
     except dns.resolver.NXDOMAIN:
         logger.error(f"Error: The domain '{domain}' does not exist (NXDOMAIN).")

@@ -100,5 +100,5 @@ def _format_subdomain_takeover_txt(data: Dict[str, Any]) -> List[str]:
 
 def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
     """Formats Subdomain Takeover for the text report."""
-    # This would use a shared helper like _create_report_section
-    pass
+    report_lines = _format_subdomain_takeover_txt(data)
+    return "\n".join(report_lines)

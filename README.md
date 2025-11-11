@@ -56,6 +56,7 @@ The tool gathers data from various sources, analyzes it, and presents it in a cl
 ## ⚙️ Configuration
 
 Zone-Poker can be configured using a `JSON` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
+Zone-Poker can be configured using a `JSON` or `YAML` file (passed with `-c` or `--config`). This file can set any option that the command-line arguments can.
 
 ### Configuration Priority
 The tool uses a 3-tiered priority system for settings, processed in the following order:
@@ -68,7 +69,7 @@ An argument on the command line will *always* override a setting in the config f
 ### API Keys
 For modules that use third-party APIs (like OSINT enrichment), you can provide API keys in your config file to avoid rate-limiting.
 
-**Example `my-scan.json`:**
+**Example `config.yaml`:**
 ```jsonc
 {
     "timeout": 10,
@@ -99,17 +100,8 @@ zone-poker example.com --all --export -O /home/user/reports/
 # Query for only A and MX records
 zone-poker example.com --records --types A,MX
 
-# Use a configuration file to define scan parameters
-python3 zone-poker.py example.com -c my-scan.json
-
-# Scan and save reports to a specific directory
-python3 zone-poker.py example.com --all --export -O /home/user/reports/
-
-# Query for only A and MX records
-python3 zone-poker.py example.com --records --types A,MX
-
 # Run a quiet scan but save all debug information to a log file
-python3 zone-poker.py example.com --all -q --log-file scan.log
+zone-poker example.com --all -q --log-file scan.log
 ```
 
 ## Command-Line Arguments

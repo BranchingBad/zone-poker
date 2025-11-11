@@ -22,7 +22,8 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
     nameservers = [record["value"] for record in ns_records]
     axfr_results["status"] = "Completed"
     
-    async def try_axfr(ns):
+    lock = asyncio.Lock()
+    async def try_axfr(ns: str):
         ns_ips = []
         try:
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
@@ -37,8 +38,9 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
             pass 
 
         if not ns_ips:
-            axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
-            return
+            async with lock:
+                axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
+            return # No IPs to check for this nameserver
 
         for ns_ip in ns_ips:
             try:
@@ -61,26 +63,31 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
                     raise dns.exception.FormError("Zone is None, likely refused.")
 
                 nodes = zone.nodes.keys() # type: ignore
-                axfr_results["servers"][ns] = {
-                    "status": "Successful",
-                    "ip_used": ns_ip,
-                    "record_count": len(nodes),
-                    "records": [str(n) for n in nodes]
-                }
-                return 
+                async with lock:
+                    axfr_results["servers"][ns] = {
+                        "status": "Successful",
+                        "ip_used": ns_ip,
+                        "record_count": len(nodes),
+                        "records": [str(n) for n in nodes]
+                    }
+                return # Success, no need to check other IPs for this NS
             except dns.exception.FormError:
-                # A FormError (e.g., "Refused") is a definitive failure for this nameserver.
-                axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
-                return
+                # A FormError (e.g., "Refused") is a definitive failure for this IP.
+                # We'll record it and let the loop try the next IP if available.
+                async with lock:
+                    axfr_results["servers"][ns] = {"status": "Failed (Refused or Protocol Error)", "ip_tried": ns_ip}
             except (dns.exception.Timeout, asyncio.TimeoutError):
-                axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
+                async with lock:
+                    axfr_results["servers"][ns] = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
-                axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
-                if verbose:
-                    console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
+                async with lock:
+                    axfr_results["servers"][ns] = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
+                    if verbose:
+                        console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
+        # If the loop completes without success, the last failure status for the NS remains.
 
-    for ns in nameservers:
-        await try_axfr(ns)
+    tasks = [try_axfr(ns) for ns in nameservers]
+    await asyncio.gather(*tasks)
     
     if any(s.get("status") == "Successful" for s in axfr_results["servers"].values()):
         axfr_results["summary"] = "Vulnerable (Zone Transfer Successful)"

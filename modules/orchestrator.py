@@ -24,7 +24,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     Orchestrates the execution of analysis modules, manages data dependencies,
     and calls the corresponding display functions.
     """
-    if not args.quiet:
+    if not args.quiet and args.output == 'table':
         console.print(f"Target: {domain}")
         console.print(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
@@ -119,8 +119,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         all_data[data_key] = result
         completed_modules.add(module_name)
 
-        # Display results immediately after analysis
-        if not args.quiet:
+        # Display results immediately after analysis, if the output format is 'table'
+        if not args.quiet and args.output == 'table':
             display_func(result, args.quiet)
 
     # Execute all modules based on the dependency graph
