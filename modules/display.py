@@ -543,14 +543,21 @@ def _create_report_section(title: str, data: Dict[str, Any], formatter: Callable
     A helper to create a formatted text report section with a standard header and error handling.
     """
     report = ["="*15 + f" {title} " + "="*15]
-    if not data:
+    
+    if not isinstance(data, dict):
+        report.append(f"  Error: Unexpected data format for {title}. Expected dictionary, got {type(data).__name__}.")
+        if data: # If it's a non-empty string or other non-dict, include its representation
+            report.append(f"  Raw data: {data}")
+        return "\n".join(report)
+
+    # Now we are sure 'data' is a a dictionary
+    if not data: # Check if the dictionary is empty
         report.append("No data found for this section.")
     elif data.get("error"):
         report.append(f"  Error: {data['error']}")
     else:
         # The formatter function returns a list of content lines
         report.extend(formatter(data))
-    
     return "\n".join(report)
 
 def export_txt_critical_findings(data: Dict[str, Any]) -> str:
@@ -616,6 +623,10 @@ def export_txt_summary(data: Dict[str, Any]) -> str:
 def _format_records_txt(data: Dict[str, List[Any]]) -> List[str]:
     """Formats DNS records for the text report."""
     total_records = 0
+    # --- THIS IS THE FIX ---
+    if "error" in data:
+        return [f"Could not retrieve DNS records: {data['error']}"]
+
     report = []
     for r_type, items in data.items():
         if items:
@@ -679,6 +690,10 @@ def export_txt_mail(data: Dict[str, Any]) -> str:
 
 def _format_whois_txt(data: Dict[str, Any]) -> List[str]:
     """Formats WHOIS information for the text report."""
+    # --- THIS IS THE FIX ---
+    if not isinstance(data, dict):
+        return [f"Could not format WHOIS data. Expected a dictionary, but received: {str(data)}"]
+
     report = []
     for key, value in data.items():
         if value and key != "error":
@@ -701,16 +716,24 @@ def export_txt_whois(data: Dict[str, Any]) -> str:
 def _format_nsinfo_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Nameserver Analysis for the text report."""
     report = []
-    dnssec_status = data.get("dnssec", "Unknown")
-    for ns, info in data.items():
-        if ns == "dnssec": continue
-        ip_list = info.get('ips', [])
-        ip_str = ", ".join(ip_list) if ip_list else "N/A" # Use comma for TXT
-        asn = info.get('asn_description', 'N/A')
-        report.append(f"  - {ns}")
-        report.append(f"    IP(s): {ip_str}")
-        report.append(f"    ASN: {asn}")
-    report.append(f"\nDNSSEC: {dnssec_status}")
+    # --- THIS IS THE FIX ---
+    if "error" in data:
+        return [f"Could not analyze nameservers: {data['error']}"]
+
+    dnssec_status = data.get("dnssec", "Unknown") # Safe, data is dict
+    for ns, info in data.items(): # info can be Dict or str
+        if ns == "dnssec": 
+            continue
+        if isinstance(info, dict):
+            ip_list = info.get('ips', [])
+            ip_str = ", ".join(ip_list) if ip_list else "N/A" # Use comma for TXT
+            asn = info.get('asn_description', 'N/A')
+            report.append(f"  - {ns}")
+            report.append(f"    IP(s): {ip_str}")
+            report.append(f"    ASN: {asn}")
+        else:
+            report.append(f"  - {ns}: Unexpected data format - {str(info)}")
+    report.append(f"\nDNSSEC: {dnssec_status}") # Safe
     return report
 
 def export_txt_nsinfo(data: Dict[str, Any]) -> str:
@@ -737,10 +760,13 @@ def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
         report.append(f"  {'Technologies:':<20}: {', '.join(data['technologies'])}")
     if data.get("server"):
         report.append(f"  {'Server:':<20}: {data['server']}")
-    if data.get("headers"):
+    headers_data = data.get("headers")
+    if isinstance(headers_data, dict): # Check if headers_data is a dictionary
         report.append("\nSecurity Headers:")
-        for h_key, h_value in data["headers"].items():
+        for h_key, h_value in headers_data.items():
             report.append(f"  - {h_key}: {h_value}")
+    elif headers_data: # If it's not a dict but not empty (e.g., an error string)
+        report.append(f"\nSecurity Headers: {headers_data}")
     return report
 
 def export_txt_tech(data: Dict[str, Any]) -> str:
@@ -920,16 +946,6 @@ def export_txt_http_headers(data: Dict[str, Any]) -> str:
     """Formats HTTP Security Headers for the text report."""
     return _create_report_section("HTTP Security Headers Analysis", data, _format_http_headers_txt)
 
-def _format_port_scan_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Open Port Scan for the text report."""
-    if not data:
-        return ["No open ports found among common ports."]
-    report = []
-    for ip, ports in data.items():
-        ports_str = ", ".join(map(str, ports))
-        report.append(f"  - {ip}: {ports_str}")
-    return report
-
 def _format_cloud_enum_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Cloud Enumeration for the text report."""
     report = []
@@ -976,6 +992,16 @@ def export_txt_geolocation(data: Dict[str, Any]) -> str:
     """Formats IP Geolocation for the text report."""
     return _create_report_section("IP Geolocation", data, _format_geolocation_txt)
 
+def _format_port_scan_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats Open Port Scan for the text report."""
+    if not data:
+        return ["No open ports found among common ports."]
+    report = []
+    for ip, ports in data.items():
+        ports_str = ", ".join(map(str, ports))
+        report.append(f"  - {ip}: {ports_str}")
+    return report
+
 def export_txt_port_scan(data: Dict[str, Any]) -> str:
     """Formats Open Port Scan for the text report."""
     return _create_report_section("Open Port Scan", data, _format_port_scan_txt)
@@ -1004,6 +1030,77 @@ def export_txt_smtp(data: Dict[str, Any]) -> str:
     """Formats SMTP analysis for the text report."""
     return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
 
+def _format_smtp_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats SMTP analysis for the text report."""
+    if not data:
+        return ["No SMTP servers were analyzed."]
+    report = []
+    for server, info in data.items(): # info can be Dict or str if an error occurred for that specific server
+        if isinstance(info, dict):
+            if info.get("error"):
+                report.append(f"  - {server}: Error - {info['error']}")
+                continue
+            
+            report.append(f"  - {server}")
+            report.append(f"    Banner: {info.get('banner', 'N/A')}")
+            report.append(f"    STARTTLS: {info.get('starttls', 'Unknown')}")
+            
+            cert_info = info.get('certificate')
+            if cert_info:
+                report.append("    Certificate:")
+                report.append(f"      Subject: {cert_info.get('subject', 'N/A')}")
+                report.append(f"      Valid Until: {datetime.datetime.fromtimestamp(cert_info['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if cert_info.get('valid_until') else 'N/A'}")
+        else:
+            report.append(f"  - {server}: Unexpected data format - {str(info)}")
+    return report
+
+def _format_geolocation_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats IP Geolocation for the text report."""
+    if not data:
+        return ["No IP addresses were geolocated."]
+    report = []
+    for ip, info in data.items():
+        if info.get("error"):
+            report.append(f"  - {ip}: Error - {info['error']}")
+        else:
+            country = info.get('country', 'N/A')
+            city = info.get('city', 'N/A')
+            isp = info.get('isp', 'N/A')
+            report.append(f"  - {ip}: {city}, {country} (ISP: {isp})")
+    return report
+
+def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats SSL/TLS analysis for the text report."""
+    report = [
+        f"Subject: {data['subject']}",
+        f"Issuer: {data['issuer']}",
+        f"Valid From: {datetime.datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Valid Until: {datetime.datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S')}"
+    ]
+    if data['sans']:
+        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
+    return report
+
 def export_txt_reputation(data: Dict[str, Any]) -> str:
     """Formats IP reputation analysis for the text report."""
     return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
+
+def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats IP reputation analysis for the text report."""
+    if not data:
+        return ["No IP reputation data was found."]
+    report = []
+    for ip, info in data.items(): # info can be Dict or str if an error occurred for that specific IP
+        if isinstance(info, dict):
+            if info.get("error"):
+                report.append(f"  - {ip}: Error - {info['error']}")
+                continue
+            
+            score = info.get('abuseConfidenceScore', 0)
+            last_reported = info.get('lastReportedAt', 'N/A')
+            if last_reported != 'N/A':
+                last_reported = datetime.datetime.fromisoformat(last_reported.replace('Z', '+00:00')).strftime('%Y-%m-%d')
+            report.append(f"  - {ip}: Score: {score}, Reports: {info.get('totalReports', 0)}, Last Reported: {last_reported}")
+        else:
+            report.append(f"  - {ip}: Unexpected data format - {str(info)}")
+    return report
