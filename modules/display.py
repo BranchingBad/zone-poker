@@ -462,6 +462,29 @@ def display_reputation_info(data: dict, quiet: bool):
     console.print(Panel(tree, title="IP Reputation Analysis (AbuseIPDB)", box=box.ROUNDED))
     console.print()
 
+def display_content_hash_info(data: dict, quiet: bool):
+    """Displays Favicon and Content Hash results in a panel."""
+    if quiet or not data:
+        return
+
+    if data.get("error"):
+        panel = Panel(f"[dim]{data['error']}[/dim]", title="Content & Favicon Hashes", box=box.ROUNDED, border_style="dim")
+        console.print(panel)
+        console.print()
+        return
+
+    table = Table(box=None, show_header=False, pad_edge=False)
+    table.add_column("Key", style="bold cyan", no_wrap=True, width=25)
+    table.add_column("Value")
+
+    if data.get("favicon_murmur32_hash"):
+        table.add_row("Favicon Murmur32 Hash:", data["favicon_murmur32_hash"])
+    if data.get("page_sha256_hash"):
+        table.add_row("Page Content SHA256:", data["page_sha256_hash"])
+
+    console.print(Panel(table, title="Content & Favicon Hashes", box=box.ROUNDED, expand=False))
+    console.print()
+
 def display_summary(data: dict, quiet: bool):
     """Displays a high-level summary of findings."""
     if quiet:
@@ -653,6 +676,22 @@ def export_txt_osint(data: Dict[str, Any]) -> str:
         report.append("\nPassive DNS:")
         for item in passive_dns:
             report.append(f"  - {item.get('hostname')} -> {item.get('ip')} (Last: {item.get('last_seen')})")
+
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_content_hash(data: Dict[str, Any]) -> str:
+    """Formats Content Hash analysis for the text report."""
+    report = ["--- Content & Favicon Hashes ---"]
+    if data.get("error"):
+        report.append(f"Error: {data['error']}")
+        report.append("\n")
+        return "\n".join(report)
+
+    if data.get("favicon_murmur32_hash"):
+        report.append(f"Favicon Murmur32 Hash: {data['favicon_murmur32_hash']}")
+    if data.get("page_sha256_hash"):
+        report.append(f"Page Content SHA256: {data['page_sha256_hash']}")
 
     report.append("\n")
     return "\n".join(report)

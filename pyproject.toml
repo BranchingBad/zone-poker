@@ -27,7 +27,8 @@ dependencies = [
     "python-whois",
     "ipwhois",
     "rich",
-    "beautifulsoup4"
+    "beautifulsoup4",
+    "mmh3"
 ]
 
 [project.urls]

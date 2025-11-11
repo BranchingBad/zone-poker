@@ -126,6 +126,7 @@ Run specific modules by adding their flags.
 | `--ssl` | SSL/TLS Analysis | Analyze the SSL/TLS certificate for the domain. |
 | `--smtp` | SMTP Analysis | Analyze mail servers (banner, STARTTLS). |
 | `--reputation` | IP Reputation | Check IP reputation using AbuseIPDB. |
+| `--hashes` | Content Hashes | Get Murmur32 favicon and SHA256 page content hashes. |
 
 ---
 

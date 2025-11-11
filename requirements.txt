@@ -4,3 +4,4 @@ python-whois
 ipwhois
 rich
 beautifulsoup4
+mmh3
