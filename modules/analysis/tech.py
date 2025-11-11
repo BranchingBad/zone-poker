@@ -5,7 +5,7 @@ from typing import Dict, Any
 from bs4 import BeautifulSoup
 from ..config import console
 
-async def detect_technologies(domain: str, timeout: int, verbose: bool) -> Dict[str, Any]:
+async def detect_technologies(domain: str, timeout: int, verbose: bool, **kwargs) -> Dict[str, Any]:
     """
     Detects web technologies, CMS, and security headers using async HTTP.
     (Enhanced detection logic)

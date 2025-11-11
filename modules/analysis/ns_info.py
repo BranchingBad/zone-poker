@@ -5,7 +5,7 @@ from typing import Dict, List, Any
 from ipwhois import IPWhois
 from ..config import console
 
-async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool, **kwargs) -> Dict[str, Any]:
+async def nameserver_analysis(resolver: dns.resolver.Resolver, verbose: bool, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """Analyzes nameservers, checking IPs (A and AAAA) and DNSSEC support."""
     ns_info = {}
     ns_records = records.get("NS", [])

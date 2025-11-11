@@ -4,11 +4,12 @@ import dns.resolver
 from typing import Dict, List, Any, Optional
 from ..config import console, RECORD_TYPES
 from ..utils import _format_rdata
-
+ 
 async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose: bool, record_types: Optional[List[str]] = None, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Asynchronously queries for multiple DNS record types for a given domain.
     """
+
     records = {}
     
     types_to_query = record_types if record_types else RECORD_TYPES

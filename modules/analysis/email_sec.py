@@ -33,7 +33,7 @@ async def _get_spf_record(domain: str, resolver: dns.resolver.Resolver, depth=0)
     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.resolver.NoNameservers, dns.name.EmptyLabel):
         return []
 
-async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, **kwargs) -> Dict[str, Any]:
+async def email_security_analysis(domain: str, resolver: dns.resolver.Resolver, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
     analysis = {}
 

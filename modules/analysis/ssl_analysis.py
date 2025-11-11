@@ -6,7 +6,7 @@ import ssl
 import socket
 from datetime import datetime
 
-def analyze_ssl_certificate(domain: str, timeout: int) -> dict:
+def analyze_ssl_certificate(domain: str, timeout: int, **kwargs) -> dict:
     """
     Connects to a domain over HTTPS to retrieve and analyze its SSL/TLS certificate.
 

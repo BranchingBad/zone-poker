@@ -3,8 +3,8 @@ import asyncio
 import dns.resolver
 import dns.reversename
 from typing import Dict, List, Any
-
-async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, **kwargs) -> Dict[str, str]:
+ 
+async def reverse_ptr_lookups(resolver: dns.resolver.Resolver, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
     """

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import Dict, List, Any
 
-def security_audit(records: Dict[str, List[Dict[str, Any]]], email_security: Dict[str, Any]) -> Dict[str, str]:
+def security_audit(records: Dict[str, List[Dict[str, Any]]], email_security: Dict[str, Any], **kwargs) -> Dict[str, str]:
     """Runs a basic audit for DNS security misconfigurations."""
     audit = {}
     

@@ -5,7 +5,7 @@ import httpx
 from typing import Dict, Any
 from ..config import console
 
-async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace) -> Dict[str, Any]:
+async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace, **kwargs) -> Dict[str, Any]:
     """
     Enriches data with passive DNS (AlienVault OTX).
     Checks for 'otx' API key in config.

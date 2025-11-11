@@ -6,7 +6,7 @@ import smtplib
 import ssl
 import socket
 
-def analyze_smtp_servers(records: dict, domain: str, timeout: int) -> dict:
+def analyze_smtp_servers(domain: str, timeout: int, records: dict, **kwargs) -> dict:
     """
     Connects to mail servers from MX records to analyze their SMTP configuration.
 

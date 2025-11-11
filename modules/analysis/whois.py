@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any
 from ..config import console
 
-async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
+async def whois_lookup(domain: str, verbose: bool, **kwargs) -> Dict[str, Any]:
     """
     Performs an async-friendly WHOIS lookup by running the blocking
     'whois' library in a separate thread.

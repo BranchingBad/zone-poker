@@ -49,13 +49,15 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     resolver.lifetime = args.timeout
     resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
 
+
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
         "resolver": resolver, # --- THIS IS THE FIX ---
         "all_data": all_data, # Allows functions to access results from other modules
         "args": args, # Added to pass full args namespace to functions
-        **vars(args) # Add timeout, verbose, etc.
+        "timeout": args.timeout, # Explicitly pass needed args
+        "verbose": args.verbose, # Explicitly pass needed args
     }
 
     # A set to keep track of which modules have been run to satisfy dependencies
@@ -80,7 +82,8 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         display_func = module_info["display_func"]
         
         # Prepare arguments for the analysis function dynamically
-        func_kwargs = {}
+        func_kwargs: Dict[str, Any] = {}
+
 
         # --- Handle special --types arg for 'records' module ---
         if module_name == "records":
@@ -95,24 +98,18 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
             # e.g., for a module depending on 'records', this makes the 'records'
             # kwarg available to its analysis function.
             func_kwargs[dep_key] = all_data.get(dep_key, {})
-
-        sig = inspect.signature(analysis_func)
-        for param in sig.parameters:
-            # --- THIS IS THE FIX ---
-            # Only add from context if not already populated by a dependency.
-            if param in analysis_context and param not in func_kwargs:
-                func_kwargs[param] = analysis_context[param]
-
+        
         try:
             # Run async or sync analysis function
             if asyncio.iscoroutinefunction(analysis_func):
-                result = await analysis_func(**func_kwargs)
+                # Unpack the context and dependency kwargs into the function call
+                result = await analysis_func(**analysis_context, **func_kwargs)
             else:
                 # --- THIS IS THE FIX: Run sync functions in a thread executor ---
                 # This prevents synchronous, blocking calls (like DNS queries)
                 # from stalling the entire asyncio event loop.
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, lambda: analysis_func(**func_kwargs))
+                result = await loop.run_in_executor(None, lambda: analysis_func(**analysis_context, **func_kwargs))
         except Exception as e:
             console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
             if args.verbose:
@@ -128,7 +125,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
 
     # Execute all modules based on the dependency graph
     # We must iterate over a copy, as dependencies might add modules to run
-    for module in list(modules_to_run):
+    for module in list(modules_to_run): # Iterate over a copy because dependencies might add modules to run
         await execute_module(module)
 
     display_critical_findings(all_data, args.quiet)

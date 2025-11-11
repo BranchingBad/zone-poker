@@ -5,48 +5,15 @@ Contains all functions for rendering rich output to the console
 and formatting text for reports.
 """
 import datetime
-from typing import Dict, List, Any, Callable
-from functools import wraps
 from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 from rich import box
 from rich.text import Text
-
 # Import shared config and utilities
 from .config import console, RECORD_TYPES
-
-def console_display_handler(title: str):
-    """
-    A decorator to handle common boilerplate for console display functions.
-    - Checks for `quiet` mode or empty data.
-    - Handles and displays a standardized error panel if `data['error']` exists.
-    - Prints a newline after the content is displayed.
-    """
-    def decorator(func: Callable):
-        @wraps(func)
-        def wrapper(data: dict, quiet: bool, *args, **kwargs):
-            if quiet or not data:
-                return
-
-            # --- THIS IS THE FIX ---
-            # Ensure data is a dictionary before trying to call .get() on it.
-            if not isinstance(data, dict):
-                console.print(Panel(f"[dim]Could not display data. Received unexpected format: {str(data)}[/dim]", title=title, box=box.ROUNDED, border_style="dim"))
-                return
-
-            if data.get("error"):
-                panel = Panel(f"[dim]{data['error']}[/dim]", title=title, box=box.ROUNDED, border_style="dim")
-                console.print(panel)
-                console.print()
-                return
-            
-            # Call the original display function
-            func(data, quiet, *args, **kwargs)
-            console.print() # Ensure consistent spacing
-
-        return wrapper
-    return decorator
+from .display_utils import console_display_handler
+from typing import Dict, List, Any, Callable
 
 @console_display_handler("DNS Records Discovery")
 def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False):

@@ -7,8 +7,8 @@ import dns.exception
 # import dns.asyncquery # No longer needed
 from typing import Dict, List, Any, Optional
 from ..config import console
-
-async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, timeout: int, verbose: bool, **kwargs) -> Dict[str, Any]:
+ 
+async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: int, verbose: bool, records: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
     Attempts a zone transfer (AXFR) against all authoritative nameservers.
     Checks both A and AAAA records for nameservers.

@@ -8,7 +8,7 @@ import argparse # Added import
 
 ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 
-def analyze_reputation(domain: str, records: dict, args: argparse.Namespace, **kwargs) -> dict:
+def analyze_reputation(domain: str, args: argparse.Namespace, records: dict, **kwargs) -> dict:
     """
     Checks the reputation of domain IPs against AbuseIPDB.
 
