@@ -39,10 +39,10 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
         all_data = await run_analysis_modules(modules_to_run, domain, args)
         
         if args.output != 'table':
-            handle_output(all_data, args.output, args.csv_output, args.json_output)
+            handle_output(all_data, args.output)
 
         if getattr(args, 'export', False):
-            export_reports(domain, all_data, args.csv_output, args.json_output)
+            export_reports(domain, all_data)
 
     except dns.resolver.NXDOMAIN:
         logger.error(f"Error: The domain '{domain}' does not exist (NXDOMAIN).")
