@@ -3,9 +3,8 @@
 Zone-poker - Export Module
 Contains functions for exporting reports to files.
 """
-import json
-import io
-import csv
+import json # Keep for JSON file export
+import importlib
 from datetime import datetime
 from typing import Dict, Any
 from pathlib import Path
@@ -17,9 +16,9 @@ from .utils import get_desktop_path
 from .dispatch_table import MODULE_DISPATCH_TABLE
 from .display import export_txt_summary, export_txt_critical_findings
 
-def export_reports(domain: str, all_data: Dict[str, Any], csv_output: str = None, json_output: str = None):
+def export_reports(domain: str, all_data: Dict[str, Any]):
     """
-    Export JSON, TXT, CSV reports to the specified files or Desktop.
+    Export JSON and TXT reports to the Desktop.
     
     The TXT report is generated dynamically by looping through the
     MODULE_DISPATCH_TABLE and calling each module's 'export_func'.
@@ -38,11 +37,15 @@ def export_reports(domain: str, all_data: Dict[str, Any], csv_output: str = None
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
+    json_file = save_path / f"{domain}_dnsint_{timestamp}.json"
+    txt_file = save_path / f"{domain}_dnsint_{timestamp}.txt"
+    
     # --- JSON Export (Cleaned) ---
     export_data = {
         "domain": all_data.get("domain"),
         "scan_timestamp": all_data.get("scan_timestamp"),
         "export_timestamp": datetime.now().isoformat(),
+        "export_location": str(save_path)
     }
 
     # Add data from each module, using the data_key from the dispatch table
@@ -52,40 +55,10 @@ def export_reports(domain: str, all_data: Dict[str, Any], csv_output: str = None
         if data_key in all_data and all_data[data_key]:
             export_data[data_key] = all_data[data_key]
     
-    exported_files = []
-
-    # Export to JSON file
-    if json_output:
-        json_file = Path(json_output)
-    else:
-        json_file = save_path / f"{domain}_dnsint_{timestamp}.json"
-    
     with open(json_file, "w") as f:
         json.dump(export_data, f, indent=2, default=str)
-    exported_files.append(str(json_file))
-
-    # Export to CSV file
-    if csv_output:
-        csv_file = Path(csv_output)
-        with open(csv_file, "w", newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['module', 'key', 'value'])
-            for module_name, config in MODULE_DISPATCH_TABLE.items():
-                data_key = config["data_key"]
-                if data_key in all_data and all_data[data_key]:
-                    data = all_data[data_key]
-                    if isinstance(data, dict):
-                        for key, value in data.items():
-                            writer.writerow([data_key, key, str(value)])
-                    elif isinstance(data, list):
-                        for item in data:
-                            writer.writerow([data_key, '', str(item)])
-                    else:
-                        writer.writerow([data_key, '', str(data)])
-        exported_files.append(str(csv_file))
-
+    
     # --- TXT Report Generation ---
-    txt_file = save_path / f"{domain}_dnsint_{timestamp}.txt"
     report_content = []
     report_content.append(f"DNS Intelligence Report for: {domain}")
     report_content.append(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -121,54 +94,33 @@ def export_reports(domain: str, all_data: Dict[str, Any], csv_output: str = None
     # Write the combined report string to the file
     with open(txt_file, "w") as f:
         f.write("\n".join(report_content))
-    exported_files.append(str(txt_file))
 
-    console.print(f"\n✓ Reports exported to:")
-    for file_path in exported_files:
-        console.print(f"  → {file_path}")
-    console.print("")
+    console.print(f"\n✓ Reports exported to {save_path}:")
+    console.print(f"  → {json_file}")
+    console.print(f"  → {txt_file}\n")
 
 
-
-def handle_output(all_data: Dict[str, Any], output_format: str, csv_output: str = None, json_output: str = None):
+def handle_output(all_data: Dict[str, Any], output_format: str):
     """
-    Handles the output of the scan data in the specified format.
+    Dynamically handles the output of scan data based on the specified format.
+    It loads the appropriate module from the `modules.output` package.
     """
-    if output_format == 'json':
-        # Prepare data for JSON output, similar to file export
-        export_data = {
-            "domain": all_data.get("domain"),
-            "scan_timestamp": all_data.get("scan_timestamp"),
-        }
-        for module_name, config in MODULE_DISPATCH_TABLE.items():
-            data_key = config["data_key"]
-            if data_key in all_data and all_data[data_key]:
-                export_data[data_key] = all_data[data_key]
-        
-        console.print(json.dumps(export_data, indent=2, default=str))
-        if json_output:
-            export_reports(all_data['domain'], all_data, json_output=json_output)
+    # The 'table' format is handled directly by the orchestrator during the scan.
+    if output_format == "table":
+        return
 
-    elif output_format == 'csv':
-        # For CSV, we'll create a simple key-value representation.
-        # This is a simplistic approach and might need refinement for complex nested data.
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['module', 'key', 'value'])
-
-        for module_name, config in MODULE_DISPATCH_TABLE.items():
-            data_key = config["data_key"]
-            if data_key in all_data and all_data[data_key]:
-                data = all_data[data_key]
-                if isinstance(data, dict):
-                    for key, value in data.items():
-                        writer.writerow([data_key, key, str(value)])
-                elif isinstance(data, list):
-                    for item in data:
-                        writer.writerow([data_key, '', str(item)])
-                else:
-                    writer.writerow([data_key, '', str(data)])
-        
-        console.print(output.getvalue())
-        if csv_output:
-            export_reports(all_data['domain'], all_data, csv_output=csv_output)
+    try:
+        # Dynamically import the requested output module
+        output_module = importlib.import_module(
+            f".output.{output_format}", package="modules"
+        )
+        # Call the 'output' function within that module
+        output_module.output(all_data)
+    except ImportError:
+        console.print(
+            f"[bold red]Error: Output format '{output_format}' is not supported.[/bold red]"
+        )
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred while generating '{output_format}' output: {e}[/bold red]"
+        )

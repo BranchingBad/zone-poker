@@ -55,11 +55,11 @@ def get_parent_zone(domain: str) -> str | None:
 
 # --- Helper Functions Moved from Analysis.py ---
 
-def _format_rdata(rtype: str, rdata: Any, ttl: int) -> Dict[str, Any]:
+def _format_rdata(rtype: str, rdata: Any, ttl: int, name: str = "") -> Dict[str, Any]:
     """
     Formats a single dnspython rdata object into a standardized dictionary.
     """
-    record_info = {"ttl": ttl}
+    record_info = {"ttl": ttl, "name": name}
     if rtype == "MX":
         record_info.update({
             "value": str(rdata.exchange),

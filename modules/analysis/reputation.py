@@ -8,7 +8,7 @@ import argparse # Added import
 
 ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 
-def analyze_reputation(domain: str, args: argparse.Namespace, records: dict, **kwargs) -> dict:
+async def analyze_reputation(domain: str, args: argparse.Namespace, records: dict, **kwargs) -> dict:
     """
     Checks the reputation of domain IPs against AbuseIPDB.
 
@@ -38,34 +38,36 @@ def analyze_reputation(domain: str, args: argparse.Namespace, records: dict, **k
         'Key': api_key
     }
 
-    # Use httpx for async requests in the future if needed, but for simplicity,
-    # we'll use synchronous requests here. httpx is a good choice as it supports both.
-    with httpx.Client(timeout=args.timeout) as client:
-        for ip in set(ip_addresses): # Use set to avoid duplicate checks
+    async def check_ip(ip: str, client: httpx.AsyncClient):
+        """Inner function to check a single IP."""
+        try:
             params = {
                 'ipAddress': ip,
                 'maxAgeInDays': '90'
             }
-            try:
-                response = client.get(ABUSEIPDB_ENDPOINT, headers=headers, params=params)
-                response.raise_for_status()  # Raise an exception for 4xx/5xx responses
-                
-                data = response.json().get('data', {})
-                results[ip] = {
-                    "abuseConfidenceScore": data.get("abuseConfidenceScore"),
-                    "countryCode": data.get("countryCode"),
-                    "usageType": data.get("usageType"),
-                    "isp": data.get("isp"),
-                    "totalReports": data.get("totalReports"),
-                    "lastReportedAt": data.get("lastReportedAt"),
-                }
+            response = await client.get(ABUSEIPDB_ENDPOINT, headers=headers, params=params)
+            response.raise_for_status()  # Raise an exception for 4xx/5xx responses
+            
+            data = response.json().get('data', {})
+            results[ip] = {
+                "abuseConfidenceScore": data.get("abuseConfidenceScore"),
+                "countryCode": data.get("countryCode"),
+                "usageType": data.get("usageType"),
+                "isp": data.get("isp"),
+                "totalReports": data.get("totalReports"),
+                "lastReportedAt": data.get("lastReportedAt"),
+            }
 
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 401:
-                    results[ip] = {"error": "Authentication failed (invalid API key)."}
-                else:
-                    results[ip] = {"error": f"HTTP error {e.response.status_code}: {e.response.text}"}
-            except httpx.RequestError as e:
-                results[ip] = {"error": f"Connection error: {e}"}
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                results[ip] = {"error": "Authentication failed (invalid API key)."}
+            else:
+                results[ip] = {"error": f"HTTP error {e.response.status_code}: {e.response.text}"}
+        except httpx.RequestError as e:
+            results[ip] = {"error": f"Connection error: {e}"}
+
+    async with httpx.AsyncClient(timeout=args.timeout) as client:
+        tasks = [check_ip(ip, client) for ip in set(ip_addresses)]
+        await asyncio.gather(*tasks)
 
     return results

@@ -70,15 +70,12 @@ An argument on the command line will *always* override a setting in the config f
 For modules that use third-party APIs (like OSINT enrichment), you can provide API keys in your config file to avoid rate-limiting.
 
 **Example `config.yaml`:**
-```jsonc
-{
-    "timeout": 10,
-    "verbose": true,
-    "api_keys": {
-        "otx": "your_alienvault_otx_api_key_here",
-        "abuseipdb": "your_abuseipdb_api_key_here"
-    }
-}
+```yaml
+timeout: 10
+verbose: true
+api_keys:
+  otx: "your_alienvault_otx_api_key_here"
+  abuseipdb: "your_abuseipdb_api_key_here"
 ```
 ---
 ## 🚀 Usage

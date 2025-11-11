@@ -12,6 +12,7 @@ from rich.panel import Panel
 from rich.tree import Tree
 from rich import box
 from ..config import console
+from ..display import _create_report_section
 from ..display_utils import console_display_handler
 # --- End example ---
 
@@ -100,5 +101,4 @@ def _format_subdomain_takeover_txt(data: Dict[str, Any]) -> List[str]:
 
 def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
     """Formats Subdomain Takeover for the text report."""
-    report_lines = _format_subdomain_takeover_txt(data)
-    return "\n".join(report_lines)
+    return _create_report_section("Subdomain Takeover", data, _format_subdomain_takeover_txt)
