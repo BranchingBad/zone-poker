@@ -14,6 +14,9 @@ from rich.text import Text
 from .config import console, RECORD_TYPES
 from .display_utils import console_display_handler
 from typing import Dict, List, Any, Callable
+import logging
+
+logger = logging.getLogger(__name__)
 
 def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
     """Helper to format the 'Extra' column for the DNS records table."""
@@ -214,18 +217,27 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
         if result.get("ips"):
             all_ips.update(result["ips"])
 
+    # A list of distinct, named colors that are safe for most terminals.
+    # We'll cycle through these colors for different IPs.
+    safe_colors = [
+        "cyan", "magenta", "yellow", "green", "blue",
+        "bright_cyan", "bright_magenta", "bright_yellow",
+        "bright_green", "bright_blue"
+    ]
+
     # Sort all unique IPs to ensure stable color assignment
-    color_map = {ip: f"color({i+1})" for i, ip in enumerate(sorted(list(all_ips)))}
+    color_map = {ip: safe_colors[i % len(safe_colors)] for i, ip in enumerate(sorted(list(all_ips)))}
 
     for server, result in data.items():
         if error := result.get("error"):
             table.add_row(server, f"[red]{error}[/red]")
         else:
             ip_text = Text()
-            # Sort the IPs for each resolver to ensure consistent display order
+            # Sort the IPs for each resolver to ensure consistent display order.
+            # The `append` method with a `style` argument is the correct way to add styled text.
             for ip in sorted(result.get("ips", [])):
                 color = color_map.get(ip, "white")
-                ip_text.append(f"[{color}]{ip}[/{color}]\n")
+                ip_text.append(f"{ip}\n", style=color)
             table.add_row(server, ip_text)
 
     table.caption = f"Checked across {len(data)} resolvers."
@@ -569,10 +581,16 @@ def _create_report_section(title: str, data: Dict[str, Any], formatter: Callable
     if not data: # Check if the dictionary is empty
         report.append("No data found for this section.")
     elif data.get("error"):
-        report.append(f"  Error: {data['error']}")
+        error_msg = data['error']
+        report.append(f"  Error: {error_msg}")
+        logger.debug(f"Skipping report section '{title}' due to pre-existing error: {error_msg}")
     else:
-        # The formatter function returns a list of content lines
-        report.extend(formatter(data))
+        try:
+            # The formatter function returns a list of content lines
+            report.extend(formatter(data))
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in the formatter for the '{title}' report section: {e}", exc_info=True)
+            report.append(f"  Error: Could not format data for this section due to an unexpected error: {e}")
     return "\n".join(report)
 
 def export_txt_critical_findings(data: Dict[str, Any]) -> str:
@@ -1026,6 +1044,14 @@ def _format_cloud_enum_txt(data: Dict[str, Any]) -> List[str]:
 @console_display_handler("IP Geolocation")
 def display_ip_geolocation(data: dict, quiet: bool = False):
     """Creates a rich Table of IP Geolocation results."""
+    # --- IMPROVEMENT: Handle global errors and empty data sets ---
+    if not data:
+        return Panel("[dim]No IP addresses were geolocated.[/dim]", title="IP Geolocation", box=box.ROUNDED, border_style="dim")
+    
+    if "error" in data:
+        error_message = f"[red]Error: {data['error']}[/red]"
+        return Panel(error_message, title="IP Geolocation", box=box.ROUNDED, border_style="red")
+
     table = Table(title="IP Geolocation", box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("IP Address", style="bold", width=20)
     table.add_column("Country")
@@ -1134,6 +1160,34 @@ def export_txt_smtp(data: Dict[str, Any]) -> str:
     """Formats SMTP analysis for the text report."""
     return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
 
+def export_txt_reputation(data: Dict[str, Any]) -> str:
+    """Formats IP reputation analysis for the text report."""
+    return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
+
+def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats SSL/TLS analysis for the text report."""
+    report = [
+        f"Subject: {data.get('subject', 'N/A')}",
+        f"Issuer: {data.get('issuer', 'N/A')}",
+        f"Valid From: {datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_from') else 'N/A'}",
+        f"Valid Until: {datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_until') else 'N/A'}"
+    ]
+    if data.get('sans'):
+        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
+    return report
+
+def _format_geolocation_txt(data: Dict[str, Any]) -> List[str]:
+    """Helper formatter for the geolocation text report."""
+    report = []
+    for ip, info in data.items():
+        # This check handles per-IP errors (e.g., for a private IP)
+        if isinstance(info, dict) and info.get("error"):
+            report.append(f"  - {ip}: Error - {info['error']}")
+        # This handles a successful lookup
+        elif isinstance(info, dict):
+            report.append(f"  - {ip}: {info.get('city', 'N/A')}, {info.get('country', 'N/A')} (ISP: {info.get('isp', 'N/A')})")
+    return report
+
 def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
     """Formats IP reputation analysis for the text report."""
     if not data:
@@ -1152,20 +1206,4 @@ def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
             report.append(f"  - {ip}: Score: {score}, Reports: {info.get('totalReports', 0)}, Last Reported: {last_reported}")
         else:
             report.append(f"  - {ip}: Unexpected data format - {str(info)}")
-    return report
-
-def export_txt_reputation(data: Dict[str, Any]) -> str:
-    """Formats IP reputation analysis for the text report."""
-    return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
-
-def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats SSL/TLS analysis for the text report."""
-    report = [
-        f"Subject: {data.get('subject', 'N/A')}",
-        f"Issuer: {data.get('issuer', 'N/A')}",
-        f"Valid From: {datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_from') else 'N/A'}",
-        f"Valid Until: {datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_until') else 'N/A'}"
-    ]
-    if data.get('sans'):
-        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
     return report

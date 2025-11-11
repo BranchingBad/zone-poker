@@ -17,29 +17,54 @@ from .config import console, PUBLIC_RESOLVERS
 from .dispatch_table import MODULE_DISPATCH_TABLE
 from .display import display_summary, display_critical_findings
 
-def _topological_sort(modules_to_run: List[str]) -> List[str]:
+def _create_execution_plan(initial_modules: List[str]) -> List[str]:
     """
-    Performs a topological sort on the modules to determine the correct execution order based on dependencies.
+    Creates a complete and ordered execution plan by performing a topological sort.
+
+    This function automatically includes all transitive dependencies for the requested
+    modules and detects any circular dependencies in the graph.
+
+    Raises:
+        ValueError: If a circular dependency is detected.
+
+    Returns:
+        A list of module names in the correct order of execution.
     """
+    # 1. Build the full set of modules to run, including all dependencies
+    modules_to_run: Set[str] = set()
+    queue = deque(initial_modules)
+    while queue:
+        module = queue.popleft()
+        if module not in modules_to_run:
+            modules_to_run.add(module)
+            for dep in MODULE_DISPATCH_TABLE.get(module, {}).get("dependencies", []):
+                queue.append(dep)
+
+    # 2. Perform topological sort (Kahn's algorithm)
     in_degree = {module: 0 for module in MODULE_DISPATCH_TABLE}
     adj = {module: [] for module in MODULE_DISPATCH_TABLE}
-    
     for module, details in MODULE_DISPATCH_TABLE.items():
         for dep in details.get("dependencies", []):
             adj[dep].append(module)
             in_degree[module] += 1
 
-    # Use a deque for an efficient queue
-    queue = deque([module for module in modules_to_run if in_degree[module] == 0])
+    # Initialize the queue with all nodes in our target set that have an in-degree of 0
+    sort_queue = deque([m for m in modules_to_run if in_degree[m] == 0])
     sorted_order = []
 
-    while queue:
-        u = queue.popleft()
+    while sort_queue:
+        u = sort_queue.popleft()
         sorted_order.append(u)
         for v in adj[u]:
-            in_degree[v] -= 1
-            if in_degree[v] == 0 and v in modules_to_run:
-                queue.append(v)
+            if v in modules_to_run:
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    sort_queue.append(v)
+
+    # 3. Check for cycles
+    if len(sorted_order) != len(modules_to_run):
+        raise ValueError("Circular dependency detected in modules. Please check the `dependencies` in `dispatch_table.py`.")
+
     return sorted_order
 async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any) -> Dict[str, Any]:
     """
@@ -78,7 +103,7 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
 
     # Determine the correct execution order for modules based on their dependencies.
     # This avoids recursive calls and simplifies the execution flow.
-    execution_plan = _topological_sort(modules_to_run)
+    execution_plan = _create_execution_plan(modules_to_run)
 
     for module_name in execution_plan:
         module_info = MODULE_DISPATCH_TABLE[module_name]
