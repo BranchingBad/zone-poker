@@ -49,8 +49,6 @@ def _get_resolver(timeout: int) -> dns.resolver.Resolver:
 async def get_dns_records(domain: str, timeout: int, verbose: bool, record_types: Optional[List[str]] = None) -> Dict[str, List[Dict[str, Any]]]:
     """
     Asynchronously queries for multiple DNS record types for a given domain.
-    Uses the provided centralized resolver.
-    Can optionally query only for specific record types.
     """
     resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     records = {}
@@ -87,7 +85,6 @@ async def get_dns_records(domain: str, timeout: int, verbose: bool, record_types
 async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
-    Uses the provided centralized resolver.
     """
     resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     ptr_results = {}
@@ -125,7 +122,6 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     ns_records = records.get("NS", [])
     if not ns_records:
         axfr_results["status"] = "Skipped (No NS records found)"
-        # --- THIS IS THE CORRECTED LINE ---
         return axfr_results
 
     nameservers = [record["value"] for record in ns_records]
@@ -437,7 +433,8 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     osint_data = {"subdomains": [], "passive_dns": []}
     
     # Example: Query AlienVault OTX for passive DNS
-    url = f"httpsD://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
+    # --- THIS LINE IS FIXED (typo) ---
+    url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
     headers = {"Accept": "application/json"}
     
     # Check for API key in the merged config (passed via args)
