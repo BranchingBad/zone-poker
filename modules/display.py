@@ -948,6 +948,23 @@ def display_cloud_enum(data: dict, quiet: bool = False):
 
     console.print(panel)
 
+@console_display_handler("DNS Blocklist (DNSBL) Check")
+def display_dnsbl_check(data: dict, quiet: bool = False):
+    """Displays DNSBL check results in a panel."""
+    listed_ips = data.get("listed_ips", [])
+
+    if not listed_ips:
+        panel = Panel("[green]✓ No discovered IPs were found on common DNS blocklists.[/green]", title="DNS Blocklist (DNSBL) Check", box=box.ROUNDED)
+    else:
+        tree = Tree(f"[bold red]✗ Found {len(listed_ips)} IP(s) on DNS blocklists![/bold red]")
+        for item in listed_ips:
+            node = tree.add(f"[yellow]{item['ip']}[/yellow]")
+            node.add(f"Listed on: [dim]{', '.join(item.get('listed_on', []))}[/dim]")
+        panel = Panel(tree, title="DNS Blocklist (DNSBL) Check", box=box.ROUNDED, border_style="red")
+
+    console.print(panel)
+
+
 def _format_http_headers_txt(data: Dict[str, Any]) -> List[str]:
     """Formats HTTP Security Headers for the text report."""
     report = [f"Final URL: {data.get('final_url')}\n"]
@@ -1054,6 +1071,21 @@ def export_txt_port_scan(data: Dict[str, Any]) -> str:
 def export_txt_cloud_enum(data: Dict[str, Any]) -> str:
     """Formats Cloud Enumeration for the text report."""
     return _create_report_section("Cloud Service Enumeration", data, _format_cloud_enum_txt)
+
+def _format_dnsbl_check_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats DNSBL check for the text report."""
+    listed_ips = data.get("listed_ips", [])
+    if not listed_ips:
+        return ["No IP addresses found on common DNS blocklists."]
+    report = [f"Found {len(listed_ips)} IP(s) on DNS blocklists:"]
+    for item in listed_ips:
+        report.append(f"\n  - IP Address: {item['ip']}")
+        report.append(f"    Listed on: {', '.join(item.get('listed_on', []))}")
+    return report
+
+def export_txt_dnsbl_check(data: Dict[str, Any]) -> str:
+    """Formats DNSBL check for the text report."""
+    return _create_report_section("DNS Blocklist (DNSBL) Check", data, _format_dnsbl_check_txt)
 
 def _format_subdomain_takeover_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Subdomain Takeover for the text report."""

@@ -28,6 +28,7 @@ from modules.analysis.http_headers import analyze_http_headers
 from modules.analysis.port_scan import scan_ports
 from modules.analysis.subdomain_takeover import check_subdomain_takeover
 from modules.analysis.cloud_enum import enumerate_cloud_services
+from modules.analysis.dnsbl import check_dnsbl
 
 # Import all display and export functions
 from modules.display import (
@@ -35,9 +36,9 @@ from modules.display import (
     display_whois_info, display_nameserver_analysis, display_propagation, display_security_audit,
     display_technology_info, display_osint_results, display_ssl_info, display_smtp_info,
     display_reputation_info, display_content_hash_info, display_ct_logs, display_waf_detection,
-    display_dane_analysis, display_ip_geolocation, display_http_headers, display_port_scan,
-    display_subdomain_takeover, display_cloud_enum, export_txt_records, export_txt_ptr, export_txt_zone,
-    export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security,
+    display_dane_analysis, display_ip_geolocation, display_http_headers, display_port_scan, display_subdomain_takeover,
+    display_cloud_enum, display_dnsbl_check, export_txt_records, export_txt_ptr, export_txt_zone,
+    export_txt_mail, export_txt_whois, export_txt_nsinfo, export_txt_propagation, export_txt_security, export_txt_dnsbl_check,
     export_txt_tech, export_txt_osint, export_txt_ssl, export_txt_smtp, export_txt_reputation,
     export_txt_content_hash, export_txt_ct_logs, export_txt_waf_detection, export_txt_dane,
     export_txt_geolocation, export_txt_http_headers, export_txt_port_scan,
@@ -241,7 +242,16 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_cloud_enum,
         "description": "Enumerating cloud services...",
         "arg_info": {"short": None, "long": "--cloud", "help": "Enumerate common cloud services (e.g., S3 buckets)."}
-    }
+    },
+    "dnsbl": {
+        "data_key": "dnsbl_info",
+        "analysis_func": check_dnsbl,
+        "display_func": display_dnsbl_check,
+        "export_func": export_txt_dnsbl_check,
+        "description": "Checking IPs against DNS blocklists...",
+        "dependencies": ["records"],
+        "arg_info": {"short": None, "long": "--dnsbl", "help": "Check discovered IPs against common DNS blocklists."}
+    },
 }
 
 def register_module_args(parser: argparse.ArgumentParser):

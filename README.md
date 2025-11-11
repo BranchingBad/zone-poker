@@ -155,6 +155,7 @@ Run specific modules by adding their flags.
 | `--ports` | Port Scan | Scan for common open TCP ports on discovered IPs. |
 | `--takeover` | Subdomain Takeover | Check for potential subdomain takeovers on CNAME records. |
 | `--cloud` | Cloud Enumeration | Enumerate common cloud services (e.g., S3 buckets). |
+| `--dnsbl` | DNSBL Check | Check discovered IPs against common DNS blocklists. |
 
 ---
 

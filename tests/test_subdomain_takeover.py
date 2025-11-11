@@ -78,3 +78,28 @@ async def test_subdomain_takeover_network_error(caplog):
     assert len(results["vulnerable"]) == 0
     # Check that the error was logged at the debug level
     assert "Subdomain takeover check for http://error.example.com failed: Connection failed" in caplog.text
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_subdomain_takeover_missing_name_key():
+    """
+    Test that a CNAME record missing the 'name' key is handled gracefully.
+    This verifies the fix for inconsistent data from the dns_records module.
+    """
+    records = {
+        "CNAME": [
+            {"value": "some.service.com"},  # This record is missing the 'name' key
+            {"name": "vuln.example.com", "value": "pages.github.com"},
+        ]
+    }
+
+    # Mock the vulnerable response for the valid CNAME record
+    github_fingerprint = TAKEOVER_FINGERPRINTS["GitHub Pages"]
+    respx.get("http://vuln.example.com").respond(200, text=github_fingerprint)
+
+    results = await check_subdomain_takeover(records)
+
+    # The function should ignore the malformed record and find the valid one.
+    assert len(results["vulnerable"]) == 1
+    assert results["vulnerable"][0]["subdomain"] == "vuln.example.com"

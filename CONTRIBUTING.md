@@ -58,11 +58,16 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 
 ## Development Guidelines
 
+-   **Separation of Concerns**: The project maintains a strict separation between analysis logic and presentation (display) logic.
+    -   **Analysis Modules (`modules/analysis/`)**: These modules should *only* contain the logic for gathering and processing data. They must not contain any `print()` statements or `rich` components. Their sole responsibility is to perform a task and return a data dictionary.
+    -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing output. It contains functions to display data in the console (using `rich`) and corresponding functions to format data for text reports (prefixed with `export_txt_`).
+
 -   **Adding a New Analysis Module**: To add a new module, you'll typically need to:
     1.  Create the analysis function in a new file under `modules/analysis/`.
-    2.  Create a corresponding display function in `modules/display.py`.
-    3.  Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`, linking the module name, functions, dependencies, and command-line flag.
-    4.  Write a unit test for your new analysis function in the `tests/` directory.
+    2.  Create a corresponding display function (e.g., `display_my_module`) in `modules/display.py`.
+    3.  Create a text export function (e.g., `export_txt_my_module`) in `modules/display.py`.
+    4.  Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`, linking the module name, functions, dependencies, and command-line flag.
+    5.  Write a unit test for your new analysis function in the `tests/` directory.
 
 ## Code of Conduct
 
