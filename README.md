@@ -132,6 +132,7 @@ Run specific modules by adding their flags.
 | `--dane` | DANE/TLSA Analysis | Check for DANE (TLSA) records for HTTPS. |
 | `--geo` | IP Geolocation | Geolocate IP addresses from A/AAAA records. |
 | `--headers` | HTTP Headers | Perform an in-depth analysis of HTTP security headers. |
+| `--ports` | Port Scan | Scan for common open TCP ports on discovered IPs. |
 
 ---
 

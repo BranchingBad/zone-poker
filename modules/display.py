@@ -836,6 +836,25 @@ def display_http_headers(data: dict, quiet: bool):
     console.print(Panel(tree, title="HTTP Security Headers Analysis", box=box.ROUNDED))
     console.print()
 
+def display_port_scan(data: dict, quiet: bool):
+    """Displays Open Port Scan results in a table."""
+    if quiet or not data:
+        return
+
+    table = Table(title="Open Port Scan", box=box.ROUNDED, show_header=True, header_style=None)
+    table.add_column("IP Address", style="bold", width=20)
+    table.add_column("Open Ports")
+
+    if not data:
+        table.add_row("[dim]No open ports found among common ports.[/dim]", "")
+    else:
+        for ip, ports in data.items():
+            ports_str = ", ".join(map(str, ports))
+            table.add_row(ip, f"[green]{ports_str}[/green]")
+
+    console.print(table)
+    console.print()
+
 def export_txt_dane(data: Dict[str, Any]) -> str:
     """Formats DANE/TLSA analysis for the text report."""
     report = ["--- DANE/TLSA Record Analysis ---"]
@@ -936,6 +955,19 @@ def export_txt_http_headers(data: Dict[str, Any]) -> str:
             report.append("\nRecommendations:")
             for rec in recommendations:
                 report.append(f"  • {rec}")
+
+    report.append("\n")
+    return "\n".join(report)
+
+def export_txt_port_scan(data: Dict[str, Any]) -> str:
+    """Formats Open Port Scan for the text report."""
+    report = ["--- Open Port Scan ---"]
+    if not data:
+        report.append("No open ports found among common ports.")
+    else:
+        for ip, ports in data.items():
+            ports_str = ", ".join(map(str, ports))
+            report.append(f"  - {ip}: {ports_str}")
 
     report.append("\n")
     return "\n".join(report)
