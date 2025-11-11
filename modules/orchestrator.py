@@ -7,7 +7,7 @@ and displaying results.
 import asyncio
 import argparse
 import inspect
-import dns.resolver # --- THIS IS THE FIX (reverted to standard resolver) ---
+import dns.resolver # Keep this for exception handling if needed, or remove
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -161,21 +161,12 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()}
     }
 
-    # --- Centralized Resolver Added ---
-    # --- THIS IS THE FIX ---
-    # Use the standard SYNCHRONOUS resolver. We will call it via asyncio.to_thread
-    resolver = dns.resolver.Resolver(configure=False)
-    resolver.set_flags(0)
-    resolver.timeout = args.timeout
-    resolver.lifetime = args.timeout
-    # Force public DNS servers to bypass local stub resolvers (like 127.0.0.53)
-    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
-
+    # --- Centralized Resolver REMOVED ---
 
     # Context of all available data for analysis functions
     analysis_context = {
         "domain": domain,
-        "resolver": resolver, # Pass the single resolver to all functions
+        # "resolver": resolver, # REMOVED
         "all_data": all_data, # Allows functions to access results from other modules
         "args": args, # Added to pass full args namespace to functions
         **vars(args) # Add timeout, verbose, etc.

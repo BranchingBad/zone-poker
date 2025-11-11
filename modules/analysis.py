@@ -34,15 +34,25 @@ from .utils import join_txt_chunks, get_parent_zone, _format_rdata, _parse_spf_r
 # --- Helper Functions (REMOVED) ---
 # _format_rdata and _parse_spf_record have been moved to utils.py
 
+# --- THIS IS THE FIX ---
+def _get_resolver(timeout: int) -> dns.resolver.Resolver:
+    """Helper function to create a robust, standard resolver."""
+    resolver = dns.resolver.Resolver(configure=False)
+    resolver.set_flags(0)
+    resolver.timeout = timeout
+    resolver.lifetime = timeout
+    resolver.nameservers = ['8.8.8.8', '1.1.1.1', '9.9.9.9']
+    return resolver
+
 # --- Analysis Functions ---
 
-async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose: bool, record_types: Optional[List[str]] = None) -> Dict[str, List[Dict[str, Any]]]:
+async def get_dns_records(domain: str, timeout: int, verbose: bool, record_types: Optional[List[str]] = None) -> Dict[str, List[Dict[str, Any]]]:
     """
     Asynchronously queries for multiple DNS record types for a given domain.
     Uses the provided centralized resolver.
     Can optionally query only for specific record types.
     """
-    # Resolver is now passed in
+    resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     records = {}
     
     # If no specific types are given, use the default list from config
@@ -67,28 +77,25 @@ async def get_dns_records(domain: str, resolver: dns.resolver.Resolver, verbose:
             if verbose:
                 console.print(f"Error querying {rtype} for {domain}: {e}")
 
-    # --- THIS BLOCK IS THE FIX ---
     # We use a sequential for loop instead of asyncio.gather()
     # to avoid being rate-limited by public DNS servers.
     for rtype in types_to_query:
         await query_type(rtype)
-    # --- END OF FIX ---
     
     return records
 
-async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, str]:
+async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, str]:
     """
     Performs reverse DNS (PTR) lookups for all A and AAAA records found.
     Uses the provided centralized resolver.
     """
+    resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     ptr_results = {}
     ips_to_check = []
     for rtype in ("A", "AAAA"):
         for record in records.get(rtype, []):
             if record.get("value"):
                 ips_to_check.append(record["value"])
-
-    # Resolver is now passed in
 
     async def query_ptr(ip):
         try:
@@ -100,20 +107,19 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], resolver
         except Exception as e:
             ptr_results[ip] = f"Error: {e}"
 
-    # --- THIS BLOCK IS THE FIX ---
     # Use a sequential loop to avoid rate-limiting
     for ip in ips_to_check:
         if ip:
             await query_ptr(ip)
-    # --- END OF FIX ---
     
     return ptr_results
 
-async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, timeout: int, verbose: bool) -> Dict[str, Any]:
+async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
     """
     Attempts a zone transfer (AXFR) against all authoritative nameservers.
     Checks both A and AAAA records for nameservers.
     """
+    resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     axfr_results = {"status": "Not Attempted", "servers": {}}
     ns_records = records.get("NS", [])
     if not ns_records:
@@ -166,11 +172,9 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
                 if verbose:
                     console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
 
-    # --- THIS BLOCK IS THE FIX ---
     # Use a sequential loop to avoid rate-limiting
     for ns in nameservers:
         await try_axfr(ns)
-    # --- END OF FIX ---
     
     if any(s.get("status") == "Successful" for s in axfr_results["servers"].values()):
         axfr_results["summary"] = "Vulnerable (Zone Transfer Successful)"
@@ -179,10 +183,10 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], re
         
     return axfr_results
 
-async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver) -> Dict[str, Any]:
+async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str, Any]]], timeout: int) -> Dict[str, Any]:
     """Analyzes email security records (SPF, DMARC, DKIM)."""
+    resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     analysis = {}
-    # Resolver is passed in
 
     # SPF (No network call needed, uses existing records)
     spf_records = [r["value"] for r in records.get("TXT", []) if r["value"].startswith("v=spf1")]
@@ -238,14 +242,14 @@ async def whois_lookup(domain: str, verbose: bool) -> Dict[str, Any]:
             console.print(f"[bold red]Error in whois_lookup: {e}[/bold red]")
         return {"error": str(e)}
 
-async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver: dns.resolver.Resolver, verbose: bool) -> Dict[str, Any]:
+async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], timeout: int, verbose: bool) -> Dict[str, Any]:
     """Analyzes nameservers, checking IPs (A and AAAA) and DNSSEC support."""
+    resolver = _get_resolver(timeout) # --- THIS IS THE FIX ---
     ns_info = {}
     ns_records = records.get("NS", [])
     if not ns_records:
         return {"error": "No NS records found."}
 
-    # Resolver is passed in
     
     async def analyze_ns(ns_record):
         ns_name = ns_record["value"]
@@ -290,11 +294,9 @@ async def nameserver_analysis(records: Dict[str, List[Dict[str, Any]]], resolver
                 console.print(f"Error analyzing NS {ns_name}: {e}")
         ns_info[ns_name] = info
 
-    # --- THIS BLOCK IS THE FIX ---
     # Use a sequential loop to avoid rate-limiting
     for ns in ns_records:
         await analyze_ns(ns)
-    # --- END OF FIX ---
     
     # Check DNSSEC
     if records.get("DNSKEY") and records.get("DS"):
