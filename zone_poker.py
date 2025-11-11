@@ -10,6 +10,7 @@ import json
 import traceback # Keep for verbose error logging
 from datetime import datetime
 from typing import List
+import logging # Import logging
 
 # --- THESE IMPORTS ARE UPDATED ---
 from modules.orchestrator import run_analysis_modules
@@ -22,6 +23,8 @@ from modules.logger_config import initialize_logging
 from modules.config import console
 import dns.resolver
 from rich.progress import Progress # Import Progress
+
+logger = logging.getLogger(__name__) # Get logger instance
 
 async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run: List[str], progress: Progress = None, task_id=None):
     """
@@ -39,12 +42,14 @@ async def scan_domain(domain_name: str, args: argparse.Namespace, modules_to_run
             export_reports(domain, all_data)
 
     except dns.resolver.NXDOMAIN:
+        logger.error(f"Error: The domain '{domain}' does not exist (NXDOMAIN).")
         console.print(f"[bold red]Error: The domain '{domain}' does not exist (NXDOMAIN).[/bold red]")
     except KeyboardInterrupt:
         console.print(f"\n[bold yellow]Scan aborted by user.[/bold yellow]")
         # This will be caught by the main_wrapper and exit gracefully.
         raise
     except Exception as e:
+        logger.exception(f"An unexpected error occurred while scanning '{domain}': {e}")
         console.print(f"[bold red]An unexpected error occurred while scanning '{domain}': {e}[/bold red]")
         if getattr(args, 'verbose', False):
             console.print(f"\n[dim]{traceback.format_exc()}[/dim]")
@@ -61,6 +66,7 @@ async def main():
         return
 
     if not domains_to_scan:
+        logger.error("Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.")
         console.print("[bold red]Error: No target domain specified. Provide a domain, a file with '-f', or a config file with 'domain' or 'file' key.[/bold red]")
         parser.print_help()
         return
@@ -106,10 +112,12 @@ async def main():
                             currently_failed_domains.append(domain_name)
                             # Only print the final error on the last attempt
                             if attempt == num_retries:
+                                logger.error(f"Scan for domain '{domain_name}' failed permanently: {result}")
                                 console.print(f"[bold red]Scan for domain '{domain_name}' failed permanently: {result}[/bold red]")
                                 if getattr(args, 'verbose', False):
                                     # The traceback is already printed inside scan_domain for most errors,
                                     # but this catches exceptions from the gather/asyncio layer itself.
+                                    logger.exception(f"Unhandled exception during bulk scan for '{domain_name}'")
                                     console.print(f"[dim]{traceback.format_exc()}[/dim]")
                         else:
                             # Propagate KeyboardInterrupt
