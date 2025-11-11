@@ -748,11 +748,7 @@ def export_txt_tech(data: Dict[str, Any]) -> str:
 
 def _format_osint_txt(data: Dict[str, Any]) -> List[str]:
     """Formats OSINT Enrichment for the text report."""
-    report = ["="*15 + " OSINT Enrichment " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-        return "\n".join(report)
-    
+    report = []
     subdomains = data.get('subdomains', [])
     if subdomains:
         report.append("\nSubdomains:")
@@ -772,11 +768,7 @@ def export_txt_osint(data: Dict[str, Any]) -> str:
 
 def _format_content_hash_txt(data: Dict[str, Any]) -> List[str]:
     """Formats Content Hash analysis for the text report."""
-    report = ["="*15 + " Content & Favicon Hashes " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-        return "\n".join(report)
-
+    report = []
     if data.get("favicon_murmur32_hash"):
         report.append(f"  {'Favicon Murmur32 Hash:':<25}: {data['favicon_murmur32_hash']}")
     if data.get("page_sha256_hash"):
@@ -788,10 +780,7 @@ def export_txt_content_hash(data: Dict[str, Any]) -> str:
 
 def _format_ct_logs_txt(data: Dict[str, Any]) -> List[str]:
     """Formats CT Log analysis for the text report."""
-    report = ["="*15 + " Certificate Transparency Log Analysis " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-    
+    report = []
     subdomains = data.get('subdomains', [])
     if subdomains:
         report.append(f"Found {len(subdomains)} subdomains:")
@@ -799,7 +788,6 @@ def _format_ct_logs_txt(data: Dict[str, Any]) -> List[str]:
             report.append(f"  - {item}")
     else:
         report.append("No subdomains found in CT logs.")
-    report.append("\n")
     return report
 
 def export_txt_ct_logs(data: Dict[str, Any]) -> str:
@@ -807,33 +795,32 @@ def export_txt_ct_logs(data: Dict[str, Any]) -> str:
 
 def _format_waf_detection_txt(data: Dict[str, Any]) -> List[str]:
     """Formats WAF Detection analysis for the text report."""
-    report = ["--- WAF Detection ---"]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-    else:
-        detected_waf = data.get("detected_waf", "None")
-        if detected_waf != "None":
-            reason = data.get("details", {}).get("reason", "")
-            report.append(f"Identified: {detected_waf} (Reason: {reason})")
-        else:
-            report.append("No WAF identified from response headers.")
-    report.append("\n")
-    return report
+    detected_waf = data.get("detected_waf", "None")
+    if detected_waf != "None":
+        reason = data.get("details", {}).get("reason", "")
+        return [f"Identified: {detected_waf} (Reason: {reason})"]
+    return ["No WAF identified from response headers."]
 
 def export_txt_waf_detection(data: Dict[str, Any]) -> str:
     return _create_report_section("WAF Detection", data, _format_waf_detection_txt)
 
+def _format_dane_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats DANE/TLSA analysis for the text report."""
+    report = []
+    status = data.get("status", "Not Found")
+    report.append(f"Status for _443._tcp (HTTPS): {status}")
+    records = data.get("records", [])
+    if records:
+        report.append("\nRecords:")
+        report.extend([f"  - {record}" for record in records])
+    return report
+
+def export_txt_dane(data: Dict[str, Any]) -> str:
+    return _create_report_section("DANE/TLSA Record Analysis", data, _format_dane_txt)
+
+@console_display_handler("HTTP Security Headers Analysis")
 def display_http_headers(data: dict, quiet: bool):
     """Displays HTTP Security Header analysis in a panel."""
-    if quiet or not data:
-        return
-
-    if data.get("error"):
-        panel = Panel(f"[dim]{data['error']}[/dim]", title="HTTP Security Headers Analysis", box=box.ROUNDED, border_style="dim")
-        console.print(panel)
-        console.print()
-        return
-
     tree = Tree(f"[bold]HTTP Security Headers Analysis[/bold]\n[dim]Final URL: {data.get('final_url')}[/dim]")
 
     analysis = data.get("analysis", {})
@@ -861,32 +848,22 @@ def display_http_headers(data: dict, quiet: bool):
             rec_tree.add(f"• {rec}")
 
     console.print(Panel(tree, title="HTTP Security Headers Analysis", box=box.ROUNDED))
-    console.print()
 
-def display_port_scan(data: dict, quiet: bool):
+@console_display_handler("Open Port Scan")
+def display_port_scan(data: dict, quiet: bool = False):
     """Displays Open Port Scan results in a table."""
-    if quiet or not data:
-        return
-
     table = Table(title="Open Port Scan", box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("IP Address", style="bold", width=20)
     table.add_column("Open Ports")
 
-    if not data:
-        table.add_row("[dim]No open ports found among common ports.[/dim]", "")
-    else:
-        for ip, ports in data.items():
-            ports_str = ", ".join(map(str, ports))
-            table.add_row(ip, f"[green]{ports_str}[/green]")
-
+    for ip, ports in data.items():
+        ports_str = ", ".join(map(str, ports))
+        table.add_row(ip, f"[green]{ports_str}[/green]")
     console.print(table)
-    console.print()
 
-def display_subdomain_takeover(data: dict, quiet: bool):
+@console_display_handler("Subdomain Takeover")
+def display_subdomain_takeover(data: dict, quiet: bool = False):
     """Displays Subdomain Takeover results in a panel."""
-    if quiet:
-        return
-
     vulnerable = data.get("vulnerable", [])
     
     if not vulnerable:
@@ -900,13 +877,10 @@ def display_subdomain_takeover(data: dict, quiet: bool):
         panel = Panel(tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red")
 
     console.print(panel)
-    console.print()
 
-def display_cloud_enum(data: dict, quiet: bool):
+@console_display_handler("Cloud Service Enumeration")
+def display_cloud_enum(data: dict, quiet: bool = False):
     """Displays Cloud Enumeration results in a panel."""
-    if quiet:
-        return
-
     s3_buckets = data.get("s3_buckets", [])
     azure_blobs = data.get("azure_blobs", [])
     
@@ -925,30 +899,57 @@ def display_cloud_enum(data: dict, quiet: bool):
         panel = Panel(tree, title="Cloud Service Enumeration", box=box.ROUNDED)
 
     console.print(panel)
-    console.print()
 
+def _format_http_headers_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats HTTP Security Headers for the text report."""
+    report = [f"Final URL: {data.get('final_url')}\n"]
+    analysis = data.get("analysis", {})
+    for header, info in analysis.items():
+        status = info.get("status", "Unknown")
+        value = info.get("value", "")
+        value_str = f" - Value: {value}" if value else ""
+        report.append(f"  - {header}: {status}{value_str}")
 
-def export_txt_dane(data: Dict[str, Any]) -> str:
-    """Formats DANE/TLSA analysis for the text report."""
-    report = ["--- DANE/TLSA Record Analysis ---"]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-    else:
-        status = data.get("status", "Not Found")
-        report.append(f"Status for _443._tcp (HTTPS): {status}")
-        records = data.get("records", [])
-        if records:
-            report.append("\nRecords:")
-            for record in records:
-                report.append(f"  - {record}")
-    report.append("\n")
-    return "\n".join(report)
+    recommendations = data.get("recommendations", [])
+    if recommendations:
+        report.append("\nRecommendations:")
+        report.extend([f"  • {rec}" for rec in recommendations])
+    return report
 
-def display_ip_geolocation(data: dict, quiet: bool):
+def export_txt_http_headers(data: Dict[str, Any]) -> str:
+    """Formats HTTP Security Headers for the text report."""
+    return _create_report_section("HTTP Security Headers Analysis", data, _format_http_headers_txt)
+
+def _format_port_scan_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats Open Port Scan for the text report."""
+    if not data:
+        return ["No open ports found among common ports."]
+    report = []
+    for ip, ports in data.items():
+        ports_str = ", ".join(map(str, ports))
+        report.append(f"  - {ip}: {ports_str}")
+    return report
+
+def _format_cloud_enum_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats Cloud Enumeration for the text report."""
+    report = []
+    s3_buckets = data.get("s3_buckets", [])
+    azure_blobs = data.get("azure_blobs", [])
+
+    if not s3_buckets and not azure_blobs:
+        report.append("No public S3 or Azure Blob containers found based on common permutations.")
+    if s3_buckets:
+        report.append("Discovered S3 Buckets:")
+        report.extend([f"  - {bucket_url}" for bucket_url in s3_buckets])
+    if azure_blobs:
+        if s3_buckets: report.append("") # Add a newline if S3 buckets were also found
+        report.append("Discovered Azure Blob Containers:")
+        report.extend([f"  - {blob_url}" for blob_url in azure_blobs])
+    return report
+
+@console_display_handler("IP Geolocation")
+def display_ip_geolocation(data: dict, quiet: bool = False):
     """Displays IP Geolocation results in a table."""
-    if quiet or not data:
-        return
-
     table = Table(title="IP Geolocation", box=box.ROUNDED, show_header=True, header_style=None)
     table.add_column("IP Address", style="bold", width=20)
     table.add_column("Country")
@@ -966,161 +967,43 @@ def display_ip_geolocation(data: dict, quiet: bool):
                 info.get("isp", "N/A"),
             )
     console.print(table)
-    console.print()
 
 def export_txt_ssl(data: Dict[str, Any]) -> str:
     """Formats SSL/TLS analysis for the text report."""
-    report = ["--- SSL/TLS Certificate Analysis ---"]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-        report.append("\n")
-        return "\n".join(report)
-
-    report.append(f"Subject: {data.get('subject', 'N/A')}")
-    report.append(f"Issuer: {data.get('issuer', 'N/A')}")
-
-    valid_from_ts = data.get('valid_from')
-    if valid_from_ts:
-        report.append(f"Valid From: {datetime.datetime.fromtimestamp(valid_from_ts).strftime('%Y-%m-%d %H:%M:%S')}")
-    valid_until_ts = data.get('valid_until')
-    if valid_until_ts:
-        report.append(f"Valid Until: {datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d %H:%M:%S')}")
-
-    if data.get('sans'):
-        report.append("\nSubject Alternative Names:")
-        for s in data['sans']:
-            report.append(f"  - {s}")
-    return "\n".join(report)
+    return _create_report_section("SSL/TLS Certificate Analysis", data, _format_ssl_txt)
 
 def export_txt_geolocation(data: Dict[str, Any]) -> str:
     """Formats IP Geolocation for the text report."""
-    report = ["="*15 + " IP Geolocation " + "="*15]
-    if not data:
-        report.append("No IP addresses were geolocated.")
-    for ip, info in data.items():
-        if info.get("error"):
-            report.append(f"  - {ip}: Error - {info['error']}")
-        else:
-            country = info.get('country', 'N/A')
-            city = info.get('city', 'N/A')
-            isp = info.get('isp', 'N/A')
-            report.append(f"  - {ip}: {city}, {country} (ISP: {isp})")
-    return "\n".join(report)
-
-def export_txt_http_headers(data: Dict[str, Any]) -> str:
-    """Formats HTTP Security Headers for the text report."""
-    report = ["="*15 + " HTTP Security Headers Analysis " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-    else:
-        report.append(f"Final URL: {data.get('final_url')}\n")
-        analysis = data.get("analysis", {})
-        for header, info in analysis.items():
-            status = info.get("status", "Unknown")
-            value = info.get("value", "")
-            value_str = f" - Value: {value}" if value else ""
-            report.append(f"  - {header}: {status}{value_str}")
-
-        recommendations = data.get("recommendations", [])
-        if recommendations:
-            report.append("\nRecommendations:")
-            for rec in recommendations:
-                report.append(f"  • {rec}")
-    return "\n".join(report)
+    return _create_report_section("IP Geolocation", data, _format_geolocation_txt)
 
 def export_txt_port_scan(data: Dict[str, Any]) -> str:
     """Formats Open Port Scan for the text report."""
-    report = ["="*15 + " Open Port Scan " + "="*15]
-    if not data:
-        report.append("No open ports found among common ports.")
-    else:
-        for ip, ports in data.items():
-            ports_str = ", ".join(map(str, ports))
-            report.append(f"  - {ip}: {ports_str}")
-    return "\n".join(report)
+    return _create_report_section("Open Port Scan", data, _format_port_scan_txt)
 
 def export_txt_cloud_enum(data: Dict[str, Any]) -> str:
     """Formats Cloud Enumeration for the text report."""
-    report = ["="*15 + " Cloud Service Enumeration " + "="*15]
-    s3_buckets = data.get("s3_buckets", [])
-    azure_blobs = data.get("azure_blobs", [])
+    return _create_report_section("Cloud Service Enumeration", data, _format_cloud_enum_txt)
 
-    if not s3_buckets and not azure_blobs:
-        report.append("No public S3 or Azure Blob containers found based on common permutations.")
-    
-    if s3_buckets:
-        report.append("Discovered S3 Buckets:")
-        for bucket_url in s3_buckets:
-            report.append(f"  - {bucket_url}")
-    
-    if azure_blobs:
-        report.append("\nDiscovered Azure Blob Containers:")
-        for blob_url in azure_blobs:
-            report.append(f"  - {blob_url}")
-    return "\n".join(report)
+def _format_subdomain_takeover_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats Subdomain Takeover for the text report."""
+    vulnerable = data.get("vulnerable", [])
+    if not vulnerable:
+        return ["No potential subdomain takeovers found."]
+    report = [f"Found {len(vulnerable)} potential subdomain takeovers:"]
+    for item in vulnerable:
+        report.append(f"\n  - Subdomain: {item['subdomain']}")
+        report.append(f"    Service: {item['service']}")
+        report.append(f"    CNAME Target: {item['cname_target']}")
+    return report
 
 def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
     """Formats Subdomain Takeover for the text report."""
-    report = ["="*15 + " Subdomain Takeover " + "="*15]
-    vulnerable = data.get("vulnerable", [])
-    if not vulnerable:
-        report.append("No potential subdomain takeovers found.")
-    else:
-        report.append(f"Found {len(vulnerable)} potential subdomain takeovers:")
-        for item in vulnerable:
-            report.append(f"\n  - Subdomain: {item['subdomain']}")
-            report.append(f"    Service: {item['service']}")
-            report.append(f"    CNAME Target: {item['cname_target']}")
-    return "\n".join(report)
+    return _create_report_section("Subdomain Takeover", data, _format_subdomain_takeover_txt)
 
 def export_txt_smtp(data: Dict[str, Any]) -> str:
     """Formats SMTP analysis for the text report."""
-    report = ["="*15 + " Mail Server (SMTP) Analysis " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-        return "\n".join(report)
-
-    for server, info in data.items():
-        report.append(f"\nServer: {server}")
-        if info.get("error"):
-            report.append(f"  - Error: {info['error']}")
-            continue
-        
-        report.append(f"  - Banner: {info.get('banner', 'N/A')}")
-        report.append(f"  - STARTTLS: {info.get('starttls', 'Unknown')}")
-
-        cert_info = info.get('certificate')
-        if cert_info:
-            report.append("  - Certificate:")
-            report.append(f"    - Subject: {cert_info.get('subject', 'N/A')}")
-            valid_until_ts = cert_info.get('valid_until')
-            if valid_until_ts:
-                valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime('%Y-%m-%d')
-                report.append(f"    - Valid Until: {valid_until_dt}")
-    return "\n".join(report)
+    return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
 
 def export_txt_reputation(data: Dict[str, Any]) -> str:
     """Formats IP reputation analysis for the text report."""
-    report = ["="*15 + " IP Reputation Analysis (AbuseIPDB) " + "="*15]
-    if data.get("error"):
-        report.append(f"Error: {data['error']}")
-        return "\n".join(report)
-
-    for ip, info in data.items():
-        report.append(f"\nIP Address: {ip}")
-        if info.get("error"):
-            report.append(f"  - Error: {info['error']}")
-            continue
-        
-        report.append(f"  - Abuse Confidence Score: {info.get('abuseConfidenceScore', 'N/A')}")
-        report.append(f"  - Total Reports: {info.get('totalReports', 'N/A')}")
-        report.append(f"  - ISP: {info.get('isp', 'N/A')}")
-        report.append(f"  - Usage Type: {info.get('usageType', 'N/A')}")
-        
-        if info.get('lastReportedAt'):
-            last_reported = datetime.datetime.fromisoformat(info['lastReportedAt'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M:%S')
-            report.append(f"  - Last Reported: {last_reported}")
-    return report
-
-def export_txt_reputation(data: Dict[str, Any]) -> str:
     return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
