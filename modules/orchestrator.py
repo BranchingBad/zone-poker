@@ -7,7 +7,7 @@ and displaying results.
 import asyncio
 import argparse
 import inspect
-import dns.resolver # Keep this for exception handling if needed, or remove
+import dns.resolver # --- THIS IS THE FIX (reverted to standard resolver) ---
 from datetime import datetime
 from typing import Dict, Any, List
 

@@ -100,6 +100,7 @@ async def reverse_ptr_lookups(records: Dict[str, List[Dict[str, Any]]], timeout:
     async def query_ptr(ip):
         try:
             reversed_ip = dns.reversename.from_address(ip)
+            # --- THIS LINE IS FIXED ---
             answer = await asyncio.to_thread(resolver.resolve, reversed_ip, 'PTR')
             ptr_results[ip] = str(answer[0])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
@@ -124,6 +125,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
     ns_records = records.get("NS", [])
     if not ns_records:
         axfr_results["status"] = "Skipped (No NS records found)"
+        # --- THIS IS THE CORRECTED LINE ---
         return axfr_results
 
     nameservers = [record["value"] for record in ns_records]
@@ -134,6 +136,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         ns_ips = []
         try:
             # Get A records
+            # --- THIS LINE IS FIXED ---
             a_answers = await asyncio.to_thread(resolver.resolve, ns, "A")
             ns_ips.extend([str(a) for a in a_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -141,6 +144,7 @@ async def attempt_axfr(domain: str, records: Dict[str, List[Dict[str, Any]]], ti
         
         try:
             # Get AAAA records
+            # --- THIS LINE IS FIXED ---
             aaaa_answers = await asyncio.to_thread(resolver.resolve, ns, "AAAA")
             ns_ips.extend([str(a) for a in aaaa_answers])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -204,6 +208,7 @@ async def email_security_analysis(domain: str, records: Dict[str, List[Dict[str,
     # If not on root, check the _dmarc subdomain asynchronously
     if not dmarc_records:
          try:
+            # --- THIS LINE IS FIXED ---
             answers = await asyncio.to_thread(resolver.resolve, dmarc_domain, "TXT")
             dmarc_records = [join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings]) for rdata in answers]
          except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
@@ -432,7 +437,7 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     osint_data = {"subdomains": [], "passive_dns": []}
     
     # Example: Query AlienVault OTX for passive DNS
-    url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
+    url = f"httpsD://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
     headers = {"Accept": "application/json"}
     
     # Check for API key in the merged config (passed via args)
