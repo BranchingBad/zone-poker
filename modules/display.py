@@ -910,17 +910,40 @@ def display_cloud_enum(data: dict, quiet: bool = False):
     azure_blobs = data.get("azure_blobs", [])
     
     if not s3_buckets and not azure_blobs:
-        panel = Panel("[dim]No public S3 buckets found based on common permutations.[/dim]", title="Cloud Service Enumeration", box=box.ROUNDED)
+        panel = Panel("[dim]No public S3 buckets or Azure blobs found based on common permutations.[/dim]", title="Cloud Service Enumeration", box=box.ROUNDED)
     else:
         tree = Tree("[bold]Cloud Service Enumeration[/bold]")
         if s3_buckets:
             s3_tree = tree.add(f"Discovered S3 Buckets ({len(s3_buckets)}):")
-            for bucket_url in s3_buckets:
-                s3_tree.add(f"✓ [green]{bucket_url}[/green]")
+            for bucket in s3_buckets:
+                status = bucket.get("status")
+                url = bucket.get("url")
+                if status == "public":
+                    symbol = "✅"
+                    color = "green"
+                elif status == "forbidden":
+                    symbol = "🔒"
+                    color = "yellow"
+                else:
+                    symbol = "❓"
+                    color = "dim"
+                s3_tree.add(f"{symbol} [{color}]{url}[/{color}]")
+
         if azure_blobs:
             azure_tree = tree.add(f"Discovered Azure Blob Containers ({len(azure_blobs)}):")
-            for blob_url in azure_blobs:
-                azure_tree.add(f"✓ [cyan]{blob_url}[/cyan]")
+            for blob in azure_blobs:
+                status = blob.get("status")
+                url = blob.get("url")
+                if status == "public":
+                    symbol = "✅"
+                    color = "green"
+                elif status == "forbidden":
+                    symbol = "🔒"
+                    color = "yellow"
+                else:
+                    symbol = "❓"
+                    color = "dim"
+                azure_tree.add(f"{symbol} [{color}]{url}[/{color}]")
         panel = Panel(tree, title="Cloud Service Enumeration", box=box.ROUNDED)
 
     console.print(panel)
@@ -955,11 +978,29 @@ def _format_cloud_enum_txt(data: Dict[str, Any]) -> List[str]:
         report.append("No public S3 or Azure Blob containers found based on common permutations.")
     if s3_buckets:
         report.append("Discovered S3 Buckets:")
-        report.extend([f"  - {bucket_url}" for bucket_url in s3_buckets])
+        for bucket in s3_buckets:
+            status = bucket.get("status")
+            url = bucket.get("url")
+            if status == "public":
+                symbol = "✅"
+            elif status == "forbidden":
+                symbol = "🔒"
+            else:
+                symbol = "❓"
+            report.append(f"  {symbol} {url}")
     if azure_blobs:
         if s3_buckets: report.append("") # Add a newline if S3 buckets were also found
         report.append("Discovered Azure Blob Containers:")
-        report.extend([f"  - {blob_url}" for blob_url in azure_blobs])
+        for blob in azure_blobs:
+            status = blob.get("status")
+            url = blob.get("url")
+            if status == "public":
+                symbol = "✅"
+            elif status == "forbidden":
+                symbol = "🔒"
+            else:
+                symbol = "❓"
+            report.append(f"  {symbol} {url}")
     return report
 
 @console_display_handler("IP Geolocation")

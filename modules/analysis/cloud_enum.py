@@ -6,15 +6,15 @@ import httpx
 import asyncio
 import re
 import logging
-from typing import Dict, List
+from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[str]]:
+async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Enumerates potential public cloud storage (e.g., S3 buckets, Azure Blobs) based on the domain name.
     """
-    results: Dict[str, List[str]] = {"s3_buckets": [], "azure_blobs": []}
+    results: Dict[str, List[Dict[str, Any]]] = {"s3_buckets": [], "azure_blobs": []}
     
     # Generate potential bucket names from the domain
     domain_parts = domain.split('.')
@@ -44,13 +44,23 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[str]
         try:
             async with httpx.AsyncClient() as client:
                 # A HEAD request is a lightweight way to check for existence.
-                # A 404 status code means the bucket does not exist or is private.
-                # Other status codes (like 200, 403) indicate the bucket name is taken.
                 response = await client.head(url, timeout=5, follow_redirects=False)
+                # A 404 status code means the bucket does not exist.
+                # Other status codes (like 200, 403) indicate the bucket name is taken.
                 if response.status_code != 404:
-                    results["s3_buckets"].append(url)
+                    status_code = response.status_code
+                    if status_code == 200:
+                        status = "public"
+                    elif status_code == 403:
+                        status = "forbidden"
+                    else:
+                        status = "invalid"
+                    results["s3_buckets"].append({"url": url, "status": status})
         except httpx.RequestError as e:
             logger.debug(f"S3 check for '{bucket_name}' failed: {e}")
+            # Optionally, you could record the failure:
+            # results["s3_buckets"].append({"url": url, "status_code": 0, "error": str(e)})
+
 
     async def check_azure_blob(account_name):
         # Azure storage account names must be 3-24 chars, lowercase letters and numbers.
@@ -60,20 +70,29 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[str]
         url = f"https://{account_name}.blob.core.windows.net"
         try:
             async with httpx.AsyncClient() as client:
-                # A request to a non-existent storage account typically fails DNS resolution.
                 # A HEAD request to an existing account's base URL often returns 400 (Bad Request)
                 # because a container isn't specified, which still confirms the account's existence.
                 response = await client.head(url, timeout=5, follow_redirects=False)
                 if response.status_code != 404:
-                    results["azure_blobs"].append(url)
+                    status_code = response.status_code
+                    if status_code == 200:
+                        status = "public"
+                    elif status_code in [400, 403]:
+                        status = "forbidden"
+                    else:
+                        status = "invalid"
+                    results["azure_blobs"].append({"url": url, "status": status})
         except httpx.RequestError as e:
             logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")
+            # Optionally, you could record the failure:
+            # results["azure_blobs"].append({"url": url, "status_code": 0, "error": str(e)})
 
     s3_tasks = [check_s3_bucket(p) for p in permutations]
     azure_tasks = [check_azure_blob(p) for p in sanitized_permutations]
     tasks = s3_tasks + azure_tasks
     await asyncio.gather(*tasks)
     
-    results["s3_buckets"].sort()
-    results["azure_blobs"].sort()
+    # Sort by URL
+    results["s3_buckets"].sort(key=lambda x: x['url'])
+    results["azure_blobs"].sort(key=lambda x: x['url'])
     return results
