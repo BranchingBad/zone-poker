@@ -4,7 +4,7 @@
 
 Zone-Poker is a powerful, all-in-one command-line tool designed for security professionals, system administrators, and researchers to perform in-depth analysis of a domain's DNS and web infrastructure. It aggregates data from dozens of modules to provide a holistic view of a target's configuration and security posture.
 
-![Zone-Poker Demo](https://user-images.githubusercontent.com/12345/placeholder.gif) <!-- Placeholder: Replace with an actual demo GIF -->
+![Zone-Poker Demo](https://user-images.githubusercontent.com/12345/placeholder.gif) <!-- TODO: Replace with an actual demo GIF -->
 
 
 ## Features
@@ -26,7 +26,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **HTTP Security Headers**: Checks for the presence and configuration of key security headers.
 - **Subdomain Takeover**: Scans CNAME records for fingerprints of services vulnerable to takeover.
 - **Cloud Enumeration**: Discovers potential public S3 buckets and Azure Blob containers based on domain permutations.
-- **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist.
+- **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist (requires API key).
 - **DNS Blocklist (DNSBL)**: Checks discovered IPs against common real-time spam blocklists.
 - **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
 - **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use.
@@ -35,7 +35,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 ### OSINT & Enumeration
 - **WHOIS Lookup**: Retrieves detailed registration information for the domain.
 - **Technology Detection**: Identifies web server software, frameworks, and other technologies.
-- **OSINT Enrichment**: Gathers subdomains and passive DNS data from external sources.
+- **OSINT Enrichment**: Gathers subdomains and passive DNS data from external sources (e.g., AlienVault OTX).
 - **Certificate Transparency**: Finds subdomains by searching CT logs.
 - **IP Geolocation**: Determines the physical location, city, and ISP of IP addresses.
 - **Content Hashing**: Calculates Murmur32 (favicon) and SHA256 (page content) hashes for hunting related infrastructure.
@@ -44,16 +44,15 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 
 ## Installation
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/BranchingBad/zone-poker.git
-    cd zone-poker
-    ```
+Zone-Poker can be installed directly from the cloned repository. It is recommended to use a virtual environment.
 
-2.  Install the required dependencies (it is recommended to do this in a virtual environment):
-    ```bash
-    pip install .
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/BranchingBad/zone-poker.git
+cd zone-poker
+# Install the project and its dependencies
+pip install .
+```
 
 ## Usage
 

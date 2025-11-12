@@ -1,8 +1,0 @@
-dnspython
-httpx
-python-whois
-ipwhois
-rich
-beautifulsoup4
-mmh3
-PyYAML

@@ -14,7 +14,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.5")
     
     # --- Input Configuration ---
     input_group = parser.add_argument_group('Input Configuration')

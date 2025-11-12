@@ -34,7 +34,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     source venv/bin/activate
 
     # Install the project in editable mode with development dependencies.
-    # The `[dev]` part installs extra tools for testing and linting, like pytest and flake8.
+    # The `[dev]` part installs extra tools for testing, linting, and formatting.
     pip install -e .[dev]
     ```
 
@@ -91,7 +91,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
         - `export_func`: The text export function.
         - `description`: A short message shown to the user when the module runs.
         - `dependencies`: A list of other modules that must run first (if any).
-        - `arg_info`: A dictionary defining the command-line flag (e.g., `--my-module`).
+        - `arg_info`: A dictionary defining the command-line flag (e.g., `{'name': '--my-module', 'help': 'Run my new module.'}`).
     5.  Write a unit test for your new analysis function in the `tests/` directory.
     6.  Update the `README.md` to include the new module's command-line flag and description.
 
@@ -104,11 +104,10 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
         1.  Create a new file in `modules/output/` (e.g., `html.py`).
         2.  Inside this file, create a function `output(all_data: Dict[str, Any])`. This function should:
             - Retrieve the target file path from `all_data['export_filepath']`.
-            - Generate the report content.
-            - Write the content to the specified file path.
+            - Generate the report content and write it to the specified file path.
             - It should **not** print to the console.
-        3.  Add a new command-line argument (e.g., `--html-file`) in `modules/parser_setup.py` to enable your new export format.
-        4.  Update the `export_reports` function in `modules/export.py` to recognize and handle your new argument.
+        3.  In `modules/parser_setup.py`, add a new command-line argument (e.g., `--html-file`) to accept a file path for your new report.
+        4.  Update the `export_reports` function in `modules/export.py` to recognize your new argument (e.g., `getattr(args, 'html_file', None)`) and trigger the appropriate export logic.
 
 ## Code of Conduct
 

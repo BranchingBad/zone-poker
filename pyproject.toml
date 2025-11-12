@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zone-poker"
-version = "1.0.5"
+version = "1.0.6"
 authors = [
   { name="BranchingBad" },
 ]
@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Internet :: Name Service (DNS)",
     "Environment :: Console",
 ]
-# Dependencies from requirements.txt
+# Project dependencies
 dependencies = [
     "dnspython",
     "httpx",
@@ -40,6 +40,17 @@ Issues = "https://github.com/BranchingBad/zone-poker/issues"
 # This creates the executable script
 [project.scripts]
 zone-poker = "zone_poker:main_wrapper"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "flake8",
+    "black",
+    "pre-commit",
+    "pytest-cov",
+    "bandit",
+    "pip-audit"
+]
 
 # --- THIS IS THE FIX ---
 [tool.setuptools]
