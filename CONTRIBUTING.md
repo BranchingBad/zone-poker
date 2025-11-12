@@ -100,15 +100,19 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
         1.  Create a new file in `modules/output/` (e.g., `xml.py`).
         2.  Inside this file, create a function `output(all_data: Dict[str, Any])` that takes the complete scan data and **prints** it to the console.
         3.  Add the name of your new format (e.g., `'xml'`) to the `choices` list for the `--output` argument in `modules/parser_setup.py`.
+        4.  In `modules/orchestrator.py`, update the `handle_output` call in `_scan_single_domain` to call your new output module when `args.output` matches your format's name.
+
     -   **For File Export (e.g., HTML, Markdown):**
-        1.  Create a new file in `modules/output/` (e.g., `html.py`).
-        2.  Inside this file, create a function `output(all_data: Dict[str, Any])`. This function should:
-            - Retrieve the target file path from `all_data['export_filepath']`.
-            - Generate the report content and write it to the specified file path.
-            - It should **not** print to the console.
-        3.  In `modules/parser_setup.py`, add a new command-line argument (e.g., `--html-file`) to accept a file path for your new report.
-        4.  Update the `export_reports` function in `modules/export.py` to recognize your new argument (e.g., `getattr(args, 'html_file', None)`) and trigger the appropriate export logic.
+        1.  In `modules/parser_setup.py`, add a new command-line argument (e.g., `--html-file`) to accept a file path for your new report.
+        2.  Create a new file in `modules/export/` (e.g., `html_export.py`).
+        3.  Inside this file, create a function `export_html(all_data: Dict[str, Any], filepath: str)`. This function should generate the report content and write it to the specified `filepath`.
+        4.  Update the `handle_output` function in `modules/export.py` to:
+            - Check if the new file argument (e.g., `args.html_file`) is present.
+            - If it is, call your new export function from the appropriate `export` module.
 
 ## Code of Conduct
 
 All contributors are expected to adhere to our Code of Conduct. Please be respectful and constructive in all interactions.
+
+---
+*This document is actively maintained. If you find any instructions to be outdated, please open an issue or a pull request.*

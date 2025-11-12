@@ -2,16 +2,13 @@
 """
 Zone-Poker - Domain & IP Reputation Analysis Module
 """
+import asyncio
 import httpx
-from typing import Dict, List, Any
-import argparse  # Added import
+import argparse # Added import
 
 ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 
-
-async def analyze_reputation(
-    domain: str, args: argparse.Namespace, records_info: dict, **kwargs
-) -> dict:
+async def analyze_reputation(domain: str, args: argparse.Namespace, records_info: dict, **kwargs) -> dict:
     """
     Checks the reputation of domain IPs against AbuseIPDB.
 
@@ -23,37 +20,35 @@ async def analyze_reputation(
     Returns:
         A dictionary containing reputation details for each IP.
     """
-    api_key = getattr(args, "api_keys", {}).get("abuseipdb")
+    api_key = getattr(args, 'api_keys', {}).get("abuseipdb")
     if not api_key:
         return {"error": "AbuseIPDB API key not found in config file."}
 
     # Consolidate all A and AAAA records
     ip_addresses = []
     for record_type in ["A", "AAAA"]:
-        ip_addresses.extend(
-            [
-                rec.get("value")
-                for rec in records_info.get(record_type, [])
-                if rec.get("value")
-            ]
-        )
+        ip_addresses.extend([rec.get("value") for rec in records_info.get(record_type, []) if rec.get("value")])
 
     if not ip_addresses:
         return {"error": "No A or AAAA records found to check reputation."}
 
     results = {}
-    headers = {"Accept": "application/json", "Key": api_key}
+    headers = {
+        'Accept': 'application/json',
+        'Key': api_key
+    }
 
     async def check_ip(ip: str, client: httpx.AsyncClient):
         """Inner function to check a single IP."""
         try:
-            params = {"ipAddress": ip, "maxAgeInDays": "90"}
-            response = await client.get(
-                ABUSEIPDB_ENDPOINT, headers=headers, params=params
-            )
+            params = {
+                'ipAddress': ip,
+                'maxAgeInDays': '90'
+            }
+            response = await client.get(ABUSEIPDB_ENDPOINT, headers=headers, params=params)
             response.raise_for_status()  # Raise an exception for 4xx/5xx responses
-
-            data = response.json().get("data", {})
+            
+            data = response.json().get('data', {})
             results[ip] = {
                 "abuseConfidenceScore": data.get("abuseConfidenceScore"),
                 "countryCode": data.get("countryCode"),
@@ -67,9 +62,7 @@ async def analyze_reputation(
             if e.response.status_code == 401:
                 results[ip] = {"error": "Authentication failed (invalid API key)."}
             else:
-                results[ip] = {
-                    "error": f"HTTP error {e.response.status_code}: {e.response.text}"
-                }
+                results[ip] = {"error": f"HTTP error {e.response.status_code}: {e.response.text}"}
         except httpx.RequestError as e:
             results[ip] = {"error": f"Connection error: {e}"}
 

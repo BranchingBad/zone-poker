@@ -2,53 +2,47 @@
 """
 Zone-Poker - XML Output Module
 """
-import xml.etree.ElementTree as ET
-from typing import Dict, Any, List, Union
+import builtins
+from typing import Dict, Any
+from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.dom import minidom
 
-from ..config import console
-from ..dispatch_table import MODULE_DISPATCH_TABLE
+from rich.console import Console
+
+console = Console()
 
 
-def _to_xml(parent: ET.Element, data: Union[Dict, List, Any], key: str = "item"):
-    """
-    Recursively converts a Python data structure to XML elements.
-    """
-    if isinstance(data, dict):
-        for k, v in data.items():
-            # Create a sub-element for the dictionary key
-            sub_element = ET.SubElement(parent, k)
-            _to_xml(sub_element, v, k)
-    elif isinstance(data, list):
-        for item in data:
-            # For lists, create elements with the same name as the parent key
-            sub_element = ET.SubElement(parent, key)
-            _to_xml(sub_element, item, key)
-    else:
-        # Assign the value as the text content of the parent element
-        parent.text = str(data)
+def _dict_to_xml(parent: Element, data: Dict[str, Any]):
+    """Recursively convert a dictionary to XML elements."""
+    for key, value in data.items():
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            child = SubElement(parent, key)
+            _dict_to_xml(child, value)
+        elif isinstance(value, list):
+            for item in value:
+                child = SubElement(parent, key)
+                if isinstance(item, dict):
+                    _dict_to_xml(child, item)
+                else:
+                    child.text = str(item)
+        else:
+            child = SubElement(parent, key)
+            child.text = str(value)
 
 
 def output(all_data: Dict[str, Any]):
     """
-    Prints the scan data to the console in XML format.
+    Generates and prints an XML report to standard output.
     """
-    root = ET.Element("scan_results")
-
-    # Add top-level domain and timestamp info
-    domain_el = ET.SubElement(root, "domain")
-    domain_el.text = all_data.get("domain")
-    timestamp_el = ET.SubElement(root, "scan_timestamp")
-    timestamp_el.text = all_data.get("scan_timestamp")
-
-    # Iterate through modules and add their data
-    for module_name, config in MODULE_DISPATCH_TABLE.items():
-        data_key = config["data_key"]
-        if data_key in all_data and all_data[data_key]:
-            module_data = all_data[data_key]
-            module_element = ET.SubElement(root, data_key)
-            _to_xml(module_element, module_data, data_key)
+    root = Element("scan_results")
+    _dict_to_xml(root, all_data)
 
     # Pretty print the XML
-    ET.indent(root, space="  ")
-    xml_string = ET.tostring(root, encoding="unicode")
-    console.print(xml_string)
+    rough_string = tostring(root, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    pretty_xml = reparsed.toprettyxml(indent="  ")
+
+    # Using builtins.print to send to stdout for redirection.
+    builtins.print(pretty_xml)

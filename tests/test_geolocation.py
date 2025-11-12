@@ -16,31 +16,19 @@ async def test_geolocate_ips_success():
     records_info = {
         "A": [{"value": "8.8.8.8"}],
         "AAAA": [{"value": "2606:4700:4700::1111"}],
-        "MX": [{"value": "mail.example.com"}],  # Should be ignored
+        "MX": [{"value": "mail.example.com"}]  # Should be ignored
     }
 
     # Mock the API responses for the two IPs
     respx.get(
         f"{IP_API_ENDPOINT}8.8.8.8?fields=status,message,country,city,isp"
-    ).respond(
-        200,
-        json={
-            "status": "success",
-            "country": "United States",
-            "city": "Mountain View",
-            "isp": "Google LLC",
-        },
-    )
+    ).respond(200, json={"status": "success", "country": "United States",
+                         "city": "Mountain View", "isp": "Google LLC"})
     respx.get(
         f"{IP_API_ENDPOINT}2606:4700:4700::1111?fields=status,message,country,city,isp"
     ).respond(
-        200,
-        json={
-            "status": "success",
-            "country": "United States",
-            "city": "San Francisco",
-            "isp": "Cloudflare, Inc.",
-        },
+        200, json={"status": "success", "country": "United States",
+                   "city": "San Francisco", "isp": "Cloudflare, Inc."}
     )
 
     results = await geolocate_ips(records_info)
@@ -67,12 +55,13 @@ async def test_geolocate_ips_api_failure():
     respx.get(
         f"{IP_API_ENDPOINT}127.0.0.1?fields=status,message,country,city,isp"
     ).respond(200, json={"status": "fail", "message": "private range"})
-
-    results = await geolocate_ips(records_info)
+    results = await geolocate_ips(records_info)  # type: ignore
 
     assert "127.0.0.1" in results
     assert "error" in results["127.0.0.1"]
     assert results["127.0.0.1"]["error"] == "private range"
+
+
 
 
 @pytest.mark.asyncio
@@ -84,9 +73,8 @@ async def test_geolocate_ips_request_error():
     records_info = {"A": [{"value": "10.0.0.1"}]}
 
     # Mock a network-level error
-    respx.get(f"{IP_API_ENDPOINT}10.0.0.1?fields=status,message,country,city,isp").mock(
-        side_effect=RequestError("Connection failed")
-    )
+    url = f"{IP_API_ENDPOINT}10.0.0.1?fields=status,message,country,city,isp"
+    respx.get(url).mock(side_effect=RequestError("Connection failed"))
 
     results = await geolocate_ips(records_info)
 
@@ -101,8 +89,7 @@ async def test_geolocate_ips_no_ip_records():
     Tests that the function returns an empty dictionary when no A or AAAA records are provided.
     """
     records_info = {
-        "MX": [{"value": "mail.example.com"}],
-        "TXT": [{"value": "v=spf1 -all"}],
+        "MX": [{"value": "mail.example.com"}], "TXT": [{"value": "v=spf1 -all"}]
     }
 
     results = await geolocate_ips(records_info)

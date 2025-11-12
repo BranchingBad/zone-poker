@@ -1,2 +1,4 @@
-# This file intentionally left blank
-# It marks the 'output' directory as a Python package.
+#!/usr/bin/env python3
+"""
+Zone-Poker - Output Modules Package
+"""

@@ -2,33 +2,28 @@
 """
 Zone-Poker - JSON Output Module
 """
+import builtins
 import json
-from datetime import datetime
 from typing import Dict, Any
-from ..dispatch_table import MODULE_DISPATCH_TABLE
+
+from modules.dispatch_table import MODULE_DISPATCH_TABLE
 
 
 def output(all_data: Dict[str, Any]):
     """
-    Generates and saves a JSON report.
-    The file path is expected to be in all_data['export_filepath'].
+    Generates and prints a clean JSON report to standard output.
     """
-    filepath = all_data.get("export_filepath")
-    if not filepath:
-        # If no filepath, print to console as a fallback
-        print(json.dumps(all_data, indent=2, default=str))
-        return
-
     export_data = {
         "domain": all_data.get("domain"),
         "scan_timestamp": all_data.get("scan_timestamp"),
     }
 
     # Add data from each module, using the data_key from the dispatch table
-    for config in MODULE_DISPATCH_TABLE.values():
+    for module_name, config in MODULE_DISPATCH_TABLE.items():
         data_key = config["data_key"]
-        if data := all_data.get(data_key):
-            export_data[data_key] = data
+        # Only add data if it exists and is not empty
+        if data_key in all_data and all_data[data_key]:
+            export_data[data_key] = all_data[data_key]
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(export_data, f, indent=2, default=str)
+    # Using builtins.print to send to stdout for redirection.
+    builtins.print(json.dumps(export_data, indent=2, default=str))

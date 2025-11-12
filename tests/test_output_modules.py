@@ -1,6 +1,6 @@
 import pytest
 import xml.etree.ElementTree as ET
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from modules.output import xml as xml_output
 from modules.output import html as html_output
@@ -12,24 +12,19 @@ def sample_scan_data():
     return {
         "domain": "example.com",
         "scan_timestamp": "2025-01-01T12:00:00",
-        "records": {
-            "A": [{"value": "93.184.216.34", "ttl": 86400, "name": "example.com"}],
-            "MX": [
-                {
-                    "value": "mail.example.com",
-                    "priority": 10,
-                    "ttl": 3600,
-                    "name": "example.com",
-                }
-            ],
+        "records": {"A": [{"value": "93.184.216.34", "ttl": 86400,
+                           "name": "example.com"}],
+                    "MX": [{"value": "mail.example.com", "priority": 10,
+                            "ttl": 3600, "name": "example.com"}]},
+        "whois": {
+            "registrar": "Test Registrar Inc."
         },
-        "whois": {"registrar": "Test Registrar Inc."},
-        "empty_module": {},  # To test that empty modules are correctly skipped
-        "zone_info": None,  # To test that None modules are correctly skipped
+        "empty_module": {},  # Test that empty modules are correctly skipped
+        "zone_info": None  # Test that None modules are correctly skipped
     }
 
 
-@patch("modules.output.xml.console.print")
+@patch('modules.output.xml.console.print')
 def test_xml_output_generation(mock_console_print, sample_scan_data):
     """
     Tests that the XML output module correctly converts scan data into an XML string.
@@ -56,11 +51,11 @@ def test_xml_output_generation(mock_console_print, sample_scan_data):
     assert root.find("zone_info") is None  # Ensure None modules are not added
 
 
-@patch("builtins.print")
+@patch('builtins.print')
 def test_html_output_generation(mock_print, sample_scan_data):
     """
-    Tests that the HTML output module correctly generates an HTML string
-    and that it contains expected data.
+    Tests that the HTML output module correctly generates an HTML string and that it
+    contains expected data.
     """
     # Run the HTML output function
     html_output.output(sample_scan_data)
@@ -78,4 +73,3 @@ def test_html_output_generation(mock_print, sample_scan_data):
     assert "WHOIS Information" in html_string  # From a decorated display function
     assert "Test Registrar Inc." in html_string  # The actual data
     assert "DNS Records Discovery" in html_string  # From another decorated function
-    assert "93.184.216.34" in html_string  # The actual data

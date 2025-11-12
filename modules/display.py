@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Zone-poker - Display Module
+
 Contains all functions for rendering rich output to the console
 and formatting text for reports.
 """
@@ -10,11 +11,9 @@ from rich.table import Table
 from rich.tree import Tree
 from rich import box
 from rich.text import Text
+from typing import Dict, Any, List, Callable, Optional
 
 # Import shared config and utilities
-from .config import console, RECORD_TYPES
-from .display_utils import console_display_handler
-from typing import Dict, List, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,12 +24,35 @@ def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
     if rtype == "MX" and "priority" in record:
         return f"Priority: {record['priority']}"
     if rtype == "SRV":
-        return f"P:{record.get('priority')} W:{record.get('weight')} Port:{record.get('port')}"
+        return (f"P:{record.get('priority')} W:{record.get('weight')} "
+                f"Port:{record.get('port')}")
     if rtype == "SOA":
         return f"Serial: {record.get('serial')}"
     if rtype == "CAA":
         return f"Tag: {record.get('tag')}"
     return ""
+
+
+def console_display_handler(title: str):
+    """
+    A decorator to handle common boilerplate for console display functions.
+    - Checks for `quiet` mode or empty data.
+    - Handles and displays a standardized error panel if `data['error']` exists.
+    - Prints a newline after the content is displayed.
+    """
+    def decorator(func: Callable):
+        def wrapper(data: dict, quiet: bool, *args, **kwargs) -> Optional[Panel]:
+            if quiet or not data or not isinstance(data, dict):
+                return None
+
+            if error := data.get("error"):
+                return Panel(f"[dim]{error}[/dim]", title=f"{title} - Error",
+                             box=box.ROUNDED, border_style="dim")
+
+            renderable = func(data, quiet, *args, **kwargs)
+            return renderable
+        return wrapper
+    return decorator
 
 
 @console_display_handler("DNS Records Discovery")
@@ -89,7 +111,7 @@ def display_ptr_lookups(ptr_records: Dict[str, str], quiet: bool = False):
         return Panel(
             "[dim]No PTR records to display.[/dim]",
             title="Reverse DNS (PTR) Lookups",
-            box=box.ROUNDED,
+            box=box.ROUNDED
         )
 
     for ip, hostname in ptr_records.items():
@@ -165,7 +187,7 @@ def display_email_security(data: dict, quiet: bool = False):
 
 
 @console_display_handler("WHOIS Information")
-def display_whois_info(data: dict, quiet: bool = False):
+def display_whois_info(data: dict, quiet: bool = False):  # noqa: E501
     """Creates a rich Panel with WHOIS data."""
     table = Table(box=None, show_header=False, pad_edge=False)
     table.add_column("Key", style="bold cyan", no_wrap=True, width=18)
@@ -279,7 +301,8 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
             # Sort the IPs for each resolver to ensure consistent display order.
             # The `append` method with a `style` argument is the correct way to add styled text.
             for ip in sorted(result.get("ips", [])):
-                color = color_map.get(ip, "white")
+                color = color_map.get(ip,
+                                      "white")
                 ip_text.append(f"{ip}\n", style=color)
             table.add_row(server, ip_text)
 
@@ -295,7 +318,7 @@ def display_security_audit(data: dict, quiet: bool = False):
         box=box.ROUNDED,
         show_header=True,
         header_style=None,
-        show_edge=True,
+        show_edge=True
     )
     table.add_column("Check", style="bold", width=20)
     table.add_column("Status", width=12)
@@ -627,9 +650,8 @@ def display_summary(data: dict, quiet: bool = False):
     table.add_row("Zone Transfer", f"[{axfr_color}]{axfr_summary}[/{axfr_color}]")
 
     # SPF
-    spf_policy = (
-        data.get("email_security", {}).get("spf", {}).get("all_policy", "Not Found")
-    )
+    spf_policy = data.get("email_security", {}).get("spf", {}).get("all_policy",
+                                                                   "Not Found")
     spf_color = (
         "red"
         if spf_policy in ["?all", "Not Found"]
@@ -638,22 +660,20 @@ def display_summary(data: dict, quiet: bool = False):
     table.add_row("SPF Policy", f"[{spf_color}]{spf_policy}[/{spf_color}]")
 
     # DMARC
-    dmarc_policy = data.get("email_security", {}).get("dmarc", {}).get("p", "Not Found")
+    dmarc_policy = data.get("email_security", {}).get("dmarc",
+                                                      {}).get("p", "Not Found")
     dmarc_color = "red" if dmarc_policy in ["none", "Not Found", "Error"] else "green"
     table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
 
     # Security Audit
     audit_data = data.get("security", {})
     if isinstance(audit_data, dict) and "error" not in audit_data:
-        weak_checks = [
-            check
-            for check, info in audit_data.items()
-            if info.get("status") in ("Weak", "Vulnerable")
-        ]
+        weak_checks = [check for check, info in audit_data.items() if
+                       info.get("status") in ("Weak", "Vulnerable")]
         if weak_checks:
             table.add_row(
                 "Security Audit",
-                f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})",
+                f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})"
             )
         else:
             table.add_row("Security Audit", "[green]All checks passed[/green]")
@@ -667,26 +687,27 @@ def display_critical_findings(data: dict, quiet: bool = False):
     """Creates a rich Panel for the most critical findings."""
     critical_findings = []
 
-    # Zone Transfer Vulnerability
     if "Vulnerable" in data.get("zone_info", {}).get("summary", ""):
         critical_findings.append(
-            "Zone Transfer Successful (AXFR): Domain is vulnerable to full zone enumeration."
+            "Zone Transfer Successful (AXFR): Domain is vulnerable to full zone "
+            "enumeration."
         )
 
     # Subdomain Takeover
     vulnerable_takeovers = data.get("takeover_info", {}).get("vulnerable", [])
     if vulnerable_takeovers:
-        critical_findings.append(
-            f"Subdomain Takeover: Found {len(vulnerable_takeovers)} potentially vulnerable subdomains."
+        critical_findings.append(f"Subdomain Takeover: Found {len(vulnerable_takeovers)} "
+                                 "potentially vulnerable subdomains."
         )
 
-    # Expired SSL Certificate
     ssl_info = data.get("ssl_info", {})
-    if ssl_info.get("valid_until"):
-        if datetime.datetime.now().timestamp() > ssl_info["valid_until"]:
-            critical_findings.append(
-                "Expired SSL/TLS Certificate: The main web server's certificate has expired."
-            )
+    if ssl_info.get("valid_until") and (
+        datetime.datetime.now().timestamp() > ssl_info["valid_until"]
+    ):
+        critical_findings.append(
+            "Expired SSL/TLS Certificate: The main web server's certificate has "
+            "expired."
+        )
 
     # High IP Reputation Abuse Score
     reputation_info = data.get("reputation_info", {})
@@ -697,7 +718,8 @@ def display_critical_findings(data: dict, quiet: bool = False):
     ]
     if high_risk_ips:
         critical_findings.append(
-            f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)})."
+            f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse "
+            f"score ({', '.join(high_risk_ips)})."
         )
 
     if not critical_findings:
@@ -716,461 +738,13 @@ def display_critical_findings(data: dict, quiet: bool = False):
     )
 
 
-# -----------------------------------------------------------------
-# --- TXT REPORT EXPORT FUNCTIONS ---
-# -----------------------------------------------------------------
-# These functions are called by the export module to format
-# data for the .txt report.
-# -----------------------------------------------------------------
-
-
-def _format_critical_findings_txt(data: Dict[str, Any]) -> List[str]:
-    """Helper to format critical findings for the text report."""
-    critical_findings = []
-    if "Vulnerable" in data.get("zone_info", {}).get("summary", ""):
-        critical_findings.append(
-            "Zone Transfer Successful (AXFR): Domain is vulnerable to full zone enumeration."
-        )
-    if vulnerable_takeovers := data.get("takeover_info", {}).get("vulnerable", []):
-        critical_findings.append(
-            f"Subdomain Takeover: Found {len(vulnerable_takeovers)} potentially vulnerable subdomains."
-        )
-    if ssl_info := data.get("ssl_info", {}):
-        if (
-            ssl_info.get("valid_until")
-            and datetime.datetime.now().timestamp() > ssl_info["valid_until"]
-        ):
-            critical_findings.append(
-                "Expired SSL/TLS Certificate: The main web server's certificate has expired."
-            )
-    if reputation_info := data.get("reputation_info", {}):
-        if high_risk_ips := [
-            ip
-            for ip, info in reputation_info.items()
-            if isinstance(info, dict) and info.get("abuseConfidenceScore", 0) > 75
-        ]:
-            critical_findings.append(
-                f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse score ({', '.join(high_risk_ips)})."
-            )
-    return (
-        [f"  • {finding}" for finding in critical_findings]
-        if critical_findings
-        else ["No critical findings to report."]
-    )
-
-
-def _create_report_section(
-    title: str, data: Dict[str, Any], formatter: Callable[[Dict[str, Any]], List[str]]
-) -> str:
-    """
-    A helper to create a formatted text report section with a standard header and error handling.
-    """
-    report = ["=" * 15 + f" {title} " + "=" * 15]
-
-    if not isinstance(data, dict):
-        report.append(
-            f"  Error: Unexpected data format for {title}. Expected dictionary, got {type(data).__name__}."
-        )
-        if (
-            data
-        ):  # If it's a non-empty string or other non-dict, include its representation
-            report.append(f"  Raw data: {data}")
-        return "\n".join(report)
-
-    # Now we are sure 'data' is a a dictionary
-    if not data:  # Check if the dictionary is empty
-        report.append("No data found for this section.")
-    elif data.get("error"):
-        error_msg = data["error"]
-        report.append(f"  Error: {error_msg}")
-        logger.debug(
-            f"Skipping report section '{title}' due to pre-existing error: {error_msg}"
-        )
-    else:
-        try:
-            # The formatter function returns a list of content lines
-            report.extend(formatter(data))
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred in the formatter for the '{title}' report section: {e}",
-                exc_info=True,
-            )
-            report.append(
-                f"  Error: Could not format data for this section due to an unexpected error: {e}"
-            )
-    return "\n".join(report)
-
-
-def export_txt_critical_findings(data: Dict[str, Any]) -> str:
-    """Formats a summary of critical findings for the text report."""
-    # We pass the entire `all_data` object to the helper, which then passes it to the formatter.
-    return _create_report_section(
-        "CRITICAL FINDINGS", data, _format_critical_findings_txt
-    )
-
-
-def _format_summary_txt(data: Dict[str, Any]) -> List[str]:
-    """Helper to format the scan summary for the text report."""
-    report = []
-    # Zone Transfer
-    axfr_summary = data.get("zone_info", {}).get("summary", "Not Found")
-    report.append(f"  {'Zone Transfer:':<20}: {axfr_summary}")
-
-    # SPF Policy
-    spf_policy = (
-        data.get("email_security", {}).get("spf", {}).get("all_policy", "Not Found")
-    )
-    report.append(f"  {'SPF Policy:':<20}: {spf_policy}")
-
-    # DMARC Policy
-    dmarc_policy = data.get("email_security", {}).get("dmarc", {}).get("p", "Not Found")
-    report.append(f"  {'DMARC Policy:':<20}: {dmarc_policy}")
-
-    # Security Audit
-    audit_findings = data.get("security", {})
-    if audit_findings:
-        weak_findings = [
-            k for k, v in audit_findings.items() if "Weak" in v or "Not Found" in v
-        ]
-        summary_text = (
-            f"Found {len(weak_findings)} issues ({', '.join(weak_findings)})"
-            if weak_findings
-            else "All checks passed"
-        )
-        report.append(f"  {'Security Audit:':<20}: {summary_text}")
-    else:
-        report.append(f"  {'Security Audit:':<20}: No data")
-    return report
-
-
-def export_txt_summary(data: Dict[str, Any]) -> str:
-    """Formats a high-level summary for the text report."""
-    # We pass the entire `all_data` object to the helper, which then passes it to the formatter.
-    return _create_report_section("Scan Summary", data, _format_summary_txt)
-
-
-def _format_records_txt(data: Dict[str, List[Any]]) -> List[str]:
-    """Formats DNS records for the text report."""
-    total_records = 0
-    # --- THIS IS THE FIX ---
-    if "error" in data:
-        return [f"Could not retrieve DNS records: {data['error']}"]
-
-    report = []
-    for r_type, items in data.items():
-        if items:
-            if total_records > 0:
-                report.append("")  # Add space between types
-            report.append(f"[{r_type}]")
-            for record in items:
-                total_records += 1
-                value = record.get("value", "N/A")
-                extra = ""
-                if r_type == "MX" and "priority" in record:
-                    extra = f" (Priority: {record['priority']})"
-                elif r_type == "SRV":
-                    extra = f" (P: {record.get('priority')} W: {record.get('weight')} Port: {record.get('port')})"
-                elif r_type == "SOA":
-                    extra = f" (Serial: {record.get('serial')})"
-                report.append(f"  - {value}{extra}")
-    if total_records == 0:
-        report.append("No DNS records found.")
-    return report
-
-
-def export_txt_records(data: Dict[str, List[Any]]) -> str:
-    return _create_report_section("DNS Records", data, _format_records_txt)
-
-
-def _format_ptr_txt(data: Dict[str, str]) -> List[str]:
-    """Formats PTR lookups for the text report."""
-    if not data:
-        return ["No PTR records found."]
-    return [f"  - {ip:<18} -> {hostname}" for ip, hostname in data.items()]
-
-
-def export_txt_ptr(data: Dict[str, str]) -> str:
-    return _create_report_section("Reverse DNS (PTR) Lookups", data, _format_ptr_txt)
-
-
-def _format_zone_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Zone Transfer results for the text report."""
-    report = []
-    report.append(
-        f"Overall Status: {data.get('summary', data.get('status', 'No data.'))}"
-    )
-    for server, info in data.get("servers", {}).items():
-        report.append(f"  - {server}: {info['status']}")
-        if info["status"] == "Successful":
-            report.append(f"    Record Count: {info['record_count']}")
-    report.append("\n")
-    return report
-
-
-def export_txt_zone(data: Dict[str, Any]) -> str:
-    return _create_report_section("Zone Transfer (AXFR)", data, _format_zone_txt)
-
-
-def _format_mail_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Email Security analysis for the text report."""
-    report = []
-    for key, value in data.items():
-        report.append(f"\n[{key.upper()}]")
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                report.append(f"  - {sub_key:<15}: {sub_value}")
-        else:
-            report.append(f"  - {value}")
-    return report
-
-
-def export_txt_mail(data: Dict[str, Any]) -> str:
-    return _create_report_section("Email Security", data, _format_mail_txt)
-
-
-def _format_whois_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats WHOIS information for the text report."""
-    # --- THIS IS THE FIX ---
-    if not isinstance(data, dict):
-        return [
-            f"Could not format WHOIS data. Expected a dictionary, but received: {str(data)}"
-        ]
-
-    report = []
-    for key, value in data.items():
-        if value and key != "error":
-            if isinstance(value, list):
-                value_str = ", ".join(str(v) for v in value)
-            elif "date" in key and isinstance(value, str):
-                try:
-                    dt = datetime.datetime.fromisoformat(value)
-                    value_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    value_str = str(value)
-            else:
-                value_str = str(value)
-            report.append(f"  {key.replace('_', ' ').title():<20}: {value_str}")
-    return report
-
-
-def export_txt_whois(data: Dict[str, Any]) -> str:
-    return _create_report_section("WHOIS Information", data, _format_whois_txt)
-
-
-def _format_nsinfo_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Nameserver Analysis for the text report."""
-    report = []
-    # --- THIS IS THE FIX ---
-    if "error" in data:
-        return [f"Could not analyze nameservers: {data['error']}"]
-
-    dnssec_status = data.get("dnssec", "Unknown")  # Safe, data is dict
-    for ns, info in data.items():  # info can be Dict or str
-        if ns == "dnssec":
-            continue
-        if isinstance(info, dict):
-            ip_list = info.get("ips", [])
-            ip_str = ", ".join(ip_list) if ip_list else "N/A"  # Use comma for TXT
-            asn = info.get("asn_description", "N/A")
-            report.append(f"  - {ns}")
-            report.append(f"    IP(s): {ip_str}")
-            report.append(f"    ASN: {asn}")
-        else:
-            report.append(f"  - {ns}: Unexpected data format - {str(info)}")
-    report.append(f"\nDNSSEC: {dnssec_status}")  # Safe
-    return report
-
-
-def export_txt_nsinfo(data: Dict[str, Any]) -> str:
-    return _create_report_section("Nameserver Analysis", data, _format_nsinfo_txt)
-
-
-def _format_propagation_txt(data: Dict[str, str]) -> List[str]:
-    """Formats DNS Propagation check for the text report."""
-    return [f"  - {server:<20}: {ip}" for server, ip in data.items()]
-
-
-def export_txt_propagation(data: Dict[str, str]) -> str:
-    return _create_report_section(
-        "DNS Propagation Check", data, _format_propagation_txt
-    )
-
-
-def _format_security_txt(data: Dict[str, str]) -> List[str]:
-    """Formats Security Audit for the text report."""
-    report = []
-    categories = {
-        "DNS Security": [
-            "SPF Policy",
-            "SPF Record",
-            "DMARC Policy",
-            "CAA Record",
-            "DNSSEC",
-            "Zone Transfer",
-        ],
-        "Web Security": [
-            "HTTP Headers",
-            "HSTS Policy",
-            "SSL/TLS Certificate",
-            "Subdomain Takeover",
-        ],
-        "Reputation": ["IP Blocklist Status"],
-    }
-    displayed_checks = set()
-
-    for category, checks_in_category in categories.items():
-        category_checks_present = [c for c in checks_in_category if c in data]
-        if not category_checks_present:
-            continue
-
-        report.append(f"\n[{category}]")
-        for check in category_checks_present:
-            info = data.get(check, {})
-            report.append(
-                f"  - {check:<25}: {info.get('status', 'N/A')} ({info.get('details', 'N/A')})"
-            )
-            displayed_checks.add(check)
-
-    # Handle any uncategorized checks
-    for check, info in data.items():
-        if check not in displayed_checks:
-            report.append(
-                f"  - {check:<25}: {info.get('status', 'N/A')} ({info.get('details', 'N/A')})"
-            )
-    return report
-
-
-def export_txt_security(data: Dict[str, Dict[str, str]]) -> str:
-    return _create_report_section("Security Audit", data, _format_security_txt)
-
-
-def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Technology Detection for the text report."""
-    report = []
-    if data.get("error"):
-        return [f"  Error: {data['error']}"]
-
-    if data.get("technologies"):
-        report.append(f"  {'Technologies:':<20}: {', '.join(data['technologies'])}")
-    if data.get("server"):
-        report.append(f"  {'Server:':<20}: {data['server']}")
-    headers_data = data.get("headers")
-    if isinstance(headers_data, dict):  # Check if headers_data is a dictionary
-        report.append("\nSecurity Headers:")
-        for h_key, h_value in headers_data.items():
-            report.append(f"  - {h_key}: {h_value}")
-    elif headers_data:  # If it's not a dict but not empty (e.g., an error string)
-        report.append(f"\nSecurity Headers: {headers_data}")
-    return report
-
-
-def export_txt_tech(data: Dict[str, Any]) -> str:
-    return _create_report_section("Technology Detection", data, _format_tech_txt)
-
-
-def _format_osint_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats OSINT Enrichment for the text report."""
-    report = []
-    subdomains = data.get("subdomains", [])
-    if subdomains:
-        report.append("\nSubdomains:")
-        for item in subdomains:
-            report.append(f"  - {item}")
-
-    passive_dns = data.get("passive_dns", [])
-    if passive_dns:
-        report.append("\nPassive DNS:")
-        for item in passive_dns:
-            report.append(
-                f"  - {item.get('hostname')} -> {item.get('ip')} (Last: {item.get('last_seen')})"
-            )
-
-    return report
-
-
-def export_txt_osint(data: Dict[str, Any]) -> str:
-    return _create_report_section("OSINT Enrichment", data, _format_osint_txt)
-
-
-def _format_content_hash_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Content Hash analysis for the text report."""
-    report = []
-    if data.get("favicon_murmur32_hash"):
-        report.append(
-            f"  {'Favicon Murmur32 Hash:':<25}: {data['favicon_murmur32_hash']}"
-        )
-    if data.get("page_sha256_hash"):
-        report.append(f"  {'Page Content SHA256:':<25}: {data['page_sha256_hash']}")
-    return report
-
-
-def export_txt_content_hash(data: Dict[str, Any]) -> str:
-    return _create_report_section(
-        "Content & Favicon Hashes", data, _format_content_hash_txt
-    )
-
-
-def _format_ct_logs_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats CT Log analysis for the text report."""
-    report = []
-    subdomains = data.get("subdomains", [])
-    if subdomains:
-        report.append(f"Found {len(subdomains)} subdomains:")
-        for item in subdomains:
-            report.append(f"  - {item}")
-    else:
-        report.append("No subdomains found in CT logs.")
-    return report
-
-
-def export_txt_ct_logs(data: Dict[str, Any]) -> str:
-    return _create_report_section(
-        "Certificate Transparency Log Analysis", data, _format_ct_logs_txt
-    )
-
-
-def _format_waf_detection_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats WAF Detection analysis for the text report."""
-    detected_wafs = data.get("detected_wafs", [])
-    details = data.get("details", {})
-    if detected_wafs:
-        report = [f"Identified: {', '.join(detected_wafs)}"]
-        report.extend(
-            [f"  - {waf}: {details.get(waf, 'No details.')}" for waf in detected_wafs]
-        )
-        return report
-    return ["No WAF identified from response headers."]
-
-
-def export_txt_waf_detection(data: Dict[str, Any]) -> str:
-    return _create_report_section("WAF Detection", data, _format_waf_detection_txt)
-
-
-def _format_dane_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats DANE/TLSA analysis for the text report."""
-    report = []
-    status = data.get("status", "Not Found")
-    report.append(f"Status for _443._tcp (HTTPS): {status}")
-    records = data.get("records", [])
-    if records:
-        report.append("\nRecords:")
-        report.extend([f"  - {record}" for record in records])
-    return report
-
-
-def export_txt_dane(data: Dict[str, Any]) -> str:
-    return _create_report_section("DANE/TLSA Record Analysis", data, _format_dane_txt)
-
-
 @console_display_handler("HTTP Security Headers Analysis")
 def display_http_headers(data: dict, quiet: bool = False):
     """Creates a rich Table of HTTP Security Headers analysis."""
     final_url = data.get("final_url", "N/A")
-    table = Table(
-        title=f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
+    title = (f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]")
+    table = Table(title=title, box=box.ROUNDED, show_header=True,
+                  header_style=None,
     )
     table.add_column("Header", style="bold", width=28)
     table.add_column("Status", width=10)
@@ -1193,7 +767,8 @@ def display_http_headers(data: dict, quiet: bool = False):
     recommendations = data.get("recommendations", [])
     if recommendations:
         rec_text = "\n".join([f"• {rec}" for rec in recommendations])
-        table.caption = Text(rec_text, style="yellow")
+        table.caption = Text(rec_text,
+                             style="yellow")
 
     return table
 
@@ -1227,10 +802,10 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
 
     if not vulnerable:
         panel = Panel(
-            "[green]✓ No potential subdomain takeovers found.[/green]",
+            "[green]✓ No potential subdomain takeovers found.[/green]",  # noqa: E501
             title="Subdomain Takeover",
             box=box.ROUNDED,
-        )
+        )  # noqa: E124
     else:
         tree = Tree(
             f"[bold red]✗ Found {len(vulnerable)} potential subdomain takeovers![/bold red]"
@@ -1240,7 +815,7 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
             node.add(f"Service: [bold]{item['service']}[/bold]")
             node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
         panel = Panel(
-            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"
+            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"  # noqa: E124
         )
 
     return panel
@@ -1252,9 +827,10 @@ def display_cloud_enum(data: dict, quiet: bool = False):
     s3_buckets = data.get("s3_buckets", [])
     azure_blobs = data.get("azure_blobs", [])
 
-    if not s3_buckets and not azure_blobs:
+    if not s3_buckets and not azure_blobs:  # noqa: W503
         panel = Panel(
-            "[dim]No public S3 buckets or Azure blobs found based on common permutations.[/dim]",
+            "[dim]No public S3 buckets or Azure blobs found based on "
+            "common permutations.[/dim]",
             title="Cloud Service Enumeration",
             box=box.ROUNDED,
         )
@@ -1305,7 +881,7 @@ def display_dnsbl_check(data: dict, quiet: bool = False):
 
     if not listed_ips:
         panel = Panel(
-            "[green]✓ No discovered IPs were found on common DNS blocklists.[/green]",
+            "[green]✓ No discovered IPs were found on common DNS blocklists.[/green]",  # noqa: E501
             title="DNS Blocklist (DNSBL) Check",
             box=box.ROUNDED,
         )
@@ -1318,7 +894,7 @@ def display_dnsbl_check(data: dict, quiet: bool = False):
             node.add(f"Listed on: [dim]{', '.join(item.get('listed_on', []))}[/dim]")
         panel = Panel(
             tree,
-            title="DNS Blocklist (DNSBL) Check",
+            title="DNS Blocklist (DNSBL) Check",  # noqa: E124
             box=box.ROUNDED,
             border_style="red",
         )

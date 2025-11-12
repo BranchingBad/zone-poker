@@ -4,18 +4,19 @@ import json
 from httpx import RequestError
 from unittest.mock import patch, mock_open
 
-from modules.analysis.subdomain_takeover import (
-    check_subdomain_takeover,
-    _load_fingerprints,
-)
+from modules.analysis.subdomain_takeover import (check_subdomain_takeover,
+                                                 _load_fingerprints)
 
 # Mock fingerprint data that reflects the new schema
 MOCK_FINGERPRINTS = {
     "GitHub Pages": {
         "cname": ["github.io"],
-        "fingerprints": ["There isn't a GitHub Pages site here."],
+        "fingerprints": ["There isn't a GitHub Pages site here."]
     },
-    "Heroku": {"cname": ["herokuapp.com"], "fingerprints": ["no such app"]},
+    "Heroku": {
+        "cname": ["herokuapp.com"],
+        "fingerprints": ["no such app"]
+    }
 }
 
 
@@ -34,21 +35,19 @@ async def test_subdomain_takeover_found():
     }
 
     # Mock the vulnerable response for the first subdomain.
-    # The new logic checks HTTP first, so we only need to mock that for a successful test.
-    github_fingerprint = MOCK_FINGERPRINTS["GitHub Pages"]["fingerprints"][0]
+    # The new logic checks HTTP first, so we only need to mock that.
+    fingerprint = MOCK_FINGERPRINTS["GitHub Pages"]["fingerprints"]  # type: ignore
     respx.get("http://vuln.example.com").respond(
-        200, text=f"<html><body>{github_fingerprint}</body></html>"
+        200, text=f"<html><body>{fingerprint}</body></html>"
     )
-
-    # Mock a safe response for the second subdomain
     respx.get("http://safe.example.com").respond(200, text="Everything is fine here.")
 
-    # Use patch to inject our mock fingerprints
+    # Use patch to inject our mock fingerprints and clear the cache
     with patch(
-        "modules.analysis.subdomain_takeover._load_fingerprints",
-        return_value=MOCK_FINGERPRINTS,
+        'modules.analysis.subdomain_takeover._load_fingerprints',
+        return_value=MOCK_FINGERPRINTS
     ):
-        _load_fingerprints.cache_clear()  # Ensure cache is clean for this test
+        _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
 
     assert len(results["vulnerable"]) == 1
@@ -63,20 +62,24 @@ async def test_subdomain_takeover_found():
 @respx.mock
 async def test_subdomain_takeover_not_found():
     """
-    Test that no takeover is reported when the CNAME matches but the fingerprint does not.
+    Test that no takeover is reported when CNAME matches but fingerprint does not.
     """
     records = {"CNAME": [{"name": "safe.example.com", "value": "user.github.io"}]}
-
     # Mock a response that does NOT contain the fingerprint
     respx.get(url__regex=r"https?://safe\.example\.com").respond(200, text="OK")
 
-    results = await check_subdomain_takeover(records)
+    with patch(
+        'modules.analysis.subdomain_takeover._load_fingerprints',
+        return_value=MOCK_FINGERPRINTS
+    ):
+        _load_fingerprints.cache_clear()
+        results = await check_subdomain_takeover(records)
 
     assert len(results["vulnerable"]) == 0
 
 
 @pytest.mark.asyncio
-async def test_subdomain_takeover_no_cnames():
+async def test_subdomain_takeover_no_cnames(): # noqa E302
     """
     Test that the function returns empty results when no CNAME records are provided.
     """
@@ -123,8 +126,8 @@ async def test_subdomain_takeover_missing_keys():
     respx.get("http://vuln.example.com").respond(200, text=github_fingerprint)
 
     with patch(
-        "modules.analysis.subdomain_takeover._load_fingerprints",
-        return_value=MOCK_FINGERPRINTS,
+        'modules.analysis.subdomain_takeover._load_fingerprints',
+        return_value=MOCK_FINGERPRINTS
     ):
         _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
@@ -145,7 +148,7 @@ async def test_fingerprint_caching():
     # Clear the cache before the test to ensure a clean state
     _load_fingerprints.cache_clear()
 
-    with patch("builtins.open", m):
+    with patch('builtins.open', m):
         # First call should read the file
         first_call_result = _load_fingerprints()
         m.assert_called_once()

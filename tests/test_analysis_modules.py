@@ -101,16 +101,15 @@ def test_security_audit_secure(mock_secure_data):
 
 def test_security_audit_weak(mock_weak_data):
     """
-    Tests the security_audit function with data that should result in 'Weak' or 'Vulnerable' statuses.
+    Tests the security_audit function with data that should result in 'Weak' or
+    'Vulnerable' statuses.
     """
     result = security_audit(**mock_weak_data)
 
-    assert result["SPF Policy"]["status"] == "Weak"
-    assert result["DMARC Policy"]["status"] == "Weak"
-    assert (
-        "Additionally, no 'rua' reporting address is configured"
-        in result["DMARC Policy"]["details"]
-    )
+    assert result["SPF Policy"]["status"] == "Weak"  # type: ignore
+    assert result["DMARC Policy"]["status"] == "Weak"  # type: ignore
+    assert ("Additionally, no 'rua' reporting address is configured"
+            in result["DMARC Policy"]["details"])
     assert result["CAA Record"]["status"] == "Weak"
     assert result["DNSSEC"]["status"] == "Weak"
     assert result["Zone Transfer"]["status"] == "Vulnerable"
@@ -127,7 +126,7 @@ def test_security_audit_moderate(mock_moderate_data):
     Tests a specific case that should result in a 'Moderate' status.
     """
     result = security_audit(**mock_moderate_data)
-    assert result["HSTS Policy"]["status"] == "Moderate"
+    assert result["HSTS Policy"]["status"] == "Moderate"  # type: ignore
     assert "weak 'max-age'" in result["HSTS Policy"]["details"]
 
 
@@ -135,12 +134,10 @@ def test_security_audit_moderate(mock_moderate_data):
 @respx.mock
 async def test_detect_technologies_found():
     """
-    Tests that detect_technologies correctly identifies technologies from headers,
-    HTML content, and script tags.
+    Tests that detect_technologies correctly identifies technologies.
+    It checks headers, HTML content, and script tags.
     """
     domain = "tech-example.com"
-    url = f"https://{domain}"
-
     # Mock a response that contains multiple fingerprints
     mock_html = """
     <html>
@@ -154,7 +151,7 @@ async def test_detect_technologies_found():
     </html>
     """
     mock_headers = {"X-Powered-By": "PHP/8.1"}
-    respx.get(url).respond(200, headers=mock_headers, html=mock_html)
+    respx.get(f"https://{domain}").respond(200, headers=mock_headers, html=mock_html)
 
     result = await detect_technologies(domain=domain, timeout=5, verbose=False)
 
@@ -167,7 +164,8 @@ async def test_detect_technologies_found():
 @pytest.mark.asyncio
 async def test_whois_lookup_success():
     """
-    Tests a successful whois_lookup, including data normalization of lists and datetimes.
+    Tests a successful whois_lookup, including data normalization of lists and
+    datetimes.
     """
     mock_whois_data = MagicMock()
     mock_whois_data.text = "raw whois text"
@@ -183,16 +181,13 @@ async def test_whois_lookup_success():
         mock_to_thread.return_value = mock_whois_data
         result = await whois_lookup(domain="example.com", verbose=False)
 
-    assert (
-        result["domain_name"] == "EXAMPLE.COM"
-    )  # Check that the first item in the list is taken
-    assert (
-        result["creation_date"] == "2020-01-01T00:00:00"
-    )  # Check that datetime is formatted to string
-    assert result["registrar"] == "Test Registrar"
-    assert (
-        result["emails"] == "abuse@example.com, admin@example.com"
-    )  # Check that emails are joined
+    # Check that the first item in the list is taken
+    assert result["domain_name"] == "EXAMPLE.COM"
+    # Check that datetime is formatted to string
+    assert result["creation_date"] == "2020-01-01T00:00:00"
+    assert result["registrar"] == "Test Registrar"  # type: ignore
+    # Check that emails are joined  # type: ignore
+    assert result["emails"] == "abuse@example.com, admin@example.com"  # type: ignore
     assert "error" not in result  # type: ignore
 
 
@@ -212,14 +207,9 @@ async def test_whois_lookup_no_data_returned():
 
 @pytest.mark.asyncio
 async def test_whois_lookup_pywhois_error():
-    """
-    Tests the handling of a PywhoisError, which typically occurs for non-existent domains.
-    """
+    """Tests the handling of a PywhoisError."""
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = PywhoisError("Domain not found.")
         result = await whois_lookup(domain="nonexistent.com", verbose=False)
 
     assert "WHOIS lookup failed: Domain not found." in result["error"]
-
-
-# [FIX] This entire duplicated block and the extra '}' have been removed.

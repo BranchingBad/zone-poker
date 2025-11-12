@@ -1,14 +1,14 @@
 import pytest
 import respx
-from httpx import Response, RequestError
+from httpx import RequestError
 
 from modules.analysis.cloud_enum import enumerate_cloud_services
 
 
 @pytest.fixture
 def mock_routes():
-    """
-    A pytest fixture to mock all potential routes that enumerate_cloud_services might check for a given domain.
+    """A pytest fixture to mock all potential routes.
+
     This prevents any real network requests from being made.
     """
     domain = "example.com"
@@ -16,26 +16,14 @@ def mock_routes():
 
     # S3 permutations from the function
     s3_permutations = {
-        base_name,
-        f"{base_name}-assets",
-        f"{base_name}-prod",
-        f"{base_name}-dev",
-        f"{base_name}-backups",
-        f"{base_name}-media",
-        f"{base_name}-www",
-        domain,
+        base_name, f"{base_name}-assets", f"{base_name}-prod", f"{base_name}-dev",
+        f"{base_name}-backups", f"{base_name}-media", f"{base_name}-www", domain,
     }
 
     # Azure permutations from the function
     azure_permutations = {
-        "example",
-        "exampleassets",
-        "exampleprod",
-        "exampledev",
-        "examplebackups",
-        "examplemedia",
-        "examplewww",
-        "examplecom",
+        "example", "exampleassets", "exampleprod", "exampledev",
+        "examplebackups", "examplemedia", "examplewww", "examplecom",
     }
 
     with respx.mock as mock:
@@ -58,9 +46,7 @@ async def test_enumerate_cloud_services_found(mock_routes):
 
     # Override the default 404 for specific "found" routes
     mock_routes.head("http://example-prod.s3.amazonaws.com").respond(200)  # Public
-    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(
-        403
-    )  # Forbidden (Private)
+    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(403)  # Forbidden
     mock_routes.head("https://example.blob.core.windows.net").respond(400)  # Found
 
     results = await enumerate_cloud_services(domain)
@@ -68,19 +54,16 @@ async def test_enumerate_cloud_services_found(mock_routes):
     # Assert S3 results (should be sorted by URL)
     assert len(results["s3_buckets"]) == 2
     assert results["s3_buckets"][0] == {
-        "url": "http://example-assets.s3.amazonaws.com",
-        "status": "forbidden",
+        "url": "http://example-assets.s3.amazonaws.com", "status": "forbidden"
     }
     assert results["s3_buckets"][1] == {
-        "url": "http://example-prod.s3.amazonaws.com",
-        "status": "public",
+        "url": "http://example-prod.s3.amazonaws.com", "status": "public"
     }
 
     # Assert Azure results
     assert len(results["azure_blobs"]) == 1
     assert results["azure_blobs"][0] == {
-        "url": "https://example.blob.core.windows.net",
-        "status": "forbidden",
+        "url": "https://example.blob.core.windows.net", "status": "forbidden"
     }
 
 
@@ -121,6 +104,5 @@ async def test_enumerate_cloud_services_network_error(mock_routes, caplog):
     # Check that the other bucket was still found
     assert len(results["s3_buckets"]) == 1
     assert results["s3_buckets"][0] == {
-        "url": "http://example-prod.s3.amazonaws.com",
-        "status": "public",
+        "url": "http://example-prod.s3.amazonaws.com", "status": "public"
     }

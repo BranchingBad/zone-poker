@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
 import dns.resolver
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple
 from ..config import PUBLIC_RESOLVERS
 
-
-async def propagation_check(
-    domain: str, timeout: int, **kwargs
-) -> Dict[str, Dict[str, Any]]:
+async def propagation_check(domain: str, timeout: int, **kwargs) -> Dict[str, Dict[str, Any]]:
     """Checks domain 'A' record propagation against public resolvers."""
     results: Dict[str, Dict[str, Any]] = {}
 
@@ -17,8 +14,8 @@ async def propagation_check(
         This is a cleaner pattern than modifying a shared dict from within a task.
         """
         # Create a resolver with configure=False. This prevents it from automatically
-        # reading /etc/resolv.conf and, more importantly, stops it from sending
-        # DNSSEC OK (DO) bits, which can cause SERVFAIL responses from some public resolvers.
+        # reading /etc/resolv.conf and stops it from sending DNSSEC OK (DO) bits,
+        # which can cause SERVFAIL responses from some public resolvers.
         resolver = dns.resolver.Resolver(configure=False)
         resolver.timeout = timeout
         resolver.lifetime = timeout
