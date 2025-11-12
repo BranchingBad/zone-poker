@@ -16,6 +16,7 @@ from modules.analysis.critical_findings import aggregate_critical_findings
 
 from modules.analysis.open_redirect import check_open_redirect
 
+
 @pytest.fixture
 def mock_secure_data():
     """Provides mock data representing a secure configuration."""
@@ -40,7 +41,7 @@ def mock_secure_data():
         "ssl_info": {
             "valid_until": future_timestamp,
             "cipher": ("TLS_AES_256_GCM_SHA384", "TLSv1.3", 256),
-        },
+        },  # No error key
         "takeover_info": {"vulnerable": []},
         "dnsbl_info": {"listed_ips": []},
         "port_scan_info": {},
@@ -52,21 +53,24 @@ def mock_secure_data():
 @pytest.fixture
 def mock_weak_data():
     """Provides mock data representing a weak or misconfigured setup."""
+    past_timestamp = (datetime.now() - timedelta(days=1)).timestamp()
     return {
-        "records_info": {},  # No CAA record
+        "records_info": {},  # No CAA, NSEC, or NSEC3 records
         "mail_info": {
-            "records": {
-                "NSEC": [{"value": "..."}]  # For weak zone walking check
-            },
             "spf": {"all_policy": "?all"},
             "dmarc": {"p": "none"},  # No rua address
         },
         "nsinfo_info": {"dnssec": "Not Enabled (No DNSKEY or DS records)"},
         "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"},
         "headers_info": {
-            "analysis": {"Content-Security-Policy": {"status": "Missing"}}
+            "analysis": {
+                "Content-Security-Policy": {
+                    "status": "Missing",
+                    "recommendation": "Implement CSP.",
+                }
+            }
         },
-        "ssl_info": {"error": "Certificate expired"},
+        "ssl_info": {"valid_until": past_timestamp},  # Expired cert
         "takeover_info": {"vulnerable": [{"subdomain": "test.example.com"}]},
         "dnsbl_info": {"listed_ips": [{"ip": "1.2.3.4"}]},
         "port_scan_info": {"1.2.3.4": [80, 443]},
@@ -78,8 +82,9 @@ def mock_weak_data():
 @pytest.fixture
 def mock_moderate_data(mock_secure_data):
     """Provides mock data for 'Moderate' checks, based on the secure data."""
-    mock_secure_data["headers_info"]["analysis"]["Strict-Transport-Security"] = {
-        "status": "Weak"
+    mock_secure_data["headers_info"]["analysis"]["Strict-Transport-Security"] = {  # type: ignore
+        "status": "Weak",
+        "recommendation": "HSTS 'max-age' is less than one year.",
     }
     return mock_secure_data
 
@@ -88,8 +93,8 @@ def test_security_audit_secure(mock_secure_data):
     """
     Tests the security_audit function with data that should result in all 'Secure' statuses.
     """
-    # The `security_audit` function now expects all dependency data.
-    result = security_audit(**mock_secure_data)
+    # The `security_audit` function now expects a single `all_data` dictionary.
+    result = security_audit(all_data=mock_secure_data)
     assert not result["findings"]
 
 
@@ -98,25 +103,35 @@ def test_security_audit_weak(mock_weak_data):
     Tests the security_audit function with data that should result in 'Weak' or
     'Vulnerable' statuses.
     """
-    result = security_audit(**mock_weak_data)
+    result = security_audit(all_data=mock_weak_data)
 
     # Convert list of findings to a dict for easier assertions
     findings = {f["finding"]: f for f in result["findings"]}
 
+    assert findings["Subdomain Takeover"]["severity"] == "Critical"
     assert findings["Permissive SPF Policy (?all)"]["severity"] == "Medium"
     assert findings["Weak DMARC Policy (p=none)"]["severity"] == "Medium"
     assert findings["DNSSEC Not Enabled"]["severity"] == "Medium"
     assert findings["Zone Transfer (AXFR) Enabled"]["severity"] == "High"
     assert findings["Open Redirect"]["severity"] == "Medium"
+    assert findings["Expired SSL/TLS Certificate"]["severity"] == "High"
+    assert findings["High-Risk IP Reputation"]["severity"] == "High"
+    assert findings["Insecure Header: Content-Security-Policy"]["severity"] == "High"
+
 
 def test_security_audit_moderate(mock_moderate_data):
     """
     Tests a specific case that should result in a 'Moderate' status.
     """
-    result = security_audit(**mock_moderate_data)
-    hsts_finding = next(f for f in result["findings"] if f["finding"] == "Insecure Header: Strict-Transport-Security")
-    assert hsts_finding["severity"] == "High" # This is simplified in the new logic
-    assert "Implement HSTS to enforce HTTPS" in hsts_finding["recommendation"]
+    result = security_audit(all_data=mock_moderate_data)
+    hsts_finding = next(
+        f
+        for f in result["findings"]
+        if f["finding"] == "Insecure Header: Strict-Transport-Security"
+    )
+    assert hsts_finding["severity"] == "High"
+    assert "HSTS 'max-age' is less than one year" in hsts_finding["recommendation"]
+
 
 @pytest.mark.asyncio
 @respx.mock
@@ -259,24 +274,43 @@ def test_aggregate_critical_findings_found():
     """
     Tests that aggregate_critical_findings correctly identifies multiple critical issues.
     """
-    past_timestamp = (datetime.now() - timedelta(days=1)).timestamp()
+    # This test now relies on the output of security_audit
     mock_data = {
-        "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"},
-        "takeover_info": {"vulnerable": [{"subdomain": "test.example.com"}]},
-        "ssl_info": {"valid_until": past_timestamp},
-        "reputation_info": {"1.1.1.1": {"abuseConfidenceScore": 90}},
-        "mail_info": {"spf": {"all_policy": "+all"}},
+        "security_info": {
+            "findings": [
+                {
+                    "finding": "Subdomain Takeover",
+                    "severity": "Critical",
+                    "recommendation": "Remove dangling DNS records.",
+                },
+                {
+                    "finding": "Zone Transfer (AXFR) Enabled",
+                    "severity": "High",
+                    "recommendation": "Disable zone transfers.",
+                },
+                {
+                    "finding": "Expired SSL/TLS Certificate",
+                    "severity": "High",
+                    "recommendation": "Renew the certificate.",
+                },
+                {
+                    "finding": "Weak DMARC Policy (p=none)",
+                    "severity": "Medium",
+                    "recommendation": "Transition to p=reject.",
+                },
+            ]
+        }
     }
 
     result = aggregate_critical_findings(mock_data)
     findings = result.get("critical_findings", [])
 
-    assert len(findings) == 5
-    assert "Zone Transfer Successful" in findings[0]
-    assert "Subdomain Takeover: Found 1" in findings[1]
-    assert "Expired SSL/TLS Certificate" in findings[2]
-    assert "High-Risk IP Reputation: 1 IP(s)" in findings[3]
-    assert "Overly Permissive SPF Policy (+all)" in findings[4]
+    assert len(findings) == 3  # Should only include Critical and High
+    assert "Subdomain Takeover: Remove dangling DNS records." in findings
+    assert "Zone Transfer (AXFR) Enabled: Disable zone transfers." in findings
+    assert "Expired SSL/TLS Certificate: Renew the certificate." in findings
+    # Ensure the Medium severity finding is NOT included
+    assert not any("DMARC" in f for f in findings)
 
 
 def test_aggregate_critical_findings_none_found():
@@ -284,16 +318,21 @@ def test_aggregate_critical_findings_none_found():
     Tests that aggregate_critical_findings returns an empty list when no
     critical issues are present. It also tests handling of missing data.
     """
-    future_timestamp = (datetime.now() + timedelta(days=30)).timestamp()
     mock_data = {
-        "zone_info": {"summary": "Secure (No successful transfers)"},
-        # takeover_info is missing entirely to test graceful failure
-        "ssl_info": {"valid_until": future_timestamp},
-        "reputation_info": {
-            "1.1.1.1": {"abuseConfidenceScore": 10},
-            "2.2.2.2": {"error": "API limit reached"}, # Test error handling
-        },
-        "mail_info": {"spf": {"all_policy": "-all"}},
+        "security_info": {
+            "findings": [
+                {
+                    "finding": "Missing CAA Record",
+                    "severity": "Low",
+                    "recommendation": "Implement CAA.",
+                },
+                {
+                    "finding": "Weak DMARC Policy (p=none)",
+                    "severity": "Medium",
+                    "recommendation": "Transition to p=reject.",
+                },
+            ]
+        }
     }
 
     result = aggregate_critical_findings(mock_data)

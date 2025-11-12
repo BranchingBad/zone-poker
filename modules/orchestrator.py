@@ -100,6 +100,7 @@ async def _scan_single_domain(
         return {}
 
     from .dispatch_table import MODULE_DISPATCH_TABLE
+
     if not args.quiet and args.output == "table":
         console.print(f"Target: {domain}")
         scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

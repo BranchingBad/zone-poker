@@ -52,37 +52,49 @@ def get_parent_zone(domain: str) -> str | None:
 
 # --- Helper Functions Moved from Analysis.py ---
 
-def _format_rdata(rtype: str, rdata: Any, *, ttl: int, name: str = "") -> Dict[str, Any]:
+
+def _format_rdata(
+    rtype: str, rdata: Any, *, ttl: int, name: str = ""
+) -> Dict[str, Any]:
     """Format a single dnspython rdata object into a standardized dictionary."""
     record_info: Dict[str, Any] = {"ttl": ttl, "name": str(name)}
     if rtype == "MX":
-        record_info.update({
-            "value": str(rdata.exchange),
-            "priority": rdata.preference,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.exchange),
+                "priority": rdata.preference,
+            }
+        )
     elif rtype == "SRV":
-        record_info.update({
-            "value": str(rdata.target),
-            "priority": rdata.priority,
-            "weight": rdata.weight,
-            "port": rdata.port,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.target),
+                "priority": rdata.priority,
+                "weight": rdata.weight,
+                "port": rdata.port,
+            }
+        )
     # --- THIS BLOCK IS NEW ---
     elif rtype == "SOA":
-        record_info.update({
-            "value": str(rdata.mname),
-            "rname": str(rdata.rname),
-            "serial": rdata.serial,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.mname),
+                "rname": str(rdata.rname),
+                "serial": rdata.serial,
+            }
+        )
     elif rtype == "CAA":
-        record_info.update({
-            "value": rdata.value.decode('utf-8', 'ignore'),
-            "tag": rdata.tag.decode('utf-8', 'ignore'),
-        })
+        record_info.update(
+            {
+                "value": rdata.value.decode("utf-8", "ignore"),
+                "tag": rdata.tag.decode("utf-8", "ignore"),
+            }
+        )
     # --- END NEW BLOCK ---
     elif rtype == "TXT":
         record_info["value"] = join_txt_chunks(
-            [t.decode('utf-8', 'ignore') for t in rdata.strings])
+            [t.decode("utf-8", "ignore") for t in rdata.strings]
+        )
     else:
         record_info["value"] = str(rdata)
     return record_info
@@ -95,8 +107,9 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
     if parts:
         analysis["version"] = parts[0]
         for part in parts[1:]:
-            if part.startswith(("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:",
-                                "exists:")):
+            if part.startswith(
+                ("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:", "exists:")
+            ):
                 key, _, value = part.partition(":")
                 key = key.lstrip("+-~?")
                 analysis["mechanisms"].setdefault(key, []).append(value)

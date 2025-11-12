@@ -10,14 +10,17 @@ from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
+
+async def enumerate_cloud_services(
+    domain: str, **kwargs
+) -> Dict[str, List[Dict[str, Any]]]:
     """
     Enumerates potential public cloud storage (e.g., S3 buckets, Azure Blobs) based on the domain name.
     """
     results: Dict[str, List[Dict[str, Any]]] = {"s3_buckets": [], "azure_blobs": []}
 
     # Generate potential bucket names from the domain
-    domain_parts = domain.split('.')
+    domain_parts = domain.split(".")
     base_name = domain_parts[0]
 
     # A simple list of permutations to check
@@ -33,9 +36,7 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
     }
 
     # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars) and remove duplicates
-    sanitized_permutations = {
-        re.sub(r'[^a-z0-9]', '', p.lower()) for p in permutations
-    }
+    sanitized_permutations = {re.sub(r"[^a-z0-9]", "", p.lower()) for p in permutations}
 
     logger.debug(
         f"Checking {len(permutations)} potential S3 bucket names and "
@@ -69,11 +70,12 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
             logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")
 
     async with httpx.AsyncClient() as client:
-        tasks = [check_s3_bucket(p, client) for p in permutations] + \
-                [check_azure_blob(p, client) for p in sanitized_permutations]
+        tasks = [check_s3_bucket(p, client) for p in permutations] + [
+            check_azure_blob(p, client) for p in sanitized_permutations
+        ]
         await asyncio.gather(*tasks)
 
     # Sort by URL
-    results["s3_buckets"].sort(key=lambda x: x['url'])
-    results["azure_blobs"].sort(key=lambda x: x['url'])
+    results["s3_buckets"].sort(key=lambda x: x["url"])
+    results["azure_blobs"].sort(key=lambda x: x["url"])
     return results

@@ -24,8 +24,10 @@ def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
     if rtype == "MX" and "priority" in record:
         return f"Priority: {record['priority']}"
     if rtype == "SRV":
-        return (f"P:{record.get('priority')} W:{record.get('weight')} "
-                f"Port:{record.get('port')}")
+        return (
+            f"P:{record.get('priority')} W:{record.get('weight')} "
+            f"Port:{record.get('port')}"
+        )
     if rtype == "SOA":
         return f"Serial: {record.get('serial')}"
     if rtype == "CAA":
@@ -40,18 +42,25 @@ def console_display_handler(title: str):
     - Handles and displays a standardized error panel if `data['error']` exists.
     - Prints a newline after the content is displayed.
     """
+
     def decorator(func: Callable):
         def wrapper(data: dict, quiet: bool, *args, **kwargs) -> Optional[Panel]:
             if quiet or not data or not isinstance(data, dict):
                 return None
 
             if error := data.get("error"):
-                return Panel(f"[dim]{error}[/dim]", title=f"{title} - Error",
-                             box=box.ROUNDED, border_style="dim")
+                return Panel(
+                    f"[dim]{error}[/dim]",
+                    title=f"{title} - Error",
+                    box=box.ROUNDED,
+                    border_style="dim",
+                )
 
             renderable = func(data, quiet, *args, **kwargs)
             return renderable
+
         return wrapper
+
     return decorator
 
 
@@ -98,7 +107,6 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False
 @console_display_handler("Reverse DNS (PTR) Lookups")
 def display_ptr_lookups(data: Dict[str, Any], quiet: bool = False):
     """Creates a rich Table of PTR records."""
-    ptr_records = data.get("ptr_records", [])
     table = Table(
         title="Reverse DNS (PTR) Lookups",
         box=box.ROUNDED,
@@ -108,17 +116,17 @@ def display_ptr_lookups(data: Dict[str, Any], quiet: bool = False):
     table.add_column("IP Address", style="bold", width=20)
     table.add_column("Hostname", max_width=60)
 
-    if not ptr_records:
+    if not data.get("ptr_records"):
         return Panel(
             "[dim]No PTR records to display.[/dim]",
             title="Reverse DNS (PTR) Lookups",
             box=box.ROUNDED,
         )
 
-    for record in ptr_records:
+    for record in data.get("ptr_records", []):
         table.add_row(record.get("ip", "N/A"), record.get("hostname", "N/A"))
 
-    table.caption = f"Total: {len(ptr_records)} PTR lookups performed"
+    table.caption = f"Total: {len(data.get('ptr_records', []))} PTR lookups performed"
     return table
 
 
@@ -302,8 +310,7 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
             # Sort the IPs for each resolver to ensure consistent display order.
             # The `append` method with a `style` argument is the correct way to add styled text.
             for ip in sorted(result.get("ips", [])):
-                color = color_map.get(ip,
-                                      "white")
+                color = color_map.get(ip, "white")
                 ip_text.append(f"{ip}\n", style=color)
             table.add_row(server, ip_text)
 
@@ -320,42 +327,42 @@ SEVERITY_STYLE_MAP = {
     "Unknown": {"color": "dim", "icon": "?"},
 }
 
+
 @console_display_handler("Security Audit")
 def display_security_audit(data: dict, quiet: bool = False):
     """Creates a rich Table of Security Audit results."""
-    table = Table(
-        title="Security Audit",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
-        show_edge=True
-    )
-    table.add_column("Check", style="bold", width=20)
-    table.add_column("Severity", width=12)
-    table.add_column("Recommendation", max_width=60)
-
     findings = data.get("findings", [])
 
     if not findings:
-        table.add_row("[green]All checks passed[/green]", "", "")
-        return table
+        return Panel(
+            "[green]✓ All security checks passed.[/green]",
+            title="Security Audit",
+            box=box.ROUNDED,
+        )
 
-    # Group findings by severity to make the report easier to read
-    for severity_level in SEVERITY_STYLE_MAP:
-        # Filter findings for the current severity level
-        grouped_findings = [f for f in findings if f.get("severity") == severity_level]
-        if not grouped_findings:
-            continue
+    tree = Tree("[bold]Security Audit Findings[/bold]")
 
-        for finding in grouped_findings:
-            style = SEVERITY_STYLE_MAP[severity_level]
-            table.add_row(
-                finding.get("finding", "Unknown Check"),
-                f"{style['icon']} [{style['color']}]{severity_level}[/{style['color']}]",
-                finding.get("recommendation", "N/A")
+    # The security_audit function already sorts findings by severity.
+    # We can iterate through them and create severity groups as we go.
+    current_severity = None
+    severity_node = None
+
+    for finding in findings:
+        severity = finding.get("severity", "Unknown")
+        if severity != current_severity:
+            current_severity = severity
+            style = SEVERITY_STYLE_MAP.get(severity, SEVERITY_STYLE_MAP["Unknown"])
+            severity_node = tree.add(
+                f"{style['icon']} [{style['color']}]{severity} Severity Findings[/{style['color']}]"
             )
 
-    return table
+        if severity_node:
+            finding_node = severity_node.add(
+                f"[bold]{finding.get('finding', 'N/A')}[/bold]"
+            )
+            finding_node.add(f"[dim]{finding.get('recommendation', 'N/A')}[/dim]")
+
+    return Panel(tree, title="Security Audit", box=box.ROUNDED)
 
 
 @console_display_handler("Technology Detection")
@@ -615,19 +622,28 @@ def display_summary(data: dict, quiet: bool = False):
         },
         {
             "label": "SPF Policy",
-            "value_func": lambda d: d.get("mail_info", {}).get("spf", {}).get("all_policy", "Not Found"),
-            "color_func": lambda v: "red" if v in ["?all", "+all", "Not Found"] else "yellow" if v == "~all" else "green",
+            "value_func": lambda d: d.get("mail_info", {})
+            .get("spf", {})
+            .get("all_policy", "Not Found"),
+            "color_func": lambda v: (
+                "red"
+                if v in ["?all", "+all", "Not Found"]
+                else "yellow" if v == "~all" else "green"
+            ),
         },
         {
             "label": "DMARC Policy",
-            "value_func": lambda d: d.get("mail_info", {}).get("dmarc", {}).get("p", "Not Found"),
+            "value_func": lambda d: d.get("mail_info", {})
+            .get("dmarc", {})
+            .get("p", "Not Found"),
             "color_func": lambda v: "red" if v in ["none", "Not Found"] else "green",
         },
         {
             "label": "Security Audit",
             "value_func": lambda d: (
                 f"Found {len(d.get('security_info', {}).get('findings', []))} issues"
-                if d.get("security_info", {}).get("findings") else "All checks passed"
+                if d.get("security_info", {}).get("findings")
+                else "All checks passed"
             ),
             "color_func": lambda v: "red" if "Found" in v else "green",
         },
@@ -688,9 +704,12 @@ def display_critical_findings(data: dict, quiet: bool = False):
 def display_http_headers(data: dict, quiet: bool = False):
     """Creates a rich Table of HTTP Security Headers analysis."""
     final_url = data.get("final_url", "N/A")
-    title = (f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]")
-    table = Table(title=title, box=box.ROUNDED, show_header=True,
-                  header_style=None,
+    title = f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]"
+    table = Table(
+        title=title,
+        box=box.ROUNDED,
+        show_header=True,
+        header_style=None,
     )
     table.add_column("Header", style="bold", width=28)
     table.add_column("Status", width=10)
@@ -713,8 +732,7 @@ def display_http_headers(data: dict, quiet: bool = False):
     recommendations = data.get("recommendations", [])
     if recommendations:
         rec_text = "\n".join([f"• {rec}" for rec in recommendations])
-        table.caption = Text(rec_text,
-                             style="yellow")
+        table.caption = Text(rec_text, style="yellow")
 
     return table
 
@@ -748,10 +766,10 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
 
     if not vulnerable:
         panel = Panel(
-            "[green]✓ No potential subdomain takeovers found.[/green]",  # noqa: E501
+            "[green]✓ No potential subdomain takeovers found.[/green]",
             title="Subdomain Takeover",
             box=box.ROUNDED,
-        )  # noqa: E124
+        )
     else:
         tree = Tree(
             f"[bold red]✗ Found {len(vulnerable)} potential subdomain takeovers![/bold red]"
@@ -761,7 +779,7 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
             node.add(f"Service: [bold]{item['service']}[/bold]")
             node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
         panel = Panel(
-            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"  # noqa: E124
+            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"
         )
 
     return panel
@@ -781,7 +799,7 @@ def display_open_redirect(data: dict, quiet: bool = False):
     else:
         tree = Tree(
             f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]"
-        )
+        )  # noqa: E124
         for item in vulnerable_urls:
             node = tree.add(f"URL: [yellow]{item['url']}[/yellow]")
             node.add(f"Redirects To: [dim]{item['redirects_to']}[/dim]")

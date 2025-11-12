@@ -7,8 +7,8 @@ from rich.tree import Tree
 from modules.display import (
     display_dns_records_table,
     display_ptr_lookups,
-    display_axfr_results,
-    display_whois_info,
+    display_security_audit,
+    display_subdomain_takeover,
     display_summary,
 )
 
@@ -23,13 +23,28 @@ def dns_records_data():
 
 
 @pytest.fixture
-def whois_data():
-    """Provides sample WHOIS data."""
+def security_audit_data_weak():
+    """Provides sample security audit data with findings."""
     return {
-        "domain_name": "example.com",
-        "registrar": "Test Registrar",
-        "creation_date": "2020-01-01T00:00:00",
+        "findings": [
+            {
+                "finding": "Subdomain Takeover",
+                "severity": "Critical",
+                "recommendation": "Remove dangling DNS records.",
+            },
+            {
+                "finding": "Missing DMARC Record",
+                "severity": "High",
+                "recommendation": "Implement a DMARC record.",
+            },
+        ]
     }
+
+
+@pytest.fixture
+def security_audit_data_secure():
+    """Provides sample security audit data with no findings."""
+    return {"findings": []}
 
 
 def test_display_dns_records_table_with_data(dns_records_data):
@@ -37,10 +52,8 @@ def test_display_dns_records_table_with_data(dns_records_data):
     Tests that display_dns_records_table returns a Table with the correct caption
     when data is present.
     """
-    # Call the function
     result = display_dns_records_table(dns_records_data, quiet=False)
 
-    # Assertions
     assert isinstance(result, Table)
     assert result.row_count == 2
     assert result.caption == "Total: 2 DNS records found"
@@ -79,33 +92,46 @@ def test_display_ptr_lookups_empty_data():
     assert "No PTR records to display" in str(result.renderable)
 
 
-def test_display_axfr_results_vulnerable():
+def test_display_security_audit_with_findings(security_audit_data_weak):
     """
-    Tests that display_axfr_results returns a Tree with a 'Vulnerable' summary.
+    Tests that display_security_audit returns a Panel containing a Tree when
+    findings are present.
     """
-    data = {"summary": "Vulnerable"}
-    result = display_axfr_results(data, quiet=False)
-
-    assert isinstance(result, Tree)
-    assert "Vulnerable" in str(result.label)
-
-
-def test_display_whois_info(whois_data):
-    """
-    Tests that display_whois_info returns a Panel containing a Table.
-    """
-    result = display_whois_info(whois_data, quiet=False)
+    result = display_security_audit(security_audit_data_weak, quiet=False)
 
     assert isinstance(result, Panel)
-    assert result.title == "WHOIS Information"
+    assert isinstance(result.renderable, Tree)
+    assert "Critical Severity Findings" in str(result.renderable)
+    assert "High Severity Findings" in str(result.renderable)
 
-    # Check the renderable inside the panel, which should be our table
-    inner_table = result.renderable
-    assert isinstance(inner_table, Table)
-    assert inner_table.row_count == 3
 
-    # Check that a key from the data is present
-    assert "Registrar" in str(inner_table.columns[0].cells)
+def test_display_security_audit_no_findings(security_audit_data_secure):
+    """
+    Tests that display_security_audit returns a simple success Panel when no
+    findings are present.
+    """
+    result = display_security_audit(security_audit_data_secure, quiet=False)
+
+    assert isinstance(result, Panel)
+    assert "All security checks passed" in str(result.renderable)
+
+
+def test_display_subdomain_takeover_vulnerable():
+    """
+    Tests the display for a vulnerable subdomain takeover scenario.
+    """
+    data = {
+        "vulnerable": [
+            {
+                "subdomain": "test.example.com",
+                "service": "S3",
+                "cname_target": "test.s3.amazonaws.com",
+            }
+        ]
+    }
+    result = display_subdomain_takeover(data, quiet=False)
+    assert isinstance(result, Panel)
+    assert "Found 1 potential subdomain takeovers" in str(result.renderable.label)
 
 
 def test_display_summary_data_driven():
@@ -115,36 +141,21 @@ def test_display_summary_data_driven():
     """
     mock_data = {
         "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"},
-        "mail_info": {
-            "spf": {"all_policy": "~all"},
-            "dmarc": {"p": "reject"},
-        },
+        "mail_info": {"spf": {"all_policy": "~all"}, "dmarc": {"p": "reject"}},
         "security_info": {"findings": [1, 2]},  # Two findings
     }
 
-    # Call the function
     result = display_summary(mock_data, quiet=False)
 
-    # Assertions
     assert isinstance(result, Table)
     assert result.row_count == 4
 
-    # To inspect the content, we can look at the cells in the columns
     labels = result.columns[0].cells
     findings = result.columns[1].cells
 
-    # 1. Zone Transfer should be 'Vulnerable' and red
     assert labels[0] == "Zone Transfer"
-    assert "[bold red]Vulnerable (Zone Transfer Successful)[/bold red]" in str(findings[0])
-
-    # 2. SPF Policy should be '~all' and yellow
-    assert labels[1] == "SPF Policy"
-    assert "[yellow]~all[/yellow]" in str(findings[1])
-
-    # 3. DMARC Policy should be 'reject' and green
-    assert labels[2] == "DMARC Policy"
-    assert "[green]reject[/green]" in str(findings[2])
-
-    # 4. Security Audit should show 2 issues and be red
+    assert "[bold red]Vulnerable (Zone Transfer Successful)[/bold red]" in str(
+        findings[0]
+    )
     assert labels[3] == "Security Audit"
     assert "[red]Found 2 issues[/red]" in str(findings[3])

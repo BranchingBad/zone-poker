@@ -20,6 +20,7 @@ REDIRECT_PAYLOADS = [
     "/cgi-bin/redirect.cgi?url=https://example.com",
 ]
 
+
 async def check_open_redirect(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
     """
     Checks for basic open redirect vulnerabilities by testing common parameters.
@@ -39,15 +40,20 @@ async def check_open_redirect(domain: str, timeout: int, **kwargs) -> Dict[str, 
                     parsed_location = urlparse(location)
                     if "example.com" in parsed_location.netloc:
                         logger.info(f"Potential open redirect found at {url}")
-                        results["vulnerable_urls"].append({
-                            "url": url,
-                            "redirects_to": location,
-                        })
+                        results["vulnerable_urls"].append(
+                            {
+                                "url": url,
+                                "redirects_to": location,
+                            }
+                        )
         except httpx.RequestError as e:
             logger.debug(f"Open redirect check for {url} failed: {e}")
 
     async with httpx.AsyncClient(verify=False) as client:
-        tasks = [test_url(f"https://{domain}{payload}", client) for payload in REDIRECT_PAYLOADS]
+        tasks = [
+            test_url(f"https://{domain}{payload}", client)
+            for payload in REDIRECT_PAYLOADS
+        ]
         await asyncio.gather(*tasks)
 
     return results

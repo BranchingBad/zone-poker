@@ -9,7 +9,10 @@ from typing import Dict, Any, List, Set
 
 logger = logging.getLogger(__name__)
 
-async def geolocate_ips(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, List[Dict[str, Any]]]:
+
+async def geolocate_ips(
+    records_info: Dict[str, List[Dict[str, Any]]], **kwargs
+) -> Dict[str, List[Dict[str, Any]]]:
     """
     Performs IP geolocation for discovered A and AAAA records using ip-api.com.
     """
@@ -27,12 +30,20 @@ async def geolocate_ips(records_info: Dict[str, List[Dict[str, Any]]], **kwargs)
 
     logger.debug(f"Geolocating {len(ips_to_check)} unique IP addresses.")
     async with httpx.AsyncClient() as client:
-        tasks = {ip: client.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,city,isp", timeout=10) for ip in ips_to_check}
+        tasks = {
+            ip: client.get(
+                f"http://ip-api.com/json/{ip}?fields=status,message,country,city,isp",
+                timeout=10,
+            )
+            for ip in ips_to_check
+        }
         responses = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
         for (ip, _), response in zip(tasks.items(), responses):
             if isinstance(response, Exception):
-                results["locations"].append({"ip": ip, "error": f"Request failed: {type(response).__name__}"})
+                results["locations"].append(
+                    {"ip": ip, "error": f"Request failed: {type(response).__name__}"}
+                )
                 continue
 
             try:
@@ -42,8 +53,12 @@ async def geolocate_ips(records_info: Dict[str, List[Dict[str, Any]]], **kwargs)
                     location_data["ip"] = ip  # Add the IP to the dictionary
                     results["locations"].append(location_data)
                 else:
-                    results["locations"].append({"ip": ip, "error": data.get("message", "Failed to geolocate")})
+                    results["locations"].append(
+                        {"ip": ip, "error": data.get("message", "Failed to geolocate")}
+                    )
             except Exception as e:
-                results["locations"].append({"ip": ip, "error": f"Failed to parse response: {e}"})
+                results["locations"].append(
+                    {"ip": ip, "error": f"Failed to parse response: {e}"}
+                )
 
     return results

@@ -32,7 +32,9 @@ async def analyze_reputation(
     ip_addresses = []
     for record_type in ("A", "AAAA"):
         if record_list := records_info.get(record_type):
-            ip_addresses.extend(rec.get("value") for rec in record_list if rec.get("value"))
+            ip_addresses.extend(
+                rec.get("value") for rec in record_list if rec.get("value")
+            )
 
     if not ip_addresses:
         return {"error": "No A or AAAA records found to check reputation."}

@@ -34,9 +34,9 @@ from modules.analysis.critical_findings import aggregate_critical_findings
 
 # Import all display and export functions
 from modules.display import (  # Only display functions remain here
-    display_dns_records_table,
-    display_ptr_lookups,
     display_axfr_results,
+    display_ptr_lookups,
+    display_dns_records_table,
     display_email_security,
     display_whois_info,
     display_nameserver_analysis,
@@ -57,7 +57,6 @@ from modules.display import (  # Only display functions remain here
     display_cloud_enum,
     display_dnsbl_check,
     display_open_redirect,
-    display_critical_findings,
 )
 from modules.export_txt import (  # All txt export functions are imported
     export_txt_records,
@@ -208,7 +207,7 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {
             "short": "-s",
             "long": "--security",
-            "help": "Run a basic audit for DNS security misconfigurations.",
+            "help": "Run a comprehensive audit for security misconfigurations.",
         },
     },
     "tech": {
@@ -415,8 +414,8 @@ MODULE_DISPATCH_TABLE = {
     "critical_findings": {
         "data_key": "critical_findings_info",
         "analysis_func": aggregate_critical_findings,
-        "display_func": None, # Handled by the main summary display
-        "export_func": None, # Handled by the main summary export
+        "display_func": None,  # Handled by the main summary display
+        "export_func": None,  # Handled by the main summary export
         "description": "Aggregating critical findings...",
         "dependencies": [
             "zone",
@@ -425,7 +424,7 @@ MODULE_DISPATCH_TABLE = {
             "reputation",
             "mail",
         ],
-        "arg_info": None, # Not a user-callable module
+        "arg_info": None,  # Not a user-callable module
     },
 }
 

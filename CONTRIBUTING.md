@@ -79,36 +79,21 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     -   **Text Export Module (`modules/export_txt.py`)**: This module contains all the logic for formatting data for the plain text (`.txt`) report.
 
 -   **Adding a New Analysis Module**: To add a new module, you'll typically need to:
-    1.  Create the analysis function in a new file under `modules/analysis/`.
-    2.  Create a corresponding display function (e.g., `display_my_module`) in `modules/display.py`. It must be decorated with `@console_display_handler` and return a `rich` object.
-    3.  Create two functions for the TXT export in `modules/export_txt.py`:
-        - A private formatter `_format_my_module_txt(data: dict) -> List[str]` that handles the actual formatting logic.
+    1.  **Analysis Function**: Create your analysis function in a new file under `modules/analysis/`. This function should perform the analysis and return a dictionary of results.
+    2.  **Display Function**: In `modules/display.py`, create a corresponding display function (e.g., `display_my_module`). It must be decorated with `@console_display_handler` and **return** a `rich` renderable object (like a `Table` or `Panel`).
+    3.  **TXT Export Functions**: In `modules/export_txt.py`, create two functions for the plain text export:
+        - A private formatter `_format_my_module_txt(data: dict) -> List[str]` that contains the formatting logic.
         - A public `export_txt_my_module(data: dict) -> str` function that calls the `_create_report_section` helper with your new formatter.
-    4.  Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`. This dictionary entry connects your new module to the orchestrator and should include:
+    4.  **Dispatch Table Entry**: Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`. This entry connects your module to the orchestrator and should include:
         - `data_key`: The key for storing results (e.g., `my_module_info`).
         - `analysis_func`: The analysis function you created.
         - `display_func`: The `rich` display function.
         - `export_func`: The text export function.
         - `description`: A short message shown to the user when the module runs.
         - `dependencies`: A list of other modules that must run first (if any).
-        - `arg_info`: A dictionary defining the command-line flag (e.g., `{'name': '--my-module', 'help': 'Run my new module.'}`).
-    5.  Write a unit test for your new analysis function in the `tests/` directory.
-    6.  Update the `README.md` to include the new module's command-line flag and description.
-
--   **Adding a New Output Format**:
-    -   **For Console Output (e.g., XML, CSV):**
-        1.  Create a new file in `modules/output/` (e.g., `xml.py`).
-        2.  Inside this file, create a function `output(all_data: Dict[str, Any])` that takes the complete scan data and **prints** it to the console.
-        3.  Add the name of your new format (e.g., `'xml'`) to the `choices` list for the `--output` argument in `modules/parser_setup.py`.
-        4.  In `modules/orchestrator.py`, update the `handle_output` call in `_scan_single_domain` to call your new output module when `args.output` matches your format's name.
-
-    -   **For File Export (e.g., HTML, Markdown):**
-        1.  In `modules/parser_setup.py`, add a new command-line argument (e.g., `--html-file`) to accept a file path for your new report.
-        2.  Create a new file in `modules/export/` (e.g., `html_export.py`).
-        3.  Inside this file, create a function `export_html(all_data: Dict[str, Any], filepath: str)`. This function should generate the report content and write it to the specified `filepath`.
-        4.  Update the `handle_output` function in `modules/export.py` to:
-            - Check if the new file argument (e.g., `args.html_file`) is present.
-            - If it is, call your new export function from the appropriate `export` module.
+        - `arg_info`: A dictionary defining the command-line flag (e.g., `{'short': '-x', 'long': '--my-module', 'help': '...'}`).
+    5.  **Unit Tests**: Write unit tests for your new analysis function in the `tests/` directory.
+    6.  **Documentation**: Update the `README.md` to include the new module's command-line flag and description in the "Analysis Modules" table.
 
 ## Code of Conduct
 

@@ -30,7 +30,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **DNS Blocklist (DNSBL)**: Checks discovered IPs against common real-time spam blocklists.
 - **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
 - **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use.
-- **General Security Audit**: Runs a series of checks for common misconfigurations.
+- **Comprehensive Security Audit**: Performs a detailed audit for dozens of security misconfigurations, including permissive SPF policies, weak DMARC, zone transfer vulnerabilities, expired SSL certificates, insecure HTTP headers, and potential subdomain takeovers. Findings are categorized by severity (Critical, High, Medium, Low).
 
 ### OSINT & Enumeration
 - **WHOIS Lookup**: Retrieves detailed registration information for the domain.
@@ -125,7 +125,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `-w`, `--whois` | Perform an extended WHOIS lookup on the domain. |
 | `-n`, `--nsinfo` | Analyze nameserver information and check for DNSSEC. |
 | `-p`, `--propagation` | Check DNS propagation across public resolvers. |
-| `-s`, `--security` | Run a basic audit for DNS security misconfigurations. |
+| `-s`, `--security` | Run a comprehensive audit for security misconfigurations. |
 | `-t`, `--tech` | Detect web technologies, CMS, and security headers. |
 | `-o`, `--osint` | Enrich data with passive DNS and other OSINT sources. |
 | `--ssl` | Analyze the SSL/TLS certificate. |

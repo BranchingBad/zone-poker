@@ -3,107 +3,170 @@
 Zone-Poker - Security Audit Module
 """
 from typing import Dict, Any, List
+import datetime
 
 AUDIT_CHECKS = [
     # --- Mail Security ---
     {
         "data_key": "mail_info",
         "condition": lambda d: not d.get("spf") or "status" in d.get("spf", {}),
-        "finding": "Missing SPF Record", "severity": "High",
-        "recommendation": "Implement an SPF record to prevent email spoofing."
+        "finding": "Missing SPF Record",
+        "severity": "High",
+        "recommendation": "Implement an SPF record to prevent email spoofing.",
     },
     {
         "data_key": "mail_info",
         "condition": lambda d: d.get("spf", {}).get("all_policy") == "?all",
-        "finding": "Permissive SPF Policy (?all)", "severity": "Medium",
-        "recommendation": "Strengthen the SPF policy to `~all` (SoftFail) or `-all` (HardFail)."
+        "finding": "Permissive SPF Policy (?all)",
+        "severity": "Medium",
+        "recommendation": "Strengthen the SPF policy to `~all` (SoftFail) or `-all` (HardFail).",
     },
     {
         "data_key": "mail_info",
         "condition": lambda d: d.get("spf", {}).get("all_policy") == "+all",
-        "finding": "Overly Permissive SPF Policy (+all)", "severity": "Critical",
-        "recommendation": "Immediately change `+all` to `~all` or `-all`. `+all` allows anyone to send email on your behalf."
+        "finding": "Overly Permissive SPF Policy (+all)",
+        "severity": "Critical",
+        "recommendation": (
+            "Immediately change `+all` to `~all` or `-all`. `+all` allows "
+            "anyone to send email on your behalf."
+        ),
     },
     {
         "data_key": "mail_info",
         "condition": lambda d: not d.get("dmarc") or "status" in d.get("dmarc", {}),
-        "finding": "Missing DMARC Record", "severity": "High",
-        "recommendation": "Implement a DMARC record to control SPF/DKIM failures and receive reports."
+        "finding": "Missing DMARC Record",
+        "severity": "High",
+        "recommendation": "Implement a DMARC record to control SPF/DKIM failures and receive reports.",
     },
     {
         "data_key": "mail_info",
         "condition": lambda d: d.get("dmarc", {}).get("p") == "none",
-        "finding": "Weak DMARC Policy (p=none)", "severity": "Medium",
-        "recommendation": "Transition to `p=quarantine` or `p=reject` after monitoring reports for legitimate mail sources."
+        "finding": "Weak DMARC Policy (p=none)",
+        "severity": "Medium",
+        "recommendation": "Transition to `p=quarantine` or `p=reject` after monitoring reports for legitimate mail sources.",
     },
     # --- DNS Security ---
     {
         "data_key": "records_info",
         "condition": lambda d: not d.get("CAA"),
-        "finding": "Missing CAA Record", "severity": "Low",
-        "recommendation": "Implement CAA records to restrict which Certificate Authorities can issue certificates for your domain."
+        "finding": "Missing CAA Record",
+        "severity": "Low",
+        "recommendation": "Implement CAA records to restrict which Certificate Authorities can issue certificates for your domain.",
     },
     {
         "data_key": "zone_info",
-        "condition": lambda d: d.get("summary") == "Vulnerable (Zone Transfer Successful)",
-        "finding": "Zone Transfer (AXFR) Enabled", "severity": "High",
-        "recommendation": "Disable zone transfers to untrusted IP addresses on your authoritative nameservers."
+        "condition": lambda d: d.get("summary")
+        == "Vulnerable (Zone Transfer Successful)",
+        "finding": "Zone Transfer (AXFR) Enabled",
+        "severity": "High",
+        "recommendation": "Disable zone transfers to untrusted IP addresses on your authoritative nameservers.",
     },
     {
         "data_key": "nsinfo_info",
         "condition": lambda d: "Not Enabled" in d.get("dnssec", ""),
-        "finding": "DNSSEC Not Enabled", "severity": "Medium",
-        "recommendation": "Enable DNSSEC to protect against DNS spoofing and cache poisoning attacks."
+        "finding": "DNSSEC Not Enabled",
+        "severity": "Medium",
+        "recommendation": "Enable DNSSEC to protect against DNS spoofing and cache poisoning attacks.",
+    },
+    {
+        "data_key": "records_info",
+        "condition": lambda d: not d.get("NSEC") and not d.get("NSEC3"),
+        "finding": "Zone Walking Possible",
+        "severity": "Low",
+        "recommendation": "Implement NSEC3 to prevent zone walking, which can enumerate all records in a zone.",
     },
     # --- Web Security ---
     {
         "data_key": "redirect_info",
         "condition": lambda d: d.get("vulnerable_urls"),
-        "finding": "Open Redirect", "severity": "Medium",
-        "recommendation": lambda d: f"Found {len(d['vulnerable_urls'])} potential open redirect(s). Validate and sanitize all user-supplied URLs in redirects."
+        "finding": "Open Redirect",
+        "severity": "Medium",
+        "recommendation": lambda d: (
+            f"Found {len(d['vulnerable_urls'])} potential open redirect(s). "
+            "Validate and sanitize all user-supplied URLs in redirects."
+        ),
+    },
+    {
+        "data_key": "ssl_info",
+        "condition": lambda d: d.get("valid_until")
+        and datetime.datetime.now().timestamp() > d["valid_until"],
+        "finding": "Expired SSL/TLS Certificate",
+        "severity": "High",
+        "recommendation": "Renew the SSL/TLS certificate immediately to restore trust and encrypted communication.",
+    },
+    {
+        "data_key": "takeover_info",
+        "condition": lambda d: d.get("vulnerable"),
+        "finding": "Subdomain Takeover",
+        "severity": "Critical",
+        "recommendation": lambda d: (
+            f"Found {len(d['vulnerable'])} potential subdomain takeover(s). "
+            "Remove the dangling DNS records or claim the external resources."
+        ),
+    },
+    # --- Reputation & Infrastructure ---
+    {
+        "data_key": "reputation_info",
+        "condition": lambda d: any(
+            isinstance(info, dict) and info.get("abuseConfidenceScore", 0) > 75
+            for info in d.values()
+        ),
+        "finding": "High-Risk IP Reputation",
+        "severity": "High",
+        "recommendation": lambda d: (
+            f"{len([i for i in d.values() if isinstance(i, dict) and i.get('abuseConfidenceScore', 0) > 75])} "
+            "IP(s) have a high abuse score. Investigate for malicious activity."
+        ),
     },
 ]
 
+
 def security_audit(
-    records_info: Dict[str, Any],
-    mail_info: Dict[str, Any],
-    nsinfo_info: Dict[str, Any],
-    zone_info: Dict[str, Any],
-    headers_info: Dict[str, Any],
-    **kwargs: Any
+    all_data: Dict[str, Any], **kwargs: Any
 ) -> Dict[str, List[Dict[str, str]]]:
     """
     Runs a basic audit for DNS and web security misconfigurations.
     """
     findings: List[Dict[str, str]] = []
-    all_scan_data = {
-        "records_info": records_info,
-        "mail_info": mail_info,
-        "nsinfo_info": nsinfo_info,
-        "zone_info": zone_info,
-        "headers_info": headers_info,
-        **kwargs
-    }
 
     for check in AUDIT_CHECKS:
-        data = all_scan_data.get(check["data_key"], {})
+        data = all_data.get(check["data_key"], {})
         if isinstance(data, dict) and "error" not in data and check["condition"](data):
             recommendation = check["recommendation"]
-            findings.append({
-                "finding": check["finding"],
-                "severity": check["severity"],
-                "recommendation": recommendation(data) if callable(recommendation) else recommendation,
-            })
+            findings.append(
+                {
+                    "finding": check["finding"],
+                    "severity": check["severity"],
+                    "recommendation": (
+                        recommendation(data)
+                        if callable(recommendation)
+                        else recommendation
+                    ),
+                }
+            )
 
     # Handle header checks separately as they can return multiple findings
+    headers_info = all_data.get("headers_info", {})
     if isinstance(headers_info, dict) and "error" not in headers_info:
         for header, details in headers_info.get("analysis", {}).items():
             if details.get("status") in ("Missing", "Weak", "Invalid"):
-                findings.append({
-                    "finding": f"Insecure Header: {header}",
-                    "severity": "High",  # Simplified for now
-                    "recommendation": details.get("recommendation", headers_info.get("recommendations", [])[0] if headers_info.get("recommendations") else "Strengthen header configuration.")
-                })
+                # Determine severity based on header importance
+                if header in ("Strict-Transport-Security", "Content-Security-Policy"):
+                    severity = "High"
+                elif header in ("X-Frame-Options", "X-Content-Type-Options"):
+                    severity = "Medium"
+                else:
+                    severity = "Low"
+
+                findings.append(
+                    {
+                        "finding": f"Insecure Header: {header}",
+                        "severity": severity,
+                        "recommendation": details.get(
+                            "recommendation", "Strengthen header configuration."
+                        ),
+                    }
+                )
 
     # Sort findings by severity (Critical, High, Medium, Low)
     severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}

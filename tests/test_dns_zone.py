@@ -16,26 +16,21 @@ def mock_resolver():
 @pytest.fixture
 def mock_records():
     """Fixture for sample records dictionary with NS records."""
-    return {
-        "NS": [
-            {"value": "ns1.example.com"},
-            {"value": "ns2.example.com"}
-        ]
-    }
+    return {"NS": [{"value": "ns1.example.com"}, {"value": "ns2.example.com"}]}
 
 
 @pytest.mark.asyncio
 async def test_axfr_successful(mock_resolver, mock_records):
     """Test a successful AXFR."""
     domain = "example.com"
-    
+
     # Mock NS resolution
     async def resolve_side_effect(ns, rtype):
         if ns == "ns1.example.com" and rtype == "A":
             return ["1.1.1.1"]
         return []
 
-    with patch('asyncio.to_thread', new_callable=AsyncMock) as mock_to_thread:
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         # Mock the resolver inside the helper
         mock_resolver.resolve.side_effect = Exception("Should be mocked by to_thread")
 
@@ -58,7 +53,9 @@ async def test_axfr_successful(mock_resolver, mock_records):
             [],  # AAAA record for ns2
         ]
 
-        results = await attempt_axfr(domain, mock_resolver, 5, False, records_info=mock_records)
+        results = await attempt_axfr(
+            domain, mock_resolver, 5, False, records_info=mock_records
+        )
 
     assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
     assert results["servers"]["ns1.example.com"]["status"] == "Successful"
@@ -75,16 +72,28 @@ async def test_axfr_refused(mock_resolver, mock_records):
         # A FormError is raised by dnspython for a refused transfer
         raise dns.exception.FormError("Refused")
 
-    with patch('asyncio.to_thread', new_callable=AsyncMock) as mock_to_thread:
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = [
-            ["1.1.1.1"], [], do_xfr_refused,  # ns1 results
-            ["2.2.2.2"], [], do_xfr_refused,  # ns2 results
+            ["1.1.1.1"],
+            [],
+            do_xfr_refused,  # ns1 results
+            ["2.2.2.2"],
+            [],
+            do_xfr_refused,  # ns2 results
         ]
-        results = await attempt_axfr(domain, mock_resolver, 5, False, records_info=mock_records)
+        results = await attempt_axfr(
+            domain, mock_resolver, 5, False, records_info=mock_records
+        )
 
     assert results["summary"] == "Secure (No successful transfers)"
-    assert results["servers"]["ns1.example.com"]["status"] == "Failed (Refused or Protocol Error)"
-    assert results["servers"]["ns2.example.com"]["status"] == "Failed (Refused or Protocol Error)"
+    assert (
+        results["servers"]["ns1.example.com"]["status"]
+        == "Failed (Refused or Protocol Error)"
+    )
+    assert (
+        results["servers"]["ns2.example.com"]["status"]
+        == "Failed (Refused or Protocol Error)"
+    )
 
 
 @pytest.mark.asyncio
@@ -95,12 +104,18 @@ async def test_axfr_timeout(mock_resolver, mock_records):
     def do_xfr_timeout():
         raise dns.exception.Timeout()
 
-    with patch('asyncio.to_thread', new_callable=AsyncMock) as mock_to_thread:
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = [
-            ["1.1.1.1"], [], do_xfr_timeout,  # ns1 results
-            ["2.2.2.2"], [], do_xfr_timeout,  # ns2 results
+            ["1.1.1.1"],
+            [],
+            do_xfr_timeout,  # ns1 results
+            ["2.2.2.2"],
+            [],
+            do_xfr_timeout,  # ns2 results
         ]
-        results = await attempt_axfr(domain, mock_resolver, 1, False, records_info=mock_records)
+        results = await attempt_axfr(
+            domain, mock_resolver, 1, False, records_info=mock_records
+        )
 
     assert results["summary"] == "Secure (No successful transfers)"
     assert results["servers"]["ns1.example.com"]["status"] == "Failed (Timeout)"
@@ -112,20 +127,27 @@ async def test_axfr_ns_not_resolved(mock_resolver, mock_records):
     """Test when a nameserver's IP cannot be resolved."""
     domain = "example.com"
 
-    with patch('asyncio.to_thread', new_callable=AsyncMock) as mock_to_thread:
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         # All resolution attempts return empty lists
         mock_to_thread.return_value = []
-        results = await attempt_axfr(domain, mock_resolver, 5, False, records_info=mock_records)
+        results = await attempt_axfr(
+            domain, mock_resolver, 5, False, records_info=mock_records
+        )
 
     assert results["summary"] == "Secure (No successful transfers)"
-    assert results["servers"]["ns1.example.com"]["status"] == "Failed (No A/AAAA record for NS)"
+    assert (
+        results["servers"]["ns1.example.com"]["status"]
+        == "Failed (No A/AAAA record for NS)"
+    )
 
 
 @pytest.mark.asyncio
 async def test_axfr_no_ns_records(mock_resolver):
     """Test when the domain has no NS records to check."""
     domain = "example.com"
-    results = await attempt_axfr(domain, mock_resolver, 5, False, records_info={"NS": []})
+    results = await attempt_axfr(
+        domain, mock_resolver, 5, False, records_info={"NS": []}
+    )
 
     assert results["status"] == "Skipped (No NS records found)"
     assert "summary" not in results
