@@ -212,4 +212,4 @@ async def test_whois_lookup_pywhois_error():
         mock_to_thread.side_effect = PywhoisError("Domain not found.")
         result = await whois_lookup(domain="nonexistent.com", verbose=False)
 
-    assert "WHOIS lookup failed: Domain not found." in result["error"]
+    assert "WHOIS lookup failed: Domain not found." in result["error"] 
