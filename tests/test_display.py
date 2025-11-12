@@ -36,11 +36,8 @@ def test_display_dns_records_table_with_data(dns_records_data):
     Tests that display_dns_records_table returns a Table with the correct caption
     when data is present.
     """
-    # Access the original function wrapped by the decorator
-    undecorated_func = display_dns_records_table.__wrapped__
-
-    # Call the original function
-    result = undecorated_func(dns_records_data, quiet=False)
+    # Call the function
+    result = display_dns_records_table(dns_records_data, quiet=False)
 
     # Assertions
     assert isinstance(result, Table)
@@ -52,8 +49,7 @@ def test_display_dns_records_table_empty_data():
     """
     Tests that display_dns_records_table handles empty data correctly.
     """
-    undecorated_func = display_dns_records_table.__wrapped__
-    result = undecorated_func({}, quiet=False)
+    result = display_dns_records_table({}, quiet=False)
 
     assert isinstance(result, Table)
     assert result.row_count == 1  # "No records found" row
@@ -64,9 +60,8 @@ def test_display_ptr_lookups_with_data():
     """
     Tests that display_ptr_lookups returns a Table when data is present.
     """
-    undecorated_func = display_ptr_lookups.__wrapped__
     data = {"1.2.3.4": "rev.example.com"}
-    result = undecorated_func(data, quiet=False)
+    result = display_ptr_lookups(data, quiet=False)
 
     assert isinstance(result, Table)
     assert result.row_count == 1
@@ -77,8 +72,7 @@ def test_display_ptr_lookups_empty_data():
     """
     Tests that display_ptr_lookups returns a Panel when data is empty.
     """
-    undecorated_func = display_ptr_lookups.__wrapped__
-    result = undecorated_func({}, quiet=False)
+    result = display_ptr_lookups({}, quiet=False)
 
     assert isinstance(result, Panel)
     assert "No PTR records to display" in str(result.renderable)
@@ -88,9 +82,8 @@ def test_display_axfr_results_vulnerable():
     """
     Tests that display_axfr_results returns a Tree with a 'Vulnerable' summary.
     """
-    undecorated_func = display_axfr_results.__wrapped__
     data = {"summary": "Vulnerable"}
-    result = undecorated_func(data, quiet=False)
+    result = display_axfr_results(data, quiet=False)
 
     assert isinstance(result, Tree)
     assert "Vulnerable" in str(result.label)
@@ -100,8 +93,7 @@ def test_display_whois_info(whois_data):
     """
     Tests that display_whois_info returns a Panel containing a Table.
     """
-    undecorated_func = display_whois_info.__wrapped__
-    result = undecorated_func(whois_data, quiet=False)
+    result = display_whois_info(whois_data, quiet=False)
 
     assert isinstance(result, Panel)
     assert result.title == "WHOIS Information"

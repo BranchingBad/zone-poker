@@ -49,7 +49,7 @@ def mock_dispatch_table():
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
+@patch("modules.orchestrator.get_module_dispatch_table")
 async def test_orchestrator_with_dependencies(mock_table, mock_args):
     """
     Tests that the orchestrator runs modules and their dependencies in the correct order.
@@ -57,17 +57,17 @@ async def test_orchestrator_with_dependencies(mock_table, mock_args):
     # Use a custom mock table for this test
     mock_table.get.side_effect = {
         "records": {
-            "data_key": "records",
+            "data_key": "records_info",
             "analysis_func": AsyncMock(return_value={"A": []}),
             "display_func": MagicMock(),
             "dependencies": [],
             "description": "...",
         },
         "ptr": {
-            "data_key": "ptr_lookups",
+            "data_key": "ptr_info",
             "analysis_func": AsyncMock(return_value={}),
             "display_func": MagicMock(),
-            "dependencies": ["records"],
+            "dependencies": ["records_info"],
             "description": "...",
         },
     }.get
@@ -75,28 +75,30 @@ async def test_orchestrator_with_dependencies(mock_table, mock_args):
 
     # We only ask to run 'ptr', but 'records' should run first as a dependency.
     modules_to_run = ["ptr"]
+    mock_table.return_value = {
+        "records": {
+            "analysis_func": AsyncMock(return_value={"A": []}),
+            "display_func": MagicMock(), "dependencies": [], "data_key": "records_info"
+        },
+        "ptr": {
+            "analysis_func": AsyncMock(return_value={}),
+            "display_func": MagicMock(), "dependencies": ["records_info"], "data_key": "ptr_info"
+        }
+    }
     with patch(
         "modules.orchestrator._create_execution_plan", return_value=["records", "ptr"]
     ):
         await _scan_single_domain("example.com", mock_args, modules_to_run)
 
-    # Check that both analysis functions were called
-    mock_table.items.return_value[0][1][
-        "analysis_func"
-    ].assert_awaited_once()  # noqa: E501
-    mock_table.items.return_value[1][1][
-        "analysis_func"
-    ].assert_awaited_once()  # noqa: E501
+    mock_table.return_value["records"]["analysis_func"].assert_awaited_once()
+    mock_table.return_value["ptr"]["analysis_func"].assert_awaited_once()
 
-    # Check that the data from the dependency ('records') was available to the dependent ('ptr')
-    # The kwargs of the call should contain the `all_data` dict with
-    # previous results.
-    call_args, _ = mock_table.items.return_value[1][1]["analysis_func"].call_args
-    assert "records" in call_args[1]
+    call_kwargs = mock_table.return_value["ptr"]["analysis_func"].call_args.kwargs
+    assert "records_info" in call_kwargs
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
+@patch("modules.orchestrator.get_module_dispatch_table")
 async def test_orchestrator_selective_run(mock_table, mock_args):
     """
     Tests that only specified modules are run when there are no dependencies.
@@ -106,47 +108,51 @@ async def test_orchestrator_selective_run(mock_table, mock_args):
             "analysis_func": AsyncMock(),
             "display_func": MagicMock(),
             "dependencies": [],
-            "data_key": "records",
+            "data_key": "records_info",
             "description": "...",
         },
         "whois": {
             "analysis_func": AsyncMock(),
             "display_func": MagicMock(),
             "dependencies": [],
-            "data_key": "whois",
+            "data_key": "whois_info",
             "description": "...",
         },
     }.get
     mock_table.keys.return_value = ["records", "whois"]
+    mock_table.return_value = {
+        "records": {"analysis_func": AsyncMock(), "display_func": MagicMock(), "dependencies": [], "data_key": "records_info"},
+        "whois": {"analysis_func": AsyncMock(), "display_func": MagicMock(), "dependencies": [], "data_key": "whois_info"}
+    }
 
     modules_to_run = ["whois"]
     with patch("modules.orchestrator._create_execution_plan", return_value=["whois"]):
         await _scan_single_domain("example.com", mock_args, modules_to_run)
 
     # 'whois' should be called, but 'records' should not.
-    mock_table.items.return_value[1][1]["analysis_func"].assert_awaited_once()
-    mock_table.items.return_value[0][1]["analysis_func"].assert_not_awaited()
+    mock_table.return_value["whois"]["analysis_func"].assert_awaited_once()
+    mock_table.return_value["records"]["analysis_func"].assert_not_awaited()
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
+@patch("modules.orchestrator.get_module_dispatch_table")
 async def test_orchestrator_quiet_mode(mock_table, mock_args):
     """
     Tests that display functions are NOT called when quiet mode is enabled.
     """
-    mock_table.get.side_effect = {
+    mock_dispatch = {
         "records": {
             "analysis_func": AsyncMock(return_value={}),
             "display_func": MagicMock(),
             "dependencies": [],
-            "data_key": "records",
+            "data_key": "records_info",
             "description": "...",
         }
-    }.get
-    mock_table.keys.return_value = ["records"]
+    }
+    mock_table.return_value = mock_dispatch
     mock_args.quiet = True
 
     with patch("modules.orchestrator._create_execution_plan", return_value=["records"]):
         await _scan_single_domain("example.com", mock_args, ["records"])
 
-    mock_table.items.return_value[0][1]["display_func"].assert_not_called()
+    mock_dispatch["records"]["display_func"].assert_not_called()

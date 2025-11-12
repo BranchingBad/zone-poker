@@ -31,21 +31,19 @@ async def test_analyze_reputation_success(mock_args):
     Test successful reputation analysis for given IP addresses.
     """
     domain = "example.com"
-    records = {"A": [{"value": "1.1.1.1"}], "AAAA": [{"value": "2606:4700:4700::1111"}]}
+    records = {
+        "A": [{"value": "1.1.1.1"}],
+        "AAAA": [{"value": "2606:4700:4700::1111"}]
+    }
 
     # Mock AbuseIPDB API responses
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=1.1.1.1&maxAgeInDays=90").respond(
         200, json={"data": {"ipAddress": "1.1.1.1", "abuseConfidenceScore": 0}}
     )
-    respx.get(
-        url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111"
-        f"&maxAgeInDays=90"
-    ).respond(
-        200,
-        json={
-            "data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}
-        },
-    )
+    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111"
+                  f"&maxAgeInDays=90").respond(
+        200, json={"data": {"ipAddress": "2606:4700:4700::1111",
+                            "abuseConfidenceScore": 90}})
 
     results = await analyze_reputation(domain, mock_args, records)
 
@@ -63,7 +61,7 @@ async def test_analyze_reputation_no_api_key(mock_args_no_key):
     domain = "example.com"
     records = {"A": [{"value": "1.1.1.1"}]}
 
-    results = await analyze_reputation(domain, mock_args_no_key, records)
+    results = await analyze_reputation(domain, mock_args_no_key, records_info=records)
 
     assert "error" in results
     assert results["error"] == "AbuseIPDB API key not found in config file."
@@ -77,7 +75,7 @@ async def test_analyze_reputation_no_ip_records(mock_args):
     domain = "example.com"
     records = {"MX": [{"value": "mail.example.com"}]}
 
-    results = await analyze_reputation(domain, mock_args, records)
+    results = await analyze_reputation(domain, mock_args, records_info=records)
 
     assert "error" in results
     assert results["error"] == "No A or AAAA records found to check reputation."
@@ -94,8 +92,7 @@ async def test_analyze_reputation_auth_error(mock_args):
 
     # Mock a 401 Unauthorized response
     respx.get(url__regex=r".*").respond(
-        401, json={"errors": [{"detail": "Authentication failed"}]}
-    )
+        401, json={"errors": [{"detail": "Authentication failed"}]})
 
     results = await analyze_reputation(domain, mock_args, records)
 
@@ -116,7 +113,7 @@ async def test_analyze_reputation_network_error(mock_args):
     # Mock a network error
     respx.get(url__regex=r".*").mock(side_effect=RequestError("Connection timeout"))
 
-    results = await analyze_reputation(domain, mock_args, records)
+    results = await analyze_reputation(domain, mock_args, records_info=records)
 
     assert "1.1.1.1" in results
     assert "error" in results["1.1.1.1"]

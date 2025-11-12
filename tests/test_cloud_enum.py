@@ -1,5 +1,6 @@
 import pytest
 import respx
+import logging
 from httpx import RequestError
 
 from modules.analysis.cloud_enum import enumerate_cloud_services
@@ -16,26 +17,14 @@ def mock_routes():
 
     # S3 permutations from the function
     s3_permutations = {
-        base_name,
-        f"{base_name}-assets",
-        f"{base_name}-prod",
-        f"{base_name}-dev",
-        f"{base_name}-backups",
-        f"{base_name}-media",
-        f"{base_name}-www",
-        domain,
+        base_name, f"{base_name}-assets", f"{base_name}-prod", f"{base_name}-dev",
+        f"{base_name}-backups", f"{base_name}-media", f"{base_name}-www", domain,
     }
 
     # Azure permutations from the function
     azure_permutations = {
-        "example",
-        "exampleassets",
-        "exampleprod",
-        "exampledev",
-        "examplebackups",
-        "examplemedia",
-        "examplewww",
-        "examplecom",
+        "example", "exampleassets", "exampleprod", "exampledev",
+        "examplebackups", "examplemedia", "examplewww", "examplecom",
     }
 
     with respx.mock as mock:
@@ -66,19 +55,16 @@ async def test_enumerate_cloud_services_found(mock_routes):
     # Assert S3 results (should be sorted by URL)
     assert len(results["s3_buckets"]) == 2
     assert results["s3_buckets"][0] == {
-        "url": "http://example-assets.s3.amazonaws.com",
-        "status": "forbidden",
+        "url": "http://example-assets.s3.amazonaws.com", "status": "forbidden"
     }
     assert results["s3_buckets"][1] == {
-        "url": "http://example-prod.s3.amazonaws.com",
-        "status": "public",
+        "url": "http://example-prod.s3.amazonaws.com", "status": "public"
     }
 
     # Assert Azure results
     assert len(results["azure_blobs"]) == 1
     assert results["azure_blobs"][0] == {
-        "url": "https://example.blob.core.windows.net",
-        "status": "forbidden",
+        "url": "https://example.blob.core.windows.net", "status": "forbidden"
     }
 
 
@@ -101,6 +87,7 @@ async def test_enumerate_cloud_services_network_error(mock_routes, caplog):
     """
     Test that a network error during one check doesn't stop the others.
     """
+    caplog.set_level(logging.INFO)
     domain = "example.com"
 
     # Mock one route to raise an error
@@ -119,6 +106,5 @@ async def test_enumerate_cloud_services_network_error(mock_routes, caplog):
     # Check that the other bucket was still found
     assert len(results["s3_buckets"]) == 1
     assert results["s3_buckets"][0] == {
-        "url": "http://example-prod.s3.amazonaws.com",
-        "status": "public",
+        "url": "http://example-prod.s3.amazonaws.com", "status": "public"
     }

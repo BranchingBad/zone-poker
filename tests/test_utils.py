@@ -37,7 +37,7 @@ def test_is_valid_domain(domain, expected):
         ("www.sub.example.co.uk", "sub.example.co.uk"),
         ("example.com", "com"),
         ("localhost", None),
-        ("co.uk", None),  # Should be treated as a TLD
+        ("co.uk", None), # Should be treated as a TLD
     ],
 )
 def test_get_parent_zone(domain, expected):
@@ -60,9 +60,7 @@ def test_format_rdata():
     # Test A record
     mock_rdata.to_text.return_value = "1.2.3.4"
     assert _format_rdata("A", "1.2.3.4", 300, "a.com") == {
-        "ttl": 300,
-        "name": "a.com",
-        "value": "1.2.3.4",
+        "ttl": 300, "name": "a.com", "value": "1.2.3.4"
     }
 
     # Test MX record
@@ -70,10 +68,7 @@ def test_format_rdata():
     mock_mx.exchange = "mail.example.com"
     mock_mx.preference = 10
     assert _format_rdata("MX", mock_mx, 300, "mx.com") == {
-        "ttl": 300,
-        "name": "mx.com",
-        "value": "mail.example.com",
-        "priority": 10,
+        "ttl": 300, "name": "mx.com", "value": "mail.example.com", "priority": 10
     }
 
     # Test SOA record
@@ -93,9 +88,7 @@ def test_format_rdata():
     mock_txt = MagicMock()
     mock_txt.strings = [b"v=spf1", b" include:_spf.google.com ~all"]
     assert _format_rdata("TXT", mock_txt, 300, "txt.com") == {
-        "ttl": 300,
-        "name": "txt.com",
-        "value": "v=spf1 include:_spf.google.com ~all",
+        "ttl": 300, "name": "txt.com", "value": "v=spf1 include:_spf.google.com ~all"
     }
 
 
@@ -133,14 +126,14 @@ def test_get_desktop_path_macos(mock_is_dir, mock_exists):
 @patch("os.environ", {"XDG_DESKTOP_DIR": "/home/user/Desktop"})
 @patch("pathlib.Path.exists", return_value=True)
 @patch("pathlib.Path.is_dir", return_value=True)
-def test_get_desktop_path_linux_xdg(mock_is_dir, mock_exists, mock_environ):
+def test_get_desktop_path_linux_xdg(mock_is_dir, mock_exists):
     """Tests get_desktop_path on Linux with XDG_DESKTOP_DIR set."""
     expected_desktop = Path("/home/user/Desktop")
     assert get_desktop_path() == expected_desktop
 
 
 @patch("sys.platform", "linux")
-@patch("os.environ", {})  # No XDG var
+@patch("os.environ", {}) # No XDG var
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_dir")
 def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
@@ -149,7 +142,7 @@ def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
     desktop_path = home_path / "Desktop"
 
     # Simulate Desktop path not existing
-    def side_effect(path):
+    def side_effect(*args, **kwargs):
         return path != desktop_path
 
     mock_exists.side_effect = side_effect
