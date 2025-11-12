@@ -6,7 +6,6 @@ import pytest
 import respx
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from whois.parser import PywhoisError
 from modules.analysis.security_audit import security_audit
 from modules.analysis.tech import detect_technologies
 from modules.analysis.whois import whois_lookup
@@ -209,9 +208,9 @@ async def test_whois_lookup_no_data_returned():
 
 @pytest.mark.asyncio
 async def test_whois_lookup_pywhois_error():
-    """Tests the handling of a PywhoisError."""
+    """Tests the handling of a generic Exception during WHOIS lookup."""
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = PywhoisError("Domain not found.")
+        mock_to_thread.side_effect = Exception("Domain not found.")
         result = await whois_lookup(domain="nonexistent.com", verbose=False)
 
     assert "WHOIS lookup failed: Domain not found." in result["error"]
