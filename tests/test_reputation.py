@@ -31,17 +31,19 @@ async def test_analyze_reputation_success(mock_args):
     Test successful reputation analysis for given IP addresses.
     """
     domain = "example.com"
-    records = {
-        "A": [{"value": "1.1.1.1"}],
-        "AAAA": [{"value": "2606:4700:4700::1111"}]
-    }
+    records = {"A": [{"value": "1.1.1.1"}], "AAAA": [{"value": "2606:4700:4700::1111"}]}
 
     # Mock AbuseIPDB API responses
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=1.1.1.1&maxAgeInDays=90").respond(
         200, json={"data": {"ipAddress": "1.1.1.1", "abuseConfidenceScore": 0}}
     )
-    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111&maxAgeInDays=90").respond(
-        200, json={"data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}}
+    respx.get(
+        url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111&maxAgeInDays=90"
+    ).respond(
+        200,
+        json={
+            "data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}
+        },
     )
 
     results = await analyze_reputation(domain, mock_args, records)
@@ -90,7 +92,9 @@ async def test_analyze_reputation_auth_error(mock_args):
     records = {"A": [{"value": "1.1.1.1"}]}
 
     # Mock a 401 Unauthorized response
-    respx.get(url__regex=r".*").respond(401, json={"errors": [{"detail": "Authentication failed"}]})
+    respx.get(url__regex=r".*").respond(
+        401, json={"errors": [{"detail": "Authentication failed"}]}
+    )
 
     results = await analyze_reputation(domain, mock_args, records)
 

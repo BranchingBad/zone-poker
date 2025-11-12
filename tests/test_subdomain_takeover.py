@@ -4,19 +4,20 @@ import json
 from httpx import RequestError
 from unittest.mock import patch, mock_open
 
-from modules.analysis.subdomain_takeover import check_subdomain_takeover, _load_fingerprints
+from modules.analysis.subdomain_takeover import (
+    check_subdomain_takeover,
+    _load_fingerprints,
+)
 
 # Mock fingerprint data that reflects the new schema
 MOCK_FINGERPRINTS = {
-  "GitHub Pages": {
-    "cname": ["github.io"],
-    "fingerprints": ["There isn't a GitHub Pages site here."]
-  },
-  "Heroku": {
-    "cname": ["herokuapp.com"],
-    "fingerprints": ["no such app"]
-  }
+    "GitHub Pages": {
+        "cname": ["github.io"],
+        "fingerprints": ["There isn't a GitHub Pages site here."],
+    },
+    "Heroku": {"cname": ["herokuapp.com"], "fingerprints": ["no such app"]},
 }
+
 
 @pytest.mark.asyncio
 @respx.mock
@@ -35,14 +36,19 @@ async def test_subdomain_takeover_found():
     # Mock the vulnerable response for the first subdomain.
     # The new logic checks HTTP first, so we only need to mock that for a successful test.
     github_fingerprint = MOCK_FINGERPRINTS["GitHub Pages"]["fingerprints"][0]
-    respx.get("http://vuln.example.com").respond(200, text=f"<html><body>{github_fingerprint}</body></html>")
+    respx.get("http://vuln.example.com").respond(
+        200, text=f"<html><body>{github_fingerprint}</body></html>"
+    )
 
     # Mock a safe response for the second subdomain
     respx.get("http://safe.example.com").respond(200, text="Everything is fine here.")
 
     # Use patch to inject our mock fingerprints
-    with patch('modules.analysis.subdomain_takeover._load_fingerprints', return_value=MOCK_FINGERPRINTS):
-        _load_fingerprints.cache_clear() # Ensure cache is clean for this test
+    with patch(
+        "modules.analysis.subdomain_takeover._load_fingerprints",
+        return_value=MOCK_FINGERPRINTS,
+    ):
+        _load_fingerprints.cache_clear()  # Ensure cache is clean for this test
         results = await check_subdomain_takeover(records)
 
     assert len(results["vulnerable"]) == 1
@@ -88,7 +94,9 @@ async def test_subdomain_takeover_network_error():
     records = {"CNAME": [{"name": "error.example.com", "value": "user.github.io"}]}
 
     # Mock a network error for the target URL
-    respx.get(url__regex=r"https?://error\.example\.com").mock(side_effect=RequestError("Connection failed"))
+    respx.get(url__regex=r"https?://error\.example\.com").mock(
+        side_effect=RequestError("Connection failed")
+    )
 
     results = await check_subdomain_takeover(records)
 
@@ -105,7 +113,7 @@ async def test_subdomain_takeover_missing_keys():
     records = {
         "CNAME": [
             {"value": "some.service.com"},  # Missing 'name'
-            {"name": "another.example.com"}, # Missing 'value'
+            {"name": "another.example.com"},  # Missing 'value'
             {"name": "vuln.example.com", "value": "user.github.io"},
         ]
     }
@@ -114,13 +122,17 @@ async def test_subdomain_takeover_missing_keys():
     github_fingerprint = MOCK_FINGERPRINTS["GitHub Pages"]["fingerprints"][0]
     respx.get("http://vuln.example.com").respond(200, text=github_fingerprint)
 
-    with patch('modules.analysis.subdomain_takeover._load_fingerprints', return_value=MOCK_FINGERPRINTS):
+    with patch(
+        "modules.analysis.subdomain_takeover._load_fingerprints",
+        return_value=MOCK_FINGERPRINTS,
+    ):
         _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
 
     # The function should ignore the malformed record and find the valid one.
     assert len(results["vulnerable"]) == 1
     assert results["vulnerable"][0]["subdomain"] == "vuln.example.com"
+
 
 @pytest.mark.asyncio
 async def test_fingerprint_caching():
@@ -133,7 +145,7 @@ async def test_fingerprint_caching():
     # Clear the cache before the test to ensure a clean state
     _load_fingerprints.cache_clear()
 
-    with patch('builtins.open', m):
+    with patch("builtins.open", m):
         # First call should read the file
         first_call_result = _load_fingerprints()
         m.assert_called_once()
@@ -141,5 +153,5 @@ async def test_fingerprint_caching():
 
         # Second call should hit the cache and not open the file again
         second_call_result = _load_fingerprints()
-        m.assert_called_once() # Still only called once
+        m.assert_called_once()  # Still only called once
         assert second_call_result == MOCK_FINGERPRINTS

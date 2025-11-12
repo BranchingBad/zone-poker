@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Union
 from ..config import console
 from ..dispatch_table import MODULE_DISPATCH_TABLE
 
+
 def _to_xml(parent: ET.Element, data: Union[Dict, List, Any], key: str = "item"):
     """
     Recursively converts a Python data structure to XML elements.
@@ -25,6 +26,7 @@ def _to_xml(parent: ET.Element, data: Union[Dict, List, Any], key: str = "item")
     else:
         # Assign the value as the text content of the parent element
         parent.text = str(data)
+
 
 def output(all_data: Dict[str, Any]):
     """

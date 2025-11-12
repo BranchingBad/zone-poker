@@ -25,7 +25,10 @@ def create_mock_answer(records, ttl=300, name="example.com"):
 
 
 @pytest.mark.asyncio
-@patch('modules.analysis.dns_records._format_rdata', side_effect=lambda rtype, rdata, ttl, name: {"value": rdata})
+@patch(
+    "modules.analysis.dns_records._format_rdata",
+    side_effect=lambda rtype, rdata, ttl, name: {"value": rdata},
+)
 async def test_get_dns_records_success(mock_format, mock_resolver):
     """
     Test get_dns_records for a successful query.
@@ -34,11 +37,13 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
     mock_answer = create_mock_answer(["1.2.3.4"])
     mock_resolver.resolve.return_value = mock_answer
 
-    result = await get_dns_records("example.com", mock_resolver, verbose=False, record_types=["A"])
+    result = await get_dns_records(
+        "example.com", mock_resolver, verbose=False, record_types=["A"]
+    )
 
     # Verify resolve was called correctly
     mock_resolver.resolve.assert_called_once_with("example.com", "A")
-    
+
     # Verify the result
     assert "A" in result
     assert len(result["A"]) == 1
@@ -46,7 +51,7 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
 
 
 @pytest.mark.asyncio
-@patch('modules.analysis.dns_records._format_rdata')
+@patch("modules.analysis.dns_records._format_rdata")
 async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
     """
     Test get_dns_records when a NoAnswer exception is raised.
@@ -55,7 +60,9 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
     mock_resolver.resolve.side_effect = dns.resolver.NoAnswer("No A records found.")
 
     # Test with verbose=True to check output
-    result = await get_dns_records("example.com", mock_resolver, verbose=True, record_types=["A"])
+    result = await get_dns_records(
+        "example.com", mock_resolver, verbose=True, record_types=["A"]
+    )
 
     # Verify the result is an empty list for the given type
     assert "A" in result
@@ -67,7 +74,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
 
 
 @pytest.mark.asyncio
-@patch('modules.analysis.dns_records._format_rdata')
+@patch("modules.analysis.dns_records._format_rdata")
 async def test_get_dns_records_timeout(mock_format, mock_resolver):
     """
     Test get_dns_records when a Timeout exception is raised.
@@ -76,24 +83,28 @@ async def test_get_dns_records_timeout(mock_format, mock_resolver):
     mock_resolver.resolve.side_effect = dns.exception.Timeout("Query timed out.")
 
     # Test with verbose=False
-    result = await get_dns_records("example.com", mock_resolver, verbose=False, record_types=["MX"])
+    result = await get_dns_records(
+        "example.com", mock_resolver, verbose=False, record_types=["MX"]
+    )
 
     assert "MX" in result
     assert result["MX"] == []
 
 
 @pytest.mark.asyncio
-@patch('modules.analysis.dns_records._format_rdata')
+@patch("modules.analysis.dns_records._format_rdata")
 async def test_get_dns_records_specific_types(mock_format, mock_resolver):
     """
     Test that only specified record_types are queried.
     """
     mock_resolver.resolve.return_value = create_mock_answer([])
-    
+
     # Specify only MX and TXT records
     types_to_query = ["MX", "TXT"]
-    
-    await get_dns_records("example.com", mock_resolver, verbose=False, record_types=types_to_query)
+
+    await get_dns_records(
+        "example.com", mock_resolver, verbose=False, record_types=types_to_query
+    )
 
     # Check that resolve was called for each specified type
     assert mock_resolver.resolve.call_count == 2

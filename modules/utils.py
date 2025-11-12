@@ -7,9 +7,9 @@ import sys
 import re
 import os
 from pathlib import Path
-import tldextract # Import the tldextract library
-from typing import Dict, Any # Added imports for new functions
-import dns.resolver # Added import
+import tldextract  # Import the tldextract library
+from typing import Dict, Any  # Added imports for new functions
+import dns.resolver  # Added import
 
 # Import the shared console object
 from .config import console
@@ -26,23 +26,25 @@ def get_desktop_path() -> Path:
         A Path object representing the absolute path to the desktop or home directory.
     """
     home = Path.home()
-    
+
     if sys.platform == "win32":
         desktop = home / "Desktop"
-    elif sys.platform == "darwin": # macOS
+    elif sys.platform == "darwin":  # macOS
         desktop = home / "Desktop"
     else:
         # Linux: Check for XDG user dir, then 'Desktop', then fallback to home
-        desktop = Path(os.environ.get('XDG_DESKTOP_DIR', home / 'Desktop'))
+        desktop = Path(os.environ.get("XDG_DESKTOP_DIR", home / "Desktop"))
 
     if not desktop.exists() or not desktop.is_dir():
-        desktop = home # Fallback to home directory
-    
+        desktop = home  # Fallback to home directory
+
     return desktop
+
 
 def join_txt_chunks(chunks: list[str]) -> str:
     """Join multi-chunk TXT records (quoted strings) into a single string"""
     return "".join(chunks)
+
 
 def get_parent_zone(domain: str) -> str | None:
     """Get the parent zone for a domain (for DS record lookup)"""
@@ -51,9 +53,11 @@ def get_parent_zone(domain: str) -> str | None:
     extracted = tldextract.extract(domain)
     if extracted.subdomain:
         return extracted.registered_domain
-    return None # It's already a root domain, no parent zone to check
+    return None  # It's already a root domain, no parent zone to check
+
 
 # --- Helper Functions Moved from Analysis.py ---
+
 
 def _format_rdata(rtype: str, rdata: Any, ttl: int, name: str = "") -> Dict[str, Any]:
     """
@@ -61,30 +65,39 @@ def _format_rdata(rtype: str, rdata: Any, ttl: int, name: str = "") -> Dict[str,
     """
     record_info = {"ttl": ttl, "name": name}
     if rtype == "MX":
-        record_info.update({
-            "value": str(rdata.exchange),
-            "priority": rdata.preference,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.exchange),
+                "priority": rdata.preference,
+            }
+        )
     elif rtype == "SRV":
-        record_info.update({
-            "value": str(rdata.target),
-            "priority": rdata.priority,
-            "weight": rdata.weight,
-            "port": rdata.port,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.target),
+                "priority": rdata.priority,
+                "weight": rdata.weight,
+                "port": rdata.port,
+            }
+        )
     # --- THIS BLOCK IS NEW ---
     elif rtype == "SOA":
-        record_info.update({
-            "value": str(rdata.mname),
-            "rname": str(rdata.rname),
-            "serial": rdata.serial,
-        })
+        record_info.update(
+            {
+                "value": str(rdata.mname),
+                "rname": str(rdata.rname),
+                "serial": rdata.serial,
+            }
+        )
     # --- END NEW BLOCK ---
     elif rtype == "TXT":
-        record_info["value"] = join_txt_chunks([t.decode('utf-8', 'ignore') for t in rdata.strings])
+        record_info["value"] = join_txt_chunks(
+            [t.decode("utf-8", "ignore") for t in rdata.strings]
+        )
     else:
         record_info["value"] = str(rdata)
     return record_info
+
 
 def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
     """Helper to parse an SPF record string."""
@@ -93,7 +106,9 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
     if parts:
         analysis["version"] = parts[0]
         for part in parts[1:]:
-            if part.startswith(("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:", "exists:")):
+            if part.startswith(
+                ("redirect=", "include:", "a:", "mx:", "ip4:", "ip6:", "exists:")
+            ):
                 key, _, value = part.partition(":")
                 qualifier = key[0] if key[0] in "+-~?" else "+"
                 key = key.lstrip("+-~?")
@@ -102,6 +117,7 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
                 analysis["all_policy"] = part
     return analysis
 
+
 def is_valid_domain(domain: str) -> bool:
     """
     Checks if a given string is a syntactically valid domain name.
@@ -109,11 +125,11 @@ def is_valid_domain(domain: str) -> bool:
     """
     if not isinstance(domain, str):
         return False
-    
+
     # Use tldextract for robust parsing. A valid domain must have a domain part
     # and a known TLD/suffix.
     extracted = tldextract.extract(domain)
-    
+
     # Check if the suffix is in the known list of TLDs.
     # The `is_private` check handles internal domains like 'localhost'.
     if not extracted.suffix or extracted.is_private:

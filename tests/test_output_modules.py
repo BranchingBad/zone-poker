@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 from modules.output import xml as xml_output
 from modules.output import html as html_output
 
+
 @pytest.fixture
 def sample_scan_data():
     """Provides a sample data structure similar to `all_data`."""
@@ -13,17 +14,22 @@ def sample_scan_data():
         "scan_timestamp": "2025-01-01T12:00:00",
         "records": {
             "A": [{"value": "93.184.216.34", "ttl": 86400, "name": "example.com"}],
-            "MX": [{"value": "mail.example.com", "priority": 10, "ttl": 3600, "name": "example.com"}]
+            "MX": [
+                {
+                    "value": "mail.example.com",
+                    "priority": 10,
+                    "ttl": 3600,
+                    "name": "example.com",
+                }
+            ],
         },
-        "whois": {
-            "registrar": "Test Registrar Inc."
-        },
+        "whois": {"registrar": "Test Registrar Inc."},
         "empty_module": {},  # To test that empty modules are correctly skipped
-        "zone_info": None # To test that None modules are correctly skipped
+        "zone_info": None,  # To test that None modules are correctly skipped
     }
 
 
-@patch('modules.output.xml.console.print')
+@patch("modules.output.xml.console.print")
 def test_xml_output_generation(mock_console_print, sample_scan_data):
     """
     Tests that the XML output module correctly converts scan data into an XML string.
@@ -46,11 +52,11 @@ def test_xml_output_generation(mock_console_print, sample_scan_data):
     assert root.find("records/A/value").text == "93.184.216.34"
     assert root.find("records/MX/priority").text == "10"
     assert root.find("whois/registrar").text == "Test Registrar Inc."
-    assert root.find("empty_module") is None # Ensure empty modules are not added
-    assert root.find("zone_info") is None # Ensure None modules are not added
+    assert root.find("empty_module") is None  # Ensure empty modules are not added
+    assert root.find("zone_info") is None  # Ensure None modules are not added
 
 
-@patch('builtins.print')
+@patch("builtins.print")
 def test_html_output_generation(mock_print, sample_scan_data):
     """
     Tests that the HTML output module correctly generates an HTML string
@@ -68,8 +74,8 @@ def test_html_output_generation(mock_print, sample_scan_data):
     # Perform basic checks on the HTML content
     assert "<html>" in html_string
     assert "DNS Intelligence Report for: example.com" in html_string
-    assert "Scan Summary" in html_string # From display_summary
-    assert "WHOIS Information" in html_string # From a decorated display function
-    assert "Test Registrar Inc." in html_string # The actual data
-    assert "DNS Records Discovery" in html_string # From another decorated function
-    assert "93.184.216.34" in html_string # The actual data
+    assert "Scan Summary" in html_string  # From display_summary
+    assert "WHOIS Information" in html_string  # From a decorated display function
+    assert "Test Registrar Inc." in html_string  # The actual data
+    assert "DNS Records Discovery" in html_string  # From another decorated function
+    assert "93.184.216.34" in html_string  # The actual data

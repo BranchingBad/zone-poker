@@ -6,14 +6,15 @@ Handles loading and merging of settings from command-line arguments and config f
 import argparse
 import json
 import logging
-import yaml # Import the PyYAML library
+import yaml  # Import the PyYAML library
 import os
 from typing import Tuple, List, Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 
 from .config import console
-from .utils import is_valid_domain # Import the new validation function
+from .utils import is_valid_domain  # Import the new validation function
+
 
 def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -28,20 +29,26 @@ def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any
             merged[key] = value
     return merged
 
+
 def load_config_file(file_path: str) -> dict:
     """Loads a configuration file, supporting JSON and YAML."""
     _, ext = os.path.splitext(file_path)
     ext = ext.lower()
 
-    with open(file_path, 'r') as f:
-        if ext == '.json':
+    with open(file_path, "r") as f:
+        if ext == ".json":
             return json.load(f)
-        elif ext in ('.yaml', '.yml'):
+        elif ext in (".yaml", ".yml"):
             return yaml.safe_load(f)
         else:
-            raise ValueError(f"Unsupported config file extension: {ext}. Please use .json, .yaml, or .yml.")
+            raise ValueError(
+                f"Unsupported config file extension: {ext}. Please use .json, .yaml, or .yml."
+            )
 
-def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Optional[argparse.Namespace], List[str]]:
+
+def setup_configuration_and_domains(
+    parser: argparse.ArgumentParser,
+) -> Tuple[Optional[argparse.Namespace], List[str]]:
     """
     Parses CLI args, loads config file, merges settings, and loads domains.
     This is the single source of truth for all configuration.
@@ -67,14 +74,19 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
 
     # 2. Layer config file settings over defaults
     config_file_path = cli_args.config
+    config_data = {}  # [FIX] Initialize config_data as an empty dict
     if config_file_path:
         try:
             config_data = load_config_file(config_file_path)
         except FileNotFoundError:
-            console.print(f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]")
+            console.print(
+                f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]"
+            )
             return None, []
         except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
-            console.print(f"[bold red]Error: Could not decode config file '{config_file_path}'. {e}[/bold red]")
+            console.print(
+                f"[bold red]Error: Could not decode config file '{config_file_path}'. {e}[/bold red]"
+            )
             return None, []
 
     # 3. Layer explicit CLI arguments over the top (highest priority)
@@ -86,37 +98,49 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
         if value != defaults.get(key):
             cli_overrides[key] = value
 
-    final_config = deep_merge_dicts(final_config, cli_overrides)
+    # [FIX] Correctly merge in this order: defaults -> config_file -> cli_overrides
+    config_from_file = deep_merge_dicts(final_config, config_data)
+    final_config = deep_merge_dicts(config_from_file, cli_overrides)
     final_args = argparse.Namespace(**final_config)
 
     # 5. Load domains to scan using the final merged config
     domains_to_scan = []
-    domain_input = getattr(final_args, 'domain', None)
-    file_input = getattr(final_args, 'file', None)
+    domain_input = getattr(final_args, "domain", None)
+    file_input = getattr(final_args, "file", None)
 
     if file_input:
         try:
-            domains_from_file = load_config_file(file_input) # Use the new loader
+            domains_from_file = load_config_file(file_input)  # Use the new loader
             if not isinstance(domains_from_file, list):
-                console.print(f"[bold red]Error: The file '{file_input}' must contain a list of domain strings.[/bold red]")
+                console.print(
+                    f"[bold red]Error: The file '{file_input}' must contain a list of domain strings.[/bold red]"
+                )
                 return final_args, []
-            
+
             # Validate domains from file
             for domain in domains_from_file:
                 if not is_valid_domain(domain):
-                    console.print(f"[bold red]Error: Invalid domain format '{domain}' found in file '{file_input}'.[/bold red]")
+                    console.print(
+                        f"[bold red]Error: Invalid domain format '{domain}' found in file '{file_input}'.[/bold red]"
+                    )
                     return final_args, []
                 domains_to_scan.append(domain)
 
         except FileNotFoundError:
-            console.print(f"[bold red]Error: The file '{file_input}' was not found.[/bold red]")
+            console.print(
+                f"[bold red]Error: The file '{file_input}' was not found.[/bold red]"
+            )
             return final_args, []
         except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
-            console.print(f"[bold red]Error: Could not decode domains from the file '{file_input}'. {e}[/bold red]")
+            console.print(
+                f"[bold red]Error: Could not decode domains from the file '{file_input}'. {e}[/bold red]"
+            )
             return final_args, []
     elif domain_input:
         if not is_valid_domain(domain_input):
-            console.print(f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]")
+            console.print(
+                f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]"
+            )
             return final_args, []
         domains_to_scan.append(domain_input)
 

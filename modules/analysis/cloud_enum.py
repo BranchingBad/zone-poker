@@ -10,16 +10,19 @@ from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
+
+async def enumerate_cloud_services(
+    domain: str, **kwargs
+) -> Dict[str, List[Dict[str, Any]]]:
     """
     Enumerates potential public cloud storage (e.g., S3 buckets, Azure Blobs) based on the domain name.
     """
     results: Dict[str, List[Dict[str, Any]]] = {"s3_buckets": [], "azure_blobs": []}
-    
+
     # Generate potential bucket names from the domain
-    domain_parts = domain.split('.')
+    domain_parts = domain.split(".")
     base_name = domain_parts[0]
-    
+
     # A simple list of permutations to check
     permutations = {
         base_name,
@@ -35,11 +38,13 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
     # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars)
     sanitized_permutations = set()
     for p in permutations:
-        s = re.sub(r'[^a-z0-9]', '', p.lower())
+        s = re.sub(r"[^a-z0-9]", "", p.lower())
         if 3 <= len(s) <= 24:
             sanitized_permutations.add(s)
-    
-    logger.debug(f"Checking {len(permutations)} potential S3 bucket names and {len(sanitized_permutations)} Azure blob containers.")
+
+    logger.debug(
+        f"Checking {len(permutations)} potential S3 bucket names and {len(sanitized_permutations)} Azure blob containers."
+    )
 
     async def check_s3_bucket(bucket_name: str, client: httpx.AsyncClient):
         url = f"http://{bucket_name}.s3.amazonaws.com"
@@ -62,7 +67,6 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
             # Optionally, you could record the failure:
             # results["s3_buckets"].append({"url": url, "status_code": 0, "error": str(e)})
 
-
     async def check_azure_blob(account_name: str, client: httpx.AsyncClient):
         url = f"https://{account_name}.blob.core.windows.net"
         try:
@@ -84,10 +88,12 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
             # results["azure_blobs"].append({"url": url, "status_code": 0, "error": str(e)})
 
     async with httpx.AsyncClient() as client:
-        tasks = [check_s3_bucket(p, client) for p in permutations] + [check_azure_blob(p, client) for p in sanitized_permutations]
+        tasks = [check_s3_bucket(p, client) for p in permutations] + [
+            check_azure_blob(p, client) for p in sanitized_permutations
+        ]
         await asyncio.gather(*tasks)
-    
+
     # Sort by URL
-    results["s3_buckets"].sort(key=lambda x: x['url'])
-    results["azure_blobs"].sort(key=lambda x: x['url'])
+    results["s3_buckets"].sort(key=lambda x: x["url"])
+    results["azure_blobs"].sort(key=lambda x: x["url"])
     return results

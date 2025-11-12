@@ -31,23 +31,54 @@ from modules.analysis.cloud_enum import enumerate_cloud_services
 from modules.analysis.dnsbl import check_dnsbl
 
 # Import all display and export functions
-from modules.display import ( # Only display functions remain here
-    display_dns_records_table, display_ptr_lookups, display_axfr_results,
-    display_email_security, display_whois_info, display_nameserver_analysis,
-    display_propagation, display_security_audit, display_technology_info,
-    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info,
-    display_content_hash_info, display_ct_logs, display_waf_detection,
-    display_dane_analysis, display_http_headers, display_port_scan,
-    display_subdomain_takeover, display_cloud_enum, display_dnsbl_check
+from modules.display import (  # Only display functions remain here
+    display_dns_records_table,
+    display_ptr_lookups,
+    display_axfr_results,
+    display_email_security,
+    display_whois_info,
+    display_nameserver_analysis,
+    display_propagation,
+    display_security_audit,
+    display_technology_info,
+    display_osint_results,
+    display_ssl_info,
+    display_smtp_info,
+    display_reputation_info,
+    display_content_hash_info,
+    display_ct_logs,
+    display_waf_detection,
+    display_dane_analysis,
+    display_http_headers,
+    display_port_scan,
+    display_subdomain_takeover,
+    display_cloud_enum,
+    display_dnsbl_check,
 )
-from modules.export_txt import ( # All txt export functions are imported from the new module
-    export_txt_records, export_txt_ptr, export_txt_zone, export_txt_mail,
-    export_txt_whois, export_txt_nsinfo, export_txt_propagation,
-    export_txt_security, export_txt_tech, export_txt_osint, export_txt_ssl,
-    export_txt_smtp, export_txt_reputation, export_txt_content_hash,
-    export_txt_ct_logs, export_txt_waf_detection, export_txt_dane,
-    export_txt_geolocation, export_txt_http_headers, export_txt_port_scan,
-    export_txt_subdomain_takeover, export_txt_cloud_enum, export_txt_dnsbl_check
+from modules.export_txt import (  # All txt export functions are imported from the new module
+    export_txt_records,
+    export_txt_ptr,
+    export_txt_zone,
+    export_txt_mail,
+    export_txt_whois,
+    export_txt_nsinfo,
+    export_txt_propagation,
+    export_txt_security,
+    export_txt_tech,
+    export_txt_osint,
+    export_txt_ssl,
+    export_txt_smtp,
+    export_txt_reputation,
+    export_txt_content_hash,
+    export_txt_ct_logs,
+    export_txt_waf_detection,
+    export_txt_dane,
+    export_txt_geolocation,
+    export_txt_http_headers,
+    export_txt_port_scan,
+    export_txt_subdomain_takeover,
+    export_txt_cloud_enum,
+    export_txt_dnsbl_check,
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -68,7 +99,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_dns_records_table,
         "export_func": export_txt_records,
         "description": "Querying DNS records...",
-        "arg_info": {"short": "-r", "long": "--records", "help": "Query all standard DNS record types."}
+        "arg_info": {
+            "short": "-r",
+            "long": "--records",
+            "help": "Query all standard DNS record types.",
+        },
     },
     "ptr": {
         "data_key": "ptr_info",
@@ -77,7 +112,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_ptr,
         "description": "Performing reverse DNS (PTR) lookups...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--ptr", "help": "Perform reverse DNS (PTR) lookups for A/AAAA records."}
+        "arg_info": {
+            "short": None,
+            "long": "--ptr",
+            "help": "Perform reverse DNS (PTR) lookups for A/AAAA records.",
+        },
     },
     "zone": {
         "data_key": "zone_info",
@@ -86,7 +125,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_zone,
         "description": "Attempting zone transfer (AXFR)...",
         "dependencies": ["records"],
-        "arg_info": {"short": "-z", "long": "--zone", "help": "Attempt a zone transfer (AXFR) against nameservers."}
+        "arg_info": {
+            "short": "-z",
+            "long": "--zone",
+            "help": "Attempt a zone transfer (AXFR) against nameservers.",
+        },
     },
     "mail": {
         "data_key": "mail_info",
@@ -95,7 +138,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_mail,
         "description": "Analyzing email security (SPF, DMARC)...",
         "dependencies": ["records"],
-        "arg_info": {"short": "-m", "long": "--mail", "help": "Analyze email security records (SPF, DMARC, DKIM)."}
+        "arg_info": {
+            "short": "-m",
+            "long": "--mail",
+            "help": "Analyze email security records (SPF, DMARC, DKIM).",
+        },
     },
     "whois": {
         "data_key": "whois_info",
@@ -103,7 +150,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_whois_info,
         "export_func": export_txt_whois,
         "description": "Performing WHOIS lookup...",
-        "arg_info": {"short": "-w", "long": "--whois", "help": "Perform an extended WHOIS lookup on the domain."}
+        "arg_info": {
+            "short": "-w",
+            "long": "--whois",
+            "help": "Perform an extended WHOIS lookup on the domain.",
+        },
     },
     "nsinfo": {
         "data_key": "nsinfo_info",
@@ -112,7 +163,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_nsinfo,
         "description": "Analyzing nameservers...",
         "dependencies": ["records"],
-        "arg_info": {"short": "-n", "long": "--nsinfo", "help": "Analyze nameserver information and check for DNSSEC."}
+        "arg_info": {
+            "short": "-n",
+            "long": "--nsinfo",
+            "help": "Analyze nameserver information and check for DNSSEC.",
+        },
     },
     "propagation": {
         "data_key": "propagation_info",
@@ -120,7 +175,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_propagation,
         "export_func": export_txt_propagation,
         "description": "Checking DNS propagation...",
-        "arg_info": {"short": "-p", "long": "--propagation", "help": "Check DNS propagation across public resolvers."}
+        "arg_info": {
+            "short": "-p",
+            "long": "--propagation",
+            "help": "Check DNS propagation across public resolvers.",
+        },
     },
     "security": {
         "data_key": "security_info",
@@ -128,8 +187,23 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_security_audit,
         "export_func": export_txt_security,
         "description": "Auditing for security misconfigurations...",
-        "dependencies": ["records", "mail", "nsinfo", "zone", "http_headers", "ssl", "takeover", "dnsbl", "port_scan", "reputation"],
-        "arg_info": {"short": "-s", "long": "--security", "help": "Run a basic audit for DNS security misconfigurations."}
+        "dependencies": [
+            "records",
+            "mail",
+            "nsinfo",
+            "zone",
+            "http_headers",
+            "ssl",
+            "takeover",
+            "dnsbl",
+            "port_scan",
+            "reputation",
+        ],
+        "arg_info": {
+            "short": "-s",
+            "long": "--security",
+            "help": "Run a basic audit for DNS security misconfigurations.",
+        },
     },
     "tech": {
         "data_key": "tech_info",
@@ -137,7 +211,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_technology_info,
         "export_func": export_txt_tech,
         "description": "Detecting web technologies...",
-        "arg_info": {"short": "-t", "long": "--tech", "help": "Detect web technologies, CMS, and security headers."}
+        "arg_info": {
+            "short": "-t",
+            "long": "--tech",
+            "help": "Detect web technologies, CMS, and security headers.",
+        },
     },
     "osint": {
         "data_key": "osint_info",
@@ -145,7 +223,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_osint_results,
         "export_func": export_txt_osint,
         "description": "Gathering OSINT data...",
-        "arg_info": {"short": "-o", "long": "--osint", "help": "Enrich data with passive DNS and other OSINT sources."}
+        "arg_info": {
+            "short": "-o",
+            "long": "--osint",
+            "help": "Enrich data with passive DNS and other OSINT sources.",
+        },
     },
     "ssl": {
         "data_key": "ssl_info",
@@ -153,7 +235,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_ssl_info,
         "export_func": export_txt_ssl,
         "description": "Analyzing SSL/TLS certificate...",
-        "arg_info": {"short": None, "long": "--ssl", "help": "Analyze the SSL/TLS certificate."}
+        "arg_info": {
+            "short": None,
+            "long": "--ssl",
+            "help": "Analyze the SSL/TLS certificate.",
+        },
     },
     "smtp": {
         "data_key": "smtp_info",
@@ -162,16 +248,24 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_smtp,
         "description": "Analyzing mail server (SMTP) configuration...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--smtp", "help": "Analyze mail servers (banner, STARTTLS)."}
+        "arg_info": {
+            "short": None,
+            "long": "--smtp",
+            "help": "Analyze mail servers (banner, STARTTLS).",
+        },
     },
     "reputation": {
-        "data_key": "reputation_info", # This one already follows the convention
+        "data_key": "reputation_info",  # This one already follows the convention
         "analysis_func": analyze_reputation,
         "display_func": display_reputation_info,
         "export_func": export_txt_reputation,
         "description": "Checking IP reputation (AbuseIPDB)...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--reputation", "help": "Check IP reputation using AbuseIPDB."}
+        "arg_info": {
+            "short": None,
+            "long": "--reputation",
+            "help": "Check IP reputation using AbuseIPDB.",
+        },
     },
     "hashes": {
         "data_key": "hashes_info",
@@ -179,7 +273,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_content_hash_info,
         "export_func": export_txt_content_hash,
         "description": "Fetching content and favicon hashes...",
-        "arg_info": {"short": None, "long": "--hashes", "help": "Get Murmur32 favicon and SHA256 page content hashes."}
+        "arg_info": {
+            "short": None,
+            "long": "--hashes",
+            "help": "Get Murmur32 favicon and SHA256 page content hashes.",
+        },
     },
     "ct": {
         "data_key": "ct_info",
@@ -187,7 +285,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_ct_logs,
         "export_func": export_txt_ct_logs,
         "description": "Searching Certificate Transparency logs...",
-        "arg_info": {"short": None, "long": "--ct", "help": "Find subdomains from Certificate Transparency logs."}
+        "arg_info": {
+            "short": None,
+            "long": "--ct",
+            "help": "Find subdomains from Certificate Transparency logs.",
+        },
     },
     "waf": {
         "data_key": "waf_info",
@@ -195,7 +297,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_waf_detection,
         "export_func": export_txt_waf_detection,
         "description": "Detecting Web Application Firewall...",
-        "arg_info": {"short": None, "long": "--waf", "help": "Attempt to identify a Web Application Firewall."}
+        "arg_info": {
+            "short": None,
+            "long": "--waf",
+            "help": "Attempt to identify a Web Application Firewall.",
+        },
     },
     "dane": {
         "data_key": "dane_info",
@@ -203,16 +309,24 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_dane_analysis,
         "export_func": export_txt_dane,
         "description": "Checking for DANE (TLSA) records...",
-        "arg_info": {"short": None, "long": "--dane", "help": "Check for DANE (TLSA) records for HTTPS."}
+        "arg_info": {
+            "short": None,
+            "long": "--dane",
+            "help": "Check for DANE (TLSA) records for HTTPS.",
+        },
     },
     "geolocation": {
         "data_key": "geo_info",
         "analysis_func": geolocate_ips,
-        "display_func": None, # This function was removed, set to None
+        "display_func": None,  # This function was removed, set to None
         "export_func": export_txt_geolocation,
         "description": "Geolocating IP addresses...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--geo", "help": "Geolocate IP addresses from A/AAAA records."}
+        "arg_info": {
+            "short": None,
+            "long": "--geo",
+            "help": "Geolocate IP addresses from A/AAAA records.",
+        },
     },
     "http_headers": {
         "data_key": "headers_info",
@@ -220,7 +334,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_http_headers,
         "export_func": export_txt_http_headers,
         "description": "Analyzing HTTP security headers...",
-        "arg_info": {"short": None, "long": "--headers", "help": "Perform an in-depth analysis of HTTP security headers."}
+        "arg_info": {
+            "short": None,
+            "long": "--headers",
+            "help": "Perform an in-depth analysis of HTTP security headers.",
+        },
     },
     "port_scan": {
         "data_key": "port_scan_info",
@@ -229,7 +347,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_port_scan,
         "description": "Scanning for open ports...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--ports", "help": "Scan for common open TCP ports on discovered IPs."}
+        "arg_info": {
+            "short": None,
+            "long": "--ports",
+            "help": "Scan for common open TCP ports on discovered IPs.",
+        },
     },
     "takeover": {
         "data_key": "takeover_info",
@@ -238,7 +360,11 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_subdomain_takeover,
         "description": "Checking for subdomain takeovers...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--takeover", "help": "Check for potential subdomain takeovers."}
+        "arg_info": {
+            "short": None,
+            "long": "--takeover",
+            "help": "Check for potential subdomain takeovers.",
+        },
     },
     "cloud": {
         "data_key": "cloud_info",
@@ -246,7 +372,11 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_cloud_enum,
         "export_func": export_txt_cloud_enum,
         "description": "Enumerating cloud services...",
-        "arg_info": {"short": None, "long": "--cloud", "help": "Enumerate common cloud services (e.g., S3 buckets)."}
+        "arg_info": {
+            "short": None,
+            "long": "--cloud",
+            "help": "Enumerate common cloud services (e.g., S3 buckets).",
+        },
     },
     "dnsbl": {
         "data_key": "dnsbl_info",
@@ -255,9 +385,14 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_dnsbl_check,
         "description": "Checking IPs against DNS blocklists...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--dnsbl", "help": "Check discovered IPs against common DNS blocklists."}
+        "arg_info": {
+            "short": None,
+            "long": "--dnsbl",
+            "help": "Check discovered IPs against common DNS blocklists.",
+        },
     },
 }
+
 
 def register_module_args(parser: argparse.ArgumentParser):
     """
@@ -269,12 +404,9 @@ def register_module_args(parser: argparse.ArgumentParser):
             # Simplify argument creation by convention.
             # The long argument is assumed to be '--<module_name>' unless specified otherwise.
             long_arg = arg_info.get("long", f"--{name}")
-            
+
             args = [arg for arg in [arg_info.get("short"), long_arg] if arg]
             if args:
                 parser.add_argument(
-                    *args,
-                    dest=name,
-                    action="store_true",
-                    help=arg_info.get("help", "")
+                    *args, dest=name, action="store_true", help=arg_info.get("help", "")
                 )

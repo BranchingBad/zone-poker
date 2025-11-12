@@ -13,17 +13,29 @@ def mock_routes():
     """
     domain = "example.com"
     base_name = "example"
-    
+
     # S3 permutations from the function
     s3_permutations = {
-        base_name, f"{base_name}-assets", f"{base_name}-prod", f"{base_name}-dev",
-        f"{base_name}-backups", f"{base_name}-media", f"{base_name}-www", domain,
+        base_name,
+        f"{base_name}-assets",
+        f"{base_name}-prod",
+        f"{base_name}-dev",
+        f"{base_name}-backups",
+        f"{base_name}-media",
+        f"{base_name}-www",
+        domain,
     }
-    
+
     # Azure permutations from the function
     azure_permutations = {
-        "example", "exampleassets", "exampleprod", "exampledev",
-        "examplebackups", "examplemedia", "examplewww", "examplecom",
+        "example",
+        "exampleassets",
+        "exampleprod",
+        "exampledev",
+        "examplebackups",
+        "examplemedia",
+        "examplewww",
+        "examplecom",
     }
 
     with respx.mock as mock:
@@ -33,7 +45,7 @@ def mock_routes():
         for p in azure_permutations:
             if 3 <= len(p) <= 24 and p.isalnum():
                 mock.head(f"https://{p}.blob.core.windows.net").respond(404)
-        
+
         yield mock
 
 
@@ -46,19 +58,30 @@ async def test_enumerate_cloud_services_found(mock_routes):
 
     # Override the default 404 for specific "found" routes
     mock_routes.head("http://example-prod.s3.amazonaws.com").respond(200)  # Public
-    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(403) # Forbidden (Private)
-    mock_routes.head("https://example.blob.core.windows.net").respond(400) # Found
+    mock_routes.head("http://example-assets.s3.amazonaws.com").respond(
+        403
+    )  # Forbidden (Private)
+    mock_routes.head("https://example.blob.core.windows.net").respond(400)  # Found
 
     results = await enumerate_cloud_services(domain)
 
     # Assert S3 results (should be sorted by URL)
     assert len(results["s3_buckets"]) == 2
-    assert results["s3_buckets"][0] == {"url": "http://example-assets.s3.amazonaws.com", "status": "forbidden"}
-    assert results["s3_buckets"][1] == {"url": "http://example-prod.s3.amazonaws.com", "status": "public"}
+    assert results["s3_buckets"][0] == {
+        "url": "http://example-assets.s3.amazonaws.com",
+        "status": "forbidden",
+    }
+    assert results["s3_buckets"][1] == {
+        "url": "http://example-prod.s3.amazonaws.com",
+        "status": "public",
+    }
 
     # Assert Azure results
     assert len(results["azure_blobs"]) == 1
-    assert results["azure_blobs"][0] == {"url": "https://example.blob.core.windows.net", "status": "forbidden"}
+    assert results["azure_blobs"][0] == {
+        "url": "https://example.blob.core.windows.net",
+        "status": "forbidden",
+    }
 
 
 @pytest.mark.asyncio
@@ -67,7 +90,7 @@ async def test_enumerate_cloud_services_not_found(mock_routes):
     Test enumerate_cloud_services when no services are found (all return 404).
     """
     domain = "example.com"
-    
+
     # All routes are already mocked to 404 by the fixture
     results = await enumerate_cloud_services(domain)
 
@@ -83,8 +106,10 @@ async def test_enumerate_cloud_services_network_error(mock_routes, caplog):
     domain = "example.com"
 
     # Mock one route to raise an error
-    mock_routes.head("http://example-dev.s3.amazonaws.com").mock(side_effect=RequestError("Connection failed"))
-    
+    mock_routes.head("http://example-dev.s3.amazonaws.com").mock(
+        side_effect=RequestError("Connection failed")
+    )
+
     # Mock another route as found to ensure the function continues
     mock_routes.head("http://example-prod.s3.amazonaws.com").respond(200)
 
@@ -95,4 +120,7 @@ async def test_enumerate_cloud_services_network_error(mock_routes, caplog):
 
     # Check that the other bucket was still found
     assert len(results["s3_buckets"]) == 1
-    assert results["s3_buckets"][0] == {"url": "http://example-prod.s3.amazonaws.com", "status": "public"}
+    assert results["s3_buckets"][0] == {
+        "url": "http://example-prod.s3.amazonaws.com",
+        "status": "public",
+    }

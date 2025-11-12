@@ -9,7 +9,10 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
-async def analyze_dane_records(domain: str, resolver: Resolver, **kwargs) -> Dict[str, Any]:
+
+async def analyze_dane_records(
+    domain: str, resolver: Resolver, **kwargs
+) -> Dict[str, Any]:
     """
     Checks for DANE/TLSA records to validate TLS certificates via DNS.
     """

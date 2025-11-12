@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, Any
 from ..dispatch_table import MODULE_DISPATCH_TABLE
 
+
 def output(all_data: Dict[str, Any]):
     """
     Generates and saves a JSON report.
