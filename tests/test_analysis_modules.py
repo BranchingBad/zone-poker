@@ -6,7 +6,7 @@ import pytest
 import respx
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from whois.parser import PywhoisError
+from whois import PywhoisError
 from modules.analysis.security_audit import security_audit
 from modules.analysis.tech import detect_technologies
 from modules.analysis.whois import whois_lookup
@@ -108,10 +108,8 @@ def test_security_audit_weak(mock_weak_data):
 
     assert result["SPF Policy"]["status"] == "Weak"  # type: ignore
     assert result["DMARC Policy"]["status"] == "Weak"  # type: ignore
-    assert (
-        "Additionally, no 'rua' reporting address is configured"
-        in result["DMARC Policy"]["details"]
-    )
+    assert ("Additionally, no 'rua' reporting address is configured"
+            in result["DMARC Policy"]["details"])
     assert result["CAA Record"]["status"] == "Weak"
     assert result["DNSSEC"]["status"] == "Weak"
     assert result["Zone Transfer"]["status"] == "Vulnerable"
