@@ -12,8 +12,8 @@ from rich import box
 from rich.text import Text
 # Import shared config and utilities
 from .config import console, RECORD_TYPES
-from .display_utils import console_display_handler
-from typing import Dict, List, Any, Callable
+from .display_utils import console_display_handler 
+from typing import Dict, List, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -246,23 +246,60 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
 @console_display_handler("Security Audit")
 def display_security_audit(data: dict, quiet: bool = False):
     """Creates a rich Table of Security Audit results."""
-    table = Table(title="Security Audit", box=box.ROUNDED, show_header=True, header_style=None, show_edge=False)
+    table = Table(title="Security Audit", box=box.ROUNDED, show_header=True, header_style=None, show_edge=True)
     table.add_column("Check", style="bold", width=20)
     table.add_column("Status", width=12)
     table.add_column("Details", max_width=60)
 
+    # Define categories to group the checks
+    categories = {
+        "DNS Security": ["SPF Policy", "SPF Record", "DMARC Policy", "CAA Record", "DNSSEC", "Zone Transfer"],
+        "Web Security": ["HTTP Headers", "HSTS Policy", "SSL/TLS Certificate", "SSL/TLS Ciphers", "Subdomain Takeover"],
+        "Reputation": ["IP Blocklist Status"],
+        "Network Security": ["Open Ports"],
+    }
+
+    # A mapping of status to color and icon for visual clarity
+    STATUS_MAP = {
+        "Secure": {"color": "green", "icon": "✓"},
+        "Moderate": {"color": "yellow", "icon": "!"},
+        "Weak": {"color": "red", "icon": "✗"},
+        "Vulnerable": {"color": "red", "icon": "✗"},
+    }
+
+    # Keep track of which checks have been displayed
+    displayed_checks = set()
+
+    for category, checks_in_category in categories.items():
+        # Add a header row for the category if any of its checks are present in the data
+        category_checks_present = [c for c in checks_in_category if c in data]
+        if not category_checks_present:
+            continue
+
+        table.add_section()
+        table.add_row(f"[bold cyan]{category}[/bold cyan]", "", "")
+
+        for check in category_checks_present:
+            info = data.get(check, {})
+            status = info.get("status", "Unknown")
+            details = info.get("details", "N/A")
+
+            style = STATUS_MAP.get(status, {"color": "dim", "icon": "?"})
+            color = style["color"]
+            icon = style["icon"]
+
+            table.add_row(check, f"{icon} [{color}]{status}[/{color}]", details)
+            displayed_checks.add(check)
+
+    # Display any remaining checks that weren't in a defined category
     for check, info in data.items():
+        if check in displayed_checks:
+            continue
         status = info.get("status", "Unknown")
         details = info.get("details", "N/A")
+        style = STATUS_MAP.get(status, {"color": "dim", "icon": "?"})
+        table.add_row(check, f"{style['icon']} [{style['color']}]{status}[/{style['color']}]", details)
 
-        if status == "Secure":
-            color = "green"
-        elif status in ("Weak", "Vulnerable"):
-            color = "red"
-        else: # Moderate
-            color = "yellow"
-        
-        table.add_row(check, f"[{color}]{status}[/{color}]", details)
     return table
 
 @console_display_handler("Technology Detection")
@@ -756,8 +793,31 @@ def export_txt_propagation(data: Dict[str, str]) -> str:
 
 def _format_security_txt(data: Dict[str, str]) -> List[str]:
     """Formats Security Audit for the text report."""
-    return [f"  - {check:<25}: {result}" for check, result in data.items()]
-    
+    report = []
+    categories = {
+        "DNS Security": ["SPF Policy", "SPF Record", "DMARC Policy", "CAA Record", "DNSSEC", "Zone Transfer"],
+        "Web Security": ["HTTP Headers", "HSTS Policy", "SSL/TLS Certificate", "Subdomain Takeover"],
+        "Reputation": ["IP Blocklist Status"]
+    }
+    displayed_checks = set()
+
+    for category, checks_in_category in categories.items():
+        category_checks_present = [c for c in checks_in_category if c in data]
+        if not category_checks_present:
+            continue
+
+        report.append(f"\n[{category}]")
+        for check in category_checks_present:
+            info = data.get(check, {})
+            report.append(f"  - {check:<25}: {info.get('status', 'N/A')} ({info.get('details', 'N/A')})")
+            displayed_checks.add(check)
+
+    # Handle any uncategorized checks
+    for check, info in data.items():
+        if check not in displayed_checks:
+            report.append(f"  - {check:<25}: {info.get('status', 'N/A')} ({info.get('details', 'N/A')})")
+    return report
+
 def export_txt_security(data: Dict[str, Dict[str, str]]) -> str:
     return _create_report_section("Security Audit", data, _format_security_txt)
 
@@ -984,226 +1044,3 @@ def display_dnsbl_check(data: dict, quiet: bool = False):
         panel = Panel(tree, title="DNS Blocklist (DNSBL) Check", box=box.ROUNDED, border_style="red")
 
     return panel
-
-
-def _format_http_headers_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats HTTP Security Headers for the text report."""
-    report = [f"Final URL: {data.get('final_url')}\n"]
-    analysis = data.get("analysis", {})
-    for header, info in analysis.items():
-        status = info.get("status", "Unknown")
-        value = info.get("value", "")
-        value_str = f" - Value: {value}" if value else ""
-        report.append(f"  - {header}: {status}{value_str}")
-
-    recommendations = data.get("recommendations", [])
-    if recommendations:
-        report.append("\nRecommendations:")
-        report.extend([f"  • {rec}" for rec in recommendations])
-    return report
-
-def export_txt_http_headers(data: Dict[str, Any]) -> str:
-    """Formats HTTP Security Headers for the text report."""
-    return _create_report_section("HTTP Security Headers Analysis", data, _format_http_headers_txt)
-
-def _format_cloud_enum_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Cloud Enumeration for the text report."""
-    report = []
-    s3_buckets = data.get("s3_buckets", [])
-    azure_blobs = data.get("azure_blobs", [])
-
-    if not s3_buckets and not azure_blobs:
-        report.append("No public S3 or Azure Blob containers found based on common permutations.")
-    if s3_buckets:
-        report.append("Discovered S3 Buckets:")
-        for bucket in s3_buckets:
-            status = bucket.get("status")
-            url = bucket.get("url")
-            if status == "public":
-                symbol = "✅"
-            elif status == "forbidden":
-                symbol = "🔒"
-            else:
-                symbol = "❓"
-            report.append(f"  {symbol} {url}")
-    if azure_blobs:
-        if s3_buckets: report.append("") # Add a newline if S3 buckets were also found
-        report.append("Discovered Azure Blob Containers:")
-        for blob in azure_blobs:
-            status = blob.get("status")
-            url = blob.get("url")
-            if status == "public":
-                symbol = "✅"
-            elif status == "forbidden":
-                symbol = "🔒"
-            else:
-                symbol = "❓"
-            report.append(f"  {symbol} {url}")
-    return report
-
-@console_display_handler("IP Geolocation")
-def display_ip_geolocation(data: dict, quiet: bool = False):
-    """Creates a rich Table of IP Geolocation results."""
-    # --- IMPROVEMENT: Handle global errors and empty data sets ---
-    if not data:
-        return Panel("[dim]No IP addresses were geolocated.[/dim]", title="IP Geolocation", box=box.ROUNDED, border_style="dim")
-    
-    if "error" in data:
-        error_message = f"[red]Error: {data['error']}[/red]"
-        return Panel(error_message, title="IP Geolocation", box=box.ROUNDED, border_style="red")
-
-    table = Table(title="IP Geolocation", box=box.ROUNDED, show_header=True, header_style=None)
-    table.add_column("IP Address", style="bold", width=20)
-    table.add_column("Country")
-    table.add_column("City")
-    table.add_column("ISP")
-
-    for ip, info in data.items():
-        if isinstance(info, dict):
-            if info.get("error"):
-                table.add_row(ip, f"[red]{info['error']}[/red]", "", "")
-            else:
-                table.add_row(
-                    ip,
-                    info.get("country", "N/A"),
-                    info.get("city", "N/A"),
-                    info.get("isp", "N/A"),
-                )
-        else: # Handle case where info is not a dict (e.g., an error string)
-            table.add_row(
-                ip, f"[red]Error: {str(info)}[/red]", "", ""
-            )
-    return table
-
-def export_txt_ssl(data: Dict[str, Any]) -> str:
-    """Formats SSL/TLS analysis for the text report."""
-    return _create_report_section("SSL/TLS Certificate Analysis", data, _format_ssl_txt)
-
-def export_txt_geolocation(data: Dict[str, Any]) -> str:
-    """Formats IP Geolocation for the text report."""
-    return _create_report_section("IP Geolocation", data, _format_geolocation_txt)
-
-def _format_port_scan_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Open Port Scan for the text report."""
-    if not data:
-        return ["No open ports found among common ports."]
-    report = []
-    for ip, ports in data.items():
-        ports_str = ", ".join(map(str, ports))
-        report.append(f"  - {ip}: {ports_str}")
-    return report
-
-def export_txt_port_scan(data: Dict[str, Any]) -> str:
-    """Formats Open Port Scan for the text report."""
-    return _create_report_section("Open Port Scan", data, _format_port_scan_txt)
-
-def export_txt_cloud_enum(data: Dict[str, Any]) -> str:
-    """Formats Cloud Enumeration for the text report."""
-    return _create_report_section("Cloud Service Enumeration", data, _format_cloud_enum_txt)
-
-def _format_dnsbl_check_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats DNSBL check for the text report."""
-    listed_ips = data.get("listed_ips", [])
-    if not listed_ips:
-        return ["No IP addresses found on common DNS blocklists."]
-    report = [f"Found {len(listed_ips)} IP(s) on DNS blocklists:"]
-    for item in listed_ips:
-        report.append(f"\n  - IP Address: {item['ip']}")
-        report.append(f"    Listed on: {', '.join(item.get('listed_on', []))}")
-    return report
-
-def export_txt_dnsbl_check(data: Dict[str, Any]) -> str:
-    """Formats DNSBL check for the text report."""
-    return _create_report_section("DNS Blocklist (DNSBL) Check", data, _format_dnsbl_check_txt)
-
-def _format_subdomain_takeover_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats Subdomain Takeover for the text report."""
-    vulnerable = data.get("vulnerable", [])
-    if not vulnerable:
-        return ["No potential subdomain takeovers found."]
-    report = [f"Found {len(vulnerable)} potential subdomain takeovers:"]
-    for item in vulnerable:
-        report.append(f"\n  - Subdomain: {item['subdomain']}")
-        report.append(f"    Service: {item['service']}")
-        report.append(f"    CNAME Target: {item['cname_target']}")
-    return report
-
-def export_txt_subdomain_takeover(data: Dict[str, Any]) -> str:
-    """Formats Subdomain Takeover for the text report."""
-    return _create_report_section("Subdomain Takeover", data, _format_subdomain_takeover_txt)
-
-def _format_smtp_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats SMTP analysis for the text report."""
-    if not data:
-        return ["No SMTP servers were analyzed."]
-    report = []
-    for server, info in data.items(): # info can be Dict or str if an error occurred for that specific server
-        if isinstance(info, dict):
-            if info.get("error"):
-                report.append(f"  - {server}: Error - {info['error']}")
-                continue
-            
-            report.append(f"  - {server}")
-            report.append(f"    Banner: {info.get('banner', 'N/A')}")
-            report.append(f"    STARTTLS: {info.get('starttls', 'Unknown')}")
-            
-            cert_info = info.get('certificate')
-            if cert_info:
-                report.append("    Certificate:")
-                report.append(f"      Subject: {cert_info.get('subject', 'N/A')}")
-                report.append(f"      Valid Until: {datetime.datetime.fromtimestamp(cert_info['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if cert_info.get('valid_until') else 'N/A'}")
-        else:
-            report.append(f"  - {server}: Unexpected data format - {str(info)}")
-    return report
-
-def export_txt_smtp(data: Dict[str, Any]) -> str:
-    """Formats SMTP analysis for the text report."""
-    return _create_report_section("Mail Server (SMTP) Analysis", data, _format_smtp_txt)
-
-def export_txt_reputation(data: Dict[str, Any]) -> str:
-    """Formats IP reputation analysis for the text report."""
-    return _create_report_section("IP Reputation Analysis (AbuseIPDB)", data, _format_reputation_txt)
-
-def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats SSL/TLS analysis for the text report."""
-    report = [
-        f"Subject: {data.get('subject', 'N/A')}",
-        f"Issuer: {data.get('issuer', 'N/A')}",
-        f"Valid From: {datetime.fromtimestamp(data['valid_from']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_from') else 'N/A'}",
-        f"Valid Until: {datetime.fromtimestamp(data['valid_until']).strftime('%Y-%m-%d %H:%M:%S') if data.get('valid_until') else 'N/A'}"
-    ]
-    if data.get('sans'):
-        report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in data['sans']])
-    return report
-
-def _format_geolocation_txt(data: Dict[str, Any]) -> List[str]:
-    """Helper formatter for the geolocation text report."""
-    report = []
-    for ip, info in data.items():
-        # This check handles per-IP errors (e.g., for a private IP)
-        if isinstance(info, dict) and info.get("error"):
-            report.append(f"  - {ip}: Error - {info['error']}")
-        # This handles a successful lookup
-        elif isinstance(info, dict):
-            report.append(f"  - {ip}: {info.get('city', 'N/A')}, {info.get('country', 'N/A')} (ISP: {info.get('isp', 'N/A')})")
-    return report
-
-def _format_reputation_txt(data: Dict[str, Any]) -> List[str]:
-    """Formats IP reputation analysis for the text report."""
-    if not data:
-        return ["No IP reputation data was found."]
-    report = []
-    for ip, info in data.items(): # info can be Dict or str if an error occurred for that specific IP
-        if isinstance(info, dict):
-            if info.get("error"):
-                report.append(f"  - {ip}: Error - {info['error']}")
-                continue
-            
-            score = info.get('abuseConfidenceScore', 0)
-            last_reported = info.get('lastReportedAt', 'N/A')
-            if last_reported and last_reported != 'N/A':
-                last_reported = datetime.datetime.fromisoformat(last_reported.replace('Z', '+00:00')).strftime('%Y-%m-%d')
-            report.append(f"  - {ip}: Score: {score}, Reports: {info.get('totalReports', 0)}, Last Reported: {last_reported}")
-        else:
-            report.append(f"  - {ip}: Unexpected data format - {str(info)}")
-    return report

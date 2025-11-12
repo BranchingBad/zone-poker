@@ -33,9 +33,11 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
     }
 
     # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars)
-    sanitized_permutations = {
-        re.sub(r'[^a-z0-9]', '', p.lower()) for p in permutations
-    }
+    sanitized_permutations = set()
+    for p in permutations:
+        s = re.sub(r'[^a-z0-9]', '', p.lower())
+        if 3 <= len(s) <= 24:
+            sanitized_permutations.add(s)
     
     logger.debug(f"Checking {len(permutations)} potential S3 bucket names and {len(sanitized_permutations)} Azure blob containers.")
 
@@ -62,10 +64,6 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
 
 
     async def check_azure_blob(account_name: str, client: httpx.AsyncClient):
-        # Azure storage account names must be 3-24 chars, lowercase letters and numbers.
-        if not (3 <= len(account_name) <= 24 and account_name.isalnum()):
-            return
-
         url = f"https://{account_name}.blob.core.windows.net"
         try:
             # A HEAD request to an existing account's base URL often returns 400 (Bad Request)

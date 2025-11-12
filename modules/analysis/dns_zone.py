@@ -5,8 +5,10 @@ import dns.query
 import dns.zone
 import dns.exception
 # import dns.asyncquery # No longer needed
+import logging
 from typing import Dict, List, Any
-from ..config import console
+
+logger = logging.getLogger(__name__)
  
 async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: int, verbose: bool, records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
@@ -83,7 +85,7 @@ async def attempt_axfr(domain: str, resolver: dns.resolver.Resolver, timeout: in
             except Exception as e:
                 failure_status = {"status": f"Failed ({type(e).__name__})", "ip_tried": ns_ip}
                 if verbose:
-                    console.print(f"AXFR error for {ns} at {ns_ip}: {e}")
+                    logger.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
         
         # If the loop completes without returning on success, it means all IPs failed.
         # We record the last known failure for this nameserver.

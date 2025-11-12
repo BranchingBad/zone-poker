@@ -31,30 +31,23 @@ from modules.analysis.cloud_enum import enumerate_cloud_services
 from modules.analysis.dnsbl import check_dnsbl
 
 # Import all display and export functions
-from modules.display import (
-    display_dns_records_table, export_txt_records,
-    display_ptr_lookups, export_txt_ptr,
-    display_axfr_results, export_txt_zone,
-    display_email_security, export_txt_mail,
-    display_whois_info, export_txt_whois,
-    display_nameserver_analysis, export_txt_nsinfo,
-    display_propagation, export_txt_propagation,
-    display_security_audit, export_txt_security,
-    display_technology_info, export_txt_tech,
-    display_osint_results, export_txt_osint,
-    display_ssl_info, export_txt_ssl,
-    display_smtp_info, export_txt_smtp,
-    display_reputation_info, export_txt_reputation,
-    display_content_hash_info, export_txt_content_hash,
-    display_ct_logs, export_txt_ct_logs,
-    display_waf_detection, export_txt_waf_detection,
-    display_dane_analysis, export_txt_dane,
-    display_ip_geolocation, export_txt_geolocation,
-    display_http_headers, export_txt_http_headers,
-    display_port_scan, export_txt_port_scan,
-    display_subdomain_takeover, export_txt_subdomain_takeover,
-    display_cloud_enum, export_txt_cloud_enum,
-    display_dnsbl_check, export_txt_dnsbl_check
+from modules.display import ( # Only display functions remain here
+    display_dns_records_table, display_ptr_lookups, display_axfr_results,
+    display_email_security, display_whois_info, display_nameserver_analysis,
+    display_propagation, display_security_audit, display_technology_info,
+    display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info,
+    display_content_hash_info, display_ct_logs, display_waf_detection,
+    display_dane_analysis, display_http_headers, display_port_scan,
+    display_subdomain_takeover, display_cloud_enum, display_dnsbl_check
+)
+from modules.export_txt import ( # All txt export functions are imported from the new module
+    export_txt_records, export_txt_ptr, export_txt_zone, export_txt_mail,
+    export_txt_whois, export_txt_nsinfo, export_txt_propagation,
+    export_txt_security, export_txt_tech, export_txt_osint, export_txt_ssl,
+    export_txt_smtp, export_txt_reputation, export_txt_content_hash,
+    export_txt_ct_logs, export_txt_waf_detection, export_txt_dane,
+    export_txt_geolocation, export_txt_http_headers, export_txt_port_scan,
+    export_txt_subdomain_takeover, export_txt_cloud_enum, export_txt_dnsbl_check
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -135,7 +128,7 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_security_audit,
         "export_func": export_txt_security,
         "description": "Auditing for security misconfigurations...",
-        "dependencies": ["records", "mail", "nsinfo", "zone"],
+        "dependencies": ["records", "mail", "nsinfo", "zone", "http_headers", "ssl", "takeover", "dnsbl", "port_scan", "reputation"],
         "arg_info": {"short": "-s", "long": "--security", "help": "Run a basic audit for DNS security misconfigurations."}
     },
     "tech": {
@@ -215,7 +208,7 @@ MODULE_DISPATCH_TABLE = {
     "geolocation": {
         "data_key": "geo_info",
         "analysis_func": geolocate_ips,
-        "display_func": display_ip_geolocation,
+        "display_func": None, # This function was removed, set to None
         "export_func": export_txt_geolocation,
         "description": "Geolocating IP addresses...",
         "dependencies": ["records"],
@@ -245,7 +238,7 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_subdomain_takeover,
         "description": "Checking for subdomain takeovers...",
         "dependencies": ["records"],
-        "arg_info": {"short": None, "long": "--takeover", "help": "Check for potential subdomain takeovers on CNAME records."}
+        "arg_info": {"short": None, "long": "--takeover", "help": "Check for potential subdomain takeovers."}
     },
     "cloud": {
         "data_key": "cloud_info",

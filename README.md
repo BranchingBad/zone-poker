@@ -25,9 +25,9 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **SSL/TLS Analysis**: Inspects the SSL certificate, including validity, issuer, and Subject Alternative Names (SANs).
 - **HTTP Security Headers**: Checks for the presence and configuration of key security headers.
 - **Subdomain Takeover**: Scans CNAME records for fingerprints of services vulnerable to takeover.
-- **Cloud Service Enumeration**: Discovers potential public S3 buckets and Azure Blob containers.
+- **Cloud Enumeration**: Discovers potential public S3 buckets and Azure Blob containers based on domain permutations.
 - **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist.
-- **DNS Blocklist (DNSBL)**: Checks IPs against common real-time spam blocklists.
+- **DNS Blocklist (DNSBL)**: Checks discovered IPs against common real-time spam blocklists.
 - **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
 - **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use.
 - **General Security Audit**: Runs a series of checks for common misconfigurations.
@@ -139,7 +139,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--geo` | Geolocate IP addresses from A/AAAA records. |
 | `--headers` | Perform an in-depth analysis of HTTP security headers. |
 | `--ports` | Scan for common open TCP ports on discovered IPs. |
-| `--takeover` | Check for potential subdomain takeovers on CNAME records. |
+| `--takeover` | Check for potential subdomain takeovers. |
 | `--cloud` | Enumerate common cloud services (e.g., S3 buckets). |
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
 
@@ -153,15 +153,56 @@ Zone-Poker supports multiple output formats for both console display and file ex
 
 ## Configuration File
 
-You can use a YAML or JSON configuration file to manage your scan settings, which is useful for complex scans or for managing API keys.
+You can use a YAML or JSON configuration file to manage your scan settings. This is especially useful for setting up complex or repeated scans, managing API keys securely, and avoiding long command-line strings.
 
-**Example `config.yaml`:**
+### Configuration Priority
+
+The settings are applied in the following order of precedence, with later settings overriding earlier ones:
+1.  **Tool Defaults**: The built-in default values.
+2.  **Configuration File**: Values loaded from your `config.yaml` or `config.json` file.
+3.  **Command-Line Arguments**: Any flags you provide when running the command will always have the final say.
+
+For example, if your config file has `timeout: 10` but you run `zone-poker example.com --timeout 5`, the timeout used for the scan will be `5`.
+
+### Example `config.yaml`
+
+Here is a comprehensive example demonstrating how to set various options. The keys in the file should match the long-form command-line arguments, but with underscores instead of hyphens (e.g., `--output-dir` becomes `output_dir`).
+
 ```yaml
-timeout: 10
-retries: 1
-output: json
+# Zone-Poker Sample Configuration File
+
+# --- Input ---
+# Specify a single domain or a file containing a list of domains.
+# These are overridden by a domain or -f/--file argument on the command line.
+# domain: "example.com"
+# file: "domains.txt"
+
+# --- API Keys ---
+# Store API keys here to be used by relevant modules.
 api_keys:
   abuseipdb: "YOUR_ABUSEIPDB_API_KEY"
+  otx: "YOUR_ALIENVAULT_OTX_API_KEY"
+
+# --- Scan Control ---
+timeout: 10
+retries: 1
+
+# --- Output Control ---
+export: true
+output_dir: "~/Desktop/Zone-Poker-Reports"
+filename_template: "{domain}_{timestamp}"
+output: "table" # Console output format
+verbose: false
+
+# --- Analysis Modules ---
+# Enable specific modules. This is equivalent to using flags like --whois, --ssl, etc.
+all: false # Set to true to run all modules
+
+records: true
+whois: true
+mail: true
+ssl: true
+security: true
 ```
 
 **Usage:**

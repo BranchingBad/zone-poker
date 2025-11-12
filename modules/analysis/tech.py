@@ -2,8 +2,9 @@
 import httpx
 from typing import Dict, Any
 from bs4 import BeautifulSoup
-from ..config import console
+import logging
 
+logger = logging.getLogger(__name__)
 # A structured dictionary for technology fingerprints
 TECH_FINGERPRINTS = {
     "WordPress": {"html": ["wp-content", "wp-includes"]},
@@ -76,7 +77,7 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool, **kwargs
             except (httpx.RequestError, httpx.TooManyRedirects) as e:
                 tech_data["error"] = f"Error checking {url}: {e}"
                 if verbose:
-                    console.print(f"[dim]Tech detection failed for {url}: {e}[/dim]")
+                    logger.debug(f"Tech detection failed for {url}: {e}")
     
     tech_data["technologies"] = sorted(list(detected_tech))
     return tech_data

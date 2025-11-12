@@ -3,8 +3,9 @@ import argparse
 import asyncio
 import httpx
 from typing import Dict, Any
-from ..config import console
+import logging
 
+logger = logging.getLogger(__name__)
 async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace, **kwargs) -> Dict[str, Any]:
     """
     Enriches data with passive DNS (AlienVault OTX).
@@ -19,8 +20,8 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     otx_key = getattr(args, 'api_keys', {}).get('otx')
     if otx_key:
         headers['X-OTX-API-Key'] = otx_key
-        if verbose:
-            console.print("[dim]Using OTX API Key.[/dim]")
+        # Use debug level for information that's useful for developers but not typically for end-users.
+        logger.debug("Using OTX API Key for osint_enrichment.")
     
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -46,6 +47,6 @@ async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argpa
     except httpx.RequestError as e:
         osint_data["error"] = f"OTX query failed: {e}"
         if verbose:
-            console.print(f"Error during OSINT enrichment: {e}")
+            logger.debug(f"Error during OSINT enrichment: {e}")
     
     return osint_data

@@ -3,8 +3,9 @@ import asyncio
 import dns.resolver
 from typing import Dict, List, Any
 from ipwhois import IPWhois, exceptions
-from ..config import console
+import logging
 
+logger = logging.getLogger(__name__)
 async def _resolve_ns_ips(resolver: dns.resolver.Resolver, ns_name: str, rtype: str) -> List[str]:
     """Helper to resolve A or AAAA records for a nameserver."""
     try:
@@ -46,7 +47,7 @@ async def _analyze_single_ns(resolver: dns.resolver.Resolver, verbose: bool, ns_
     except Exception as e:
         info["error"] = f"RDAP lookup failed: {type(e).__name__}"
         if verbose:
-            console.print(f"Error analyzing NS {ns_name}: {e}")
+            logger.debug(f"Error analyzing NS {ns_name}: {e}")
     
     return info
 

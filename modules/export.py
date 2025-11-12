@@ -20,11 +20,11 @@ def export_reports(all_data: Dict[str, Any]):
     """
     args = all_data.get('args_namespace')
     domain = all_data.get("domain", "report")
-    
+
     # --- TXT Report Generation ---
     if getattr(args, 'export', False):
-        from .display import export_txt_summary, export_txt_critical_findings # Local import
-        
+        from .export_txt import export_txt_summary, export_txt_critical_findings # Local import from the new module
+
         report_content = [f"Zone-Poker Report for: {domain}\n", f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"]
         report_content.append(export_txt_critical_findings(all_data))
         report_content.append(export_txt_summary(all_data))
