@@ -10,10 +10,8 @@ from pathlib import Path
 
 # Import shared config and utilities
 from .config import console
-from .utils import get_desktop_path
-# Import the dispatch table as the single source of truth
 from .dispatch_table import MODULE_DISPATCH_TABLE
-from .display import export_txt_summary, export_txt_critical_findings
+from .utils import get_desktop_path # Keep for path resolution
 
 def export_reports(all_data: Dict[str, Any]):
     """
@@ -21,6 +19,25 @@ def export_reports(all_data: Dict[str, Any]):
     dynamically loading the appropriate output module based on file extension.
     """
     args = all_data.get('args_namespace')
+    domain = all_data.get("domain", "report")
+    
+    # --- TXT Report Generation ---
+    if getattr(args, 'export', False):
+        from .display import export_txt_summary, export_txt_critical_findings # Local import
+        
+        report_content = [f"Zone-Poker Report for: {domain}\n", f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"]
+        report_content.append(export_txt_critical_findings(all_data))
+        report_content.append(export_txt_summary(all_data))
+
+        for module_name, details in MODULE_DISPATCH_TABLE.items():
+            if getattr(args, module_name, False) or getattr(args, 'all', False):
+                if export_func := details.get("export_func"):
+                    module_data = all_data.get(details["data_key"], {})
+                    report_content.append(export_func(module_data))
+        
+        all_data['txt_report_content'] = "\n\n".join(report_content)
+
+
     if not args:
         return
 
@@ -28,7 +45,7 @@ def export_reports(all_data: Dict[str, Any]):
     output_files = []
     if getattr(args, 'export', False):
         output_files.extend(['.json', '.txt']) # Default export types
-    if getattr(args, 'html_file', None):
+    if getattr(args, 'html_file', None): # This should be a path
         output_files.append(args.html_file)
 
     if not output_files:
@@ -39,7 +56,6 @@ def export_reports(all_data: Dict[str, Any]):
     save_path = Path(output_dir_str) if output_dir_str and Path(output_dir_str).is_dir() else get_desktop_path()
 
     # Generate a base filename from the template
-    domain = all_data.get("domain", "report")
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename_template = getattr(args, 'filename_template', '{domain}_dnsint_{timestamp}')
     base_filename = filename_template.format(domain=domain, timestamp=timestamp)
@@ -67,27 +83,28 @@ def export_reports(all_data: Dict[str, Any]):
         except Exception as e:
             console.print(f"[bold red]An error occurred while generating the '{output_format}' report: {e}[/bold red]")
 
-def handle_output(all_data: Dict[str, Any], output_format: str):
+def handle_output(all_data: Dict[str, Any], mode: str):
     """
     Handles dynamic output generation for both the console and file-based reports
     like HTML. It loads the appropriate module from the `modules.output` package.
+
+    Args:
+        all_data: The dictionary containing all scan data.
+        mode: The output mode. Can be 'file' for file exports or a specific
+              format like 'json', 'csv' for console output.
     """
     args = all_data.get("args_namespace")
 
-    # --- 1. Handle Console Output (non-table formats) ---
-    if output_format != 'table':
-        # This part remains the same, for printing JSON, XML, etc., to stdout
-        # We remove the file-writing responsibility from these modules.
-        # Their only job is to print to the console.
+    # --- 1. Handle File Exports ---
+    if mode == 'file':
+        if getattr(args, 'export', False) or getattr(args, 'html_file', None):
+            export_reports(all_data)
+    # --- 2. Handle Console Output (non-table formats) ---
+    elif mode != 'table':
         try:
-            output_module = importlib.import_module(f".output.{output_format}", package="modules")
+            output_module = importlib.import_module(f".output.{mode}", package="modules")
             output_module.output(all_data)
         except ImportError:
-            console.print(f"[bold red]Error: Console output format '{output_format}' is not supported.[/bold red]")
+            console.print(f"[bold red]Error: Console output format '{mode}' is not supported.[/bold red]")
         except Exception as e:
-            console.print(f"[bold red]An error occurred generating '{output_format}' console output: {e}[/bold red]")
-
-    # --- 2. Handle All File Exports ---
-    # This is now the single point of entry for creating report files.
-    if getattr(args, 'export', False) or getattr(args, 'html_file', None):
-        export_reports(all_data)
+            console.print(f"[bold red]An error occurred generating '{mode}' console output: {e}[/bold red]")

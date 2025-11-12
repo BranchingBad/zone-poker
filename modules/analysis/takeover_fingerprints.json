@@ -1,0 +1,29 @@
+{
+  "Amazon S3": {
+    "fingerprints": ["the specified bucket does not exist"],
+    "type": "CNAME"
+  },
+  "GitHub Pages": {
+    "fingerprints": ["there isn't a github pages site here."],
+    "type": "CNAME"
+  },
+  "Heroku": {
+    "fingerprints": ["no such app"],
+    "type": "CNAME"
+  },
+  "Shopify": {
+    "fingerprints": ["sorry, this shop is currently unavailable."],
+    "type": "CNAME"
+  },
+  "Fastly": {
+    "fingerprints": ["fastly error: unknown domain"],
+    "type": "CNAME"
+  },
+  "Ghost": {
+    "fingerprints": ["the thing you were looking for is no longer here, or never was"],
+    "type": "CNAME"
+  },
+  "Bitbucket": { "fingerprints": ["repository not found"], "type": "CNAME" },
+  "Surge.sh": { "fingerprints": ["project not found"], "type": "CNAME" },
+  "Netlify": { "fingerprints": ["not found"], "type": "CNAME" }
+}

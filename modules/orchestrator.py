@@ -90,7 +90,11 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
     resolver.want_dnssec = False # Explicitly disable DNSSEC queries
     resolver.timeout = float(args.timeout)
     resolver.lifetime = float(args.timeout)
-    resolver.nameservers = list(PUBLIC_RESOLVERS.values())
+    # Use user-provided resolvers if available, otherwise fall back to public resolvers.
+    if getattr(args, 'resolvers', None):
+        resolver.nameservers = args.resolvers.split(',')
+    else:
+        resolver.nameservers = list(PUBLIC_RESOLVERS.values())
 
     analysis_context = {
         "domain": domain,

@@ -15,20 +15,23 @@ async def reverse_ptr_lookups(resolver: dns.resolver.Resolver, records_info: Dic
             if record.get("value"):
                 ips_to_check.append(record["value"])
 
-    async def query_ptr(ip):
+    # Use a semaphore to limit concurrent PTR queries to avoid rate-limiting
+    sem = asyncio.Semaphore(10)
+
+    async def query_ptr(ip: str):
+        """Inner function to query a single PTR record."""
         try:
-            reversed_ip = dns.reversename.from_address(ip)
-            answer = await asyncio.to_thread(resolver.resolve, reversed_ip, 'PTR')
-            ptr_results[ip] = str(answer[0])
+            async with sem:
+                reversed_ip = dns.reversename.from_address(ip)
+                answer = await asyncio.to_thread(resolver.resolve, reversed_ip, 'PTR')
+                ptr_results[ip] = str(answer[0])
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.SyntaxError):
             ptr_results[ip] = "No PTR record found."
         except Exception as e:
             ptr_results[ip] = f"Error: {e}"
 
-    # Sequentially query PTR records to avoid potential rate-limiting from DNS servers
-    # that might occur with a large number of concurrent requests via asyncio.gather().
-    for ip in ips_to_check:
-        if ip:
-            await query_ptr(ip)
+    # Create and run all query tasks concurrently
+    tasks = [query_ptr(ip) for ip in set(ips_to_check) if ip]
+    await asyncio.gather(*tasks)
     
     return ptr_results

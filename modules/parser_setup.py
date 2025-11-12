@@ -29,6 +29,7 @@ Examples:
     scan_group.add_argument("--timeout", type=int, default=5, help="Set network request timeout in seconds (default: 5).")
     scan_group.add_argument("--retries", type=int, default=0, help="Number of times to retry a failed domain scan (default: 0).")
     scan_group.add_argument("--types", help="Comma-separated list of DNS record types to query (e.g., 'A,MX,TXT').")
+    scan_group.add_argument("--resolvers", help="Comma-separated list of custom DNS resolvers to use.")
     
     # --- Output Control ---
     output_group = parser.add_argument_group('Output Control')
