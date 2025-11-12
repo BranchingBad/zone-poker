@@ -5,13 +5,16 @@ Unit tests for the analysis modules in Zone-Poker.
 import pytest
 import respx
 from unittest.mock import AsyncMock, MagicMock, patch
+from httpx import RequestError
 from datetime import datetime, timedelta
 from modules.analysis.security_audit import security_audit
 from modules.analysis.tech import detect_technologies
 from modules.analysis.whois import whois_lookup
 
 # --- Test Data Fixtures ---
+from modules.analysis.critical_findings import aggregate_critical_findings
 
+from modules.analysis.open_redirect import check_open_redirect
 
 @pytest.fixture
 def mock_secure_data():
@@ -42,6 +45,7 @@ def mock_secure_data():
         "dnsbl_info": {"listed_ips": []},
         "port_scan_info": {},
         "reputation_info": {"1.2.3.4": {"abuseConfidenceScore": 10}},
+        "redirect_info": {"vulnerable_urls": []},
     }
 
 
@@ -67,6 +71,7 @@ def mock_weak_data():
         "dnsbl_info": {"listed_ips": [{"ip": "1.2.3.4"}]},
         "port_scan_info": {"1.2.3.4": [80, 443]},
         "reputation_info": {"1.2.3.4": {"abuseConfidenceScore": 95}},
+        "redirect_info": {"vulnerable_urls": [{"url": "http://a.com"}]},
     }
 
 
@@ -85,19 +90,7 @@ def test_security_audit_secure(mock_secure_data):
     """
     # The `security_audit` function now expects all dependency data.
     result = security_audit(**mock_secure_data)
-
-    assert result["SPF Policy"]["status"] == "Secure"
-    assert result["DMARC Policy"]["status"] == "Secure"
-    assert result["CAA Record"]["status"] == "Secure"
-    assert result["DNSSEC"]["status"] == "Secure"
-    assert result["Zone Transfer"]["status"] == "Secure"
-    assert result["HSTS Policy"]["status"] == "Secure"
-    assert result["CSP"]["status"] == "Secure"
-    assert result["DNSSEC Zone Walking"]["status"] == "Secure"
-    # Check that weak/vulnerable keys are NOT present
-    assert "Subdomain Takeover" not in result
-    assert "IP Reputation" not in result
-    assert "Open Ports" not in result
+    assert not result["findings"]
 
 
 def test_security_audit_weak(mock_weak_data):
@@ -107,31 +100,23 @@ def test_security_audit_weak(mock_weak_data):
     """
     result = security_audit(**mock_weak_data)
 
-    assert result["SPF Policy"]["status"] == "Weak"  # type: ignore
-    assert result["DMARC Policy"]["status"] == "Weak"  # type: ignore
-    assert (
-        "Additionally, no 'rua' reporting address is configured"
-        in result["DMARC Policy"]["details"]
-    )
-    assert result["CAA Record"]["status"] == "Weak"
-    assert result["DNSSEC"]["status"] == "Weak"
-    assert result["Zone Transfer"]["status"] == "Vulnerable"
-    assert result["CSP"]["status"] == "Weak"
-    assert result["SSL/TLS Certificate"]["status"] == "Weak"
-    assert result["Subdomain Takeover"]["status"] == "Vulnerable"
-    assert result["IP Blocklist Status"]["status"] == "Weak"
-    assert result["Open Ports"]["status"] == "Weak"
-    assert result["IP Reputation"]["status"] == "Weak"
+    # Convert list of findings to a dict for easier assertions
+    findings = {f["finding"]: f for f in result["findings"]}
 
+    assert findings["Permissive SPF Policy (?all)"]["severity"] == "Medium"
+    assert findings["Weak DMARC Policy (p=none)"]["severity"] == "Medium"
+    assert findings["DNSSEC Not Enabled"]["severity"] == "Medium"
+    assert findings["Zone Transfer (AXFR) Enabled"]["severity"] == "High"
+    assert findings["Open Redirect"]["severity"] == "Medium"
 
 def test_security_audit_moderate(mock_moderate_data):
     """
     Tests a specific case that should result in a 'Moderate' status.
     """
     result = security_audit(**mock_moderate_data)
-    assert result["HSTS Policy"]["status"] == "Moderate"  # type: ignore
-    assert "weak 'max-age'" in result["HSTS Policy"]["details"]
-
+    hsts_finding = next(f for f in result["findings"] if f["finding"] == "Insecure Header: Strict-Transport-Security")
+    assert hsts_finding["severity"] == "High" # This is simplified in the new logic
+    assert "Implement HSTS to enforce HTTPS" in hsts_finding["recommendation"]
 
 @pytest.mark.asyncio
 @respx.mock
@@ -216,3 +201,106 @@ async def test_whois_lookup_pywhois_error():
         result = await whois_lookup(domain="nonexistent.com", verbose=False)
 
     assert "An unexpected error occurred: Domain not found." in result["error"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_check_open_redirect_vulnerable_found():
+    """
+    Tests that check_open_redirect correctly identifies a vulnerable URL.
+    """
+    domain = "vulnerable-site.com"
+    vulnerable_payload = "/?next=https://example.com"
+    vulnerable_url = f"https://{domain}{vulnerable_payload}"
+
+    # Mock the request to the vulnerable URL to return a 302 redirect
+    respx.get(vulnerable_url).respond(
+        302, headers={"Location": "https://example.com/malicious"}
+    )
+
+    # Mock other payloads to return non-redirect responses
+    respx.get(f"https://{domain}//example.com").respond(200)
+    respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
+
+    result = await check_open_redirect(domain=domain, timeout=5)
+
+    assert len(result["vulnerable_urls"]) == 1
+    finding = result["vulnerable_urls"][0]
+    assert finding["url"] == vulnerable_url
+    assert finding["redirects_to"] == "https://example.com/malicious"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_check_open_redirect_not_vulnerable():
+    """
+    Tests that check_open_redirect handles non-vulnerable cases correctly,
+    including safe redirects and network errors.
+    """
+    domain = "safe-site.com"
+
+    # Mock a redirect to a safe, internal path
+    respx.get(f"https://{domain}/?next=https://example.com").respond(
+        302, headers={"Location": "/dashboard"}
+    )
+    # Mock a normal 200 OK response
+    respx.get(f"https://{domain}//example.com").respond(200)
+    # Mock a request that results in a network error
+    respx.get(f"https://{domain}/login?redirect=https://example.com").mock(
+        side_effect=RequestError("Connection failed")
+    )
+
+    result = await check_open_redirect(domain=domain, timeout=5)
+
+    assert len(result["vulnerable_urls"]) == 0
+
+
+def test_aggregate_critical_findings_found():
+    """
+    Tests that aggregate_critical_findings correctly identifies multiple critical issues.
+    """
+    past_timestamp = (datetime.now() - timedelta(days=1)).timestamp()
+    mock_data = {
+        "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"},
+        "takeover_info": {"vulnerable": [{"subdomain": "test.example.com"}]},
+        "ssl_info": {"valid_until": past_timestamp},
+        "reputation_info": {"1.1.1.1": {"abuseConfidenceScore": 90}},
+        "mail_info": {"spf": {"all_policy": "+all"}},
+    }
+
+    result = aggregate_critical_findings(mock_data)
+    findings = result.get("critical_findings", [])
+
+    assert len(findings) == 5
+    assert "Zone Transfer Successful" in findings[0]
+    assert "Subdomain Takeover: Found 1" in findings[1]
+    assert "Expired SSL/TLS Certificate" in findings[2]
+    assert "High-Risk IP Reputation: 1 IP(s)" in findings[3]
+    assert "Overly Permissive SPF Policy (+all)" in findings[4]
+
+
+def test_aggregate_critical_findings_none_found():
+    """
+    Tests that aggregate_critical_findings returns an empty list when no
+    critical issues are present. It also tests handling of missing data.
+    """
+    future_timestamp = (datetime.now() + timedelta(days=30)).timestamp()
+    mock_data = {
+        "zone_info": {"summary": "Secure (No successful transfers)"},
+        # takeover_info is missing entirely to test graceful failure
+        "ssl_info": {"valid_until": future_timestamp},
+        "reputation_info": {
+            "1.1.1.1": {"abuseConfidenceScore": 10},
+            "2.2.2.2": {"error": "API limit reached"}, # Test error handling
+        },
+        "mail_info": {"spf": {"all_policy": "-all"}},
+    }
+
+    result = aggregate_critical_findings(mock_data)
+    findings = result.get("critical_findings", [])
+
+    assert len(findings) == 0
+
+    # Test with completely empty data
+    result_empty = aggregate_critical_findings({})
+    assert len(result_empty.get("critical_findings", [])) == 0

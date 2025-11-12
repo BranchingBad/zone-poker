@@ -9,6 +9,7 @@ from modules.display import (
     display_ptr_lookups,
     display_axfr_results,
     display_whois_info,
+    display_summary,
 )
 
 
@@ -105,3 +106,45 @@ def test_display_whois_info(whois_data):
 
     # Check that a key from the data is present
     assert "Registrar" in str(inner_table.columns[0].cells)
+
+
+def test_display_summary_data_driven():
+    """
+    Tests the data-driven display_summary function to ensure it correctly
+    generates rows and applies styles based on the SUMMARY_CHECKS logic.
+    """
+    mock_data = {
+        "zone_info": {"summary": "Vulnerable (Zone Transfer Successful)"},
+        "mail_info": {
+            "spf": {"all_policy": "~all"},
+            "dmarc": {"p": "reject"},
+        },
+        "security_info": {"findings": [1, 2]},  # Two findings
+    }
+
+    # Call the function
+    result = display_summary(mock_data, quiet=False)
+
+    # Assertions
+    assert isinstance(result, Table)
+    assert result.row_count == 4
+
+    # To inspect the content, we can look at the cells in the columns
+    labels = result.columns[0].cells
+    findings = result.columns[1].cells
+
+    # 1. Zone Transfer should be 'Vulnerable' and red
+    assert labels[0] == "Zone Transfer"
+    assert "[bold red]Vulnerable (Zone Transfer Successful)[/bold red]" in str(findings[0])
+
+    # 2. SPF Policy should be '~all' and yellow
+    assert labels[1] == "SPF Policy"
+    assert "[yellow]~all[/yellow]" in str(findings[1])
+
+    # 3. DMARC Policy should be 'reject' and green
+    assert labels[2] == "DMARC Policy"
+    assert "[green]reject[/green]" in str(findings[2])
+
+    # 4. Security Audit should show 2 issues and be red
+    assert labels[3] == "Security Audit"
+    assert "[red]Found 2 issues[/red]" in str(findings[3])

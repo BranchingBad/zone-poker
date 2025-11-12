@@ -29,6 +29,8 @@ from modules.analysis.port_scan import scan_ports
 from modules.analysis.subdomain_takeover import check_subdomain_takeover
 from modules.analysis.cloud_enum import enumerate_cloud_services
 from modules.analysis.dnsbl import check_dnsbl
+from modules.analysis.open_redirect import check_open_redirect
+from modules.analysis.critical_findings import aggregate_critical_findings
 
 # Import all display and export functions
 from modules.display import (  # Only display functions remain here
@@ -54,6 +56,8 @@ from modules.display import (  # Only display functions remain here
     display_subdomain_takeover,
     display_cloud_enum,
     display_dnsbl_check,
+    display_open_redirect,
+    display_critical_findings,
 )
 from modules.export_txt import (  # All txt export functions are imported
     export_txt_records,
@@ -79,6 +83,7 @@ from modules.export_txt import (  # All txt export functions are imported
     export_txt_subdomain_takeover,
     export_txt_cloud_enum,
     export_txt_dnsbl_check,
+    export_txt_open_redirect,
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -198,6 +203,7 @@ MODULE_DISPATCH_TABLE = {
             "dnsbl",
             "port_scan",
             "reputation",
+            "redirect",
         ],
         "arg_info": {
             "short": "-s",
@@ -390,6 +396,36 @@ MODULE_DISPATCH_TABLE = {
             "long": "--dnsbl",
             "help": "Check discovered IPs against common DNS blocklists.",
         },
+    },
+    "redirect": {
+        "data_key": "redirect_info",
+        "analysis_func": check_open_redirect,
+        "display_func": display_open_redirect,
+        "export_func": export_txt_open_redirect,
+        "description": "Checking for open redirect vulnerabilities...",
+        "dependencies": [],
+        "arg_info": {
+            "short": None,
+            "long": "--redirect",
+            "help": "Check for common open redirect vulnerabilities.",
+        },
+    },
+    # This is a meta-module that doesn't have its own display/export functions
+    # in the traditional sense. It's used to aggregate data for summary views.
+    "critical_findings": {
+        "data_key": "critical_findings_info",
+        "analysis_func": aggregate_critical_findings,
+        "display_func": None, # Handled by the main summary display
+        "export_func": None, # Handled by the main summary export
+        "description": "Aggregating critical findings...",
+        "dependencies": [
+            "zone",
+            "takeover",
+            "ssl",
+            "reputation",
+            "mail",
+        ],
+        "arg_info": None, # Not a user-callable module
     },
 }
 

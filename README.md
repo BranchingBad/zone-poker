@@ -141,6 +141,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--takeover` | Check for potential subdomain takeovers. |
 | `--cloud` | Enumerate common cloud services (e.g., S3 buckets). |
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
+| `--redirect` | Check for common open redirect vulnerabilities. |
 
 ---
 

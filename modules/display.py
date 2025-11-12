@@ -96,26 +96,27 @@ def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False
 
 
 @console_display_handler("Reverse DNS (PTR) Lookups")
-def display_ptr_lookups(ptr_records: Dict[str, str], quiet: bool = False):
+def display_ptr_lookups(data: Dict[str, Any], quiet: bool = False):
     """Creates a rich Table of PTR records."""
+    ptr_records = data.get("ptr_records", [])
     table = Table(
         title="Reverse DNS (PTR) Lookups",
         box=box.ROUNDED,
         show_header=True,
         header_style=None,
     )
-    table.add_column("IP Address", width=20)
+    table.add_column("IP Address", style="bold", width=20)
     table.add_column("Hostname", max_width=60)
 
     if not ptr_records:
         return Panel(
             "[dim]No PTR records to display.[/dim]",
             title="Reverse DNS (PTR) Lookups",
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
 
-    for ip, hostname in ptr_records.items():
-        table.add_row(ip, hostname)
+    for record in ptr_records:
+        table.add_row(record.get("ip", "N/A"), record.get("hostname", "N/A"))
 
     table.caption = f"Total: {len(ptr_records)} PTR lookups performed"
     return table
@@ -310,6 +311,15 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
     return table
 
 
+# A mapping of status to color and icon for visual clarity in the security audit
+SEVERITY_STYLE_MAP = {
+    "Critical": {"color": "bold red", "icon": "🚨"},
+    "High": {"color": "red", "icon": "✗"},
+    "Medium": {"color": "yellow", "icon": "!"},
+    "Low": {"color": "cyan", "icon": "•"},
+    "Unknown": {"color": "dim", "icon": "?"},
+}
+
 @console_display_handler("Security Audit")
 def display_security_audit(data: dict, quiet: bool = False):
     """Creates a rich Table of Security Audit results."""
@@ -324,27 +334,26 @@ def display_security_audit(data: dict, quiet: bool = False):
     table.add_column("Severity", width=12)
     table.add_column("Recommendation", max_width=60)
 
-    # A mapping of status to color and icon for visual clarity
-    STATUS_MAP = {
-        "Critical": {"color": "bold red", "icon": "🚨"},
-        "High": {"color": "red", "icon": "✗"},
-        "Medium": {"color": "yellow", "icon": "!"},
-        "Low": {"color": "cyan", "icon": "•"},
-    }
-
     findings = data.get("findings", [])
 
     if not findings:
         table.add_row("[green]All checks passed[/green]", "", "")
         return table
 
-    for finding in findings:
-        check_name = finding.get("finding", "Unknown Check")
-        severity = finding.get("severity", "Unknown")
-        recommendation = finding.get("recommendation", "N/A")
+    # Group findings by severity to make the report easier to read
+    for severity_level in SEVERITY_STYLE_MAP:
+        # Filter findings for the current severity level
+        grouped_findings = [f for f in findings if f.get("severity") == severity_level]
+        if not grouped_findings:
+            continue
 
-        style = STATUS_MAP.get(severity, {"color": "dim", "icon": "?"})
-        table.add_row(check_name, f"{style['icon']} [{style['color']}]{severity}[/{style['color']}]", recommendation)
+        for finding in grouped_findings:
+            style = SEVERITY_STYLE_MAP[severity_level]
+            table.add_row(
+                finding.get("finding", "Unknown Check"),
+                f"{style['icon']} [{style['color']}]{severity_level}[/{style['color']}]",
+                finding.get("recommendation", "N/A")
+            )
 
     return table
 
@@ -596,87 +605,68 @@ def display_dane_analysis(data: dict, quiet: bool = False):
 @console_display_handler("Scan Summary")
 def display_summary(data: dict, quiet: bool = False):
     """Creates a rich Table for the high-level summary of findings."""
+    # This data-driven structure centralizes the logic for creating the summary.
+    # Each entry defines how to get the value and how to determine its color.
+    SUMMARY_CHECKS = [
+        {
+            "label": "Zone Transfer",
+            "value_func": lambda d: d.get("zone_info", {}).get("summary", "N/A"),
+            "color_func": lambda v: "bold red" if "Vulnerable" in v else "green",
+        },
+        {
+            "label": "SPF Policy",
+            "value_func": lambda d: d.get("mail_info", {}).get("spf", {}).get("all_policy", "Not Found"),
+            "color_func": lambda v: "red" if v in ["?all", "+all", "Not Found"] else "yellow" if v == "~all" else "green",
+        },
+        {
+            "label": "DMARC Policy",
+            "value_func": lambda d: d.get("mail_info", {}).get("dmarc", {}).get("p", "Not Found"),
+            "color_func": lambda v: "red" if v in ["none", "Not Found"] else "green",
+        },
+        {
+            "label": "Security Audit",
+            "value_func": lambda d: (
+                f"Found {len(d.get('security_info', {}).get('findings', []))} issues"
+                if d.get("security_info", {}).get("findings") else "All checks passed"
+            ),
+            "color_func": lambda v: "red" if "Found" in v else "green",
+        },
+    ]
+
     table = Table(title="Scan Summary", box=box.ROUNDED, show_header=False)
     table.add_column("Module", style="bold cyan")
     table.add_column("Finding")
 
-    # Zone Transfer
-    axfr_summary = data.get("zone_info", {}).get("summary", "N/A")
-    axfr_color = "bold red" if "Vulnerable" in axfr_summary else "green"
-    table.add_row("Zone Transfer", f"[{axfr_color}]{axfr_summary}[/{axfr_color}]")
+    for check in SUMMARY_CHECKS:
+        value = "Error"
+        color = "bold red"
+        try:
+            # Get the value using the check's function
+            value = check["value_func"](data)
+            # Determine the color based on the value
+            color = check["color_func"](value)
+        except (KeyError, TypeError):
+            # Gracefully handle cases where data is missing
+            value = "Data Missing"
+            color = "dim"
 
-    # SPF
-    spf_policy = data.get("email_security", {}).get("spf", {}).get("all_policy",
-                                                                   "Not Found")
-    spf_color = (
-        "red"
-        if spf_policy in ["?all", "Not Found"]
-        else "yellow" if spf_policy == "~all" else "green"
-    )
-    table.add_row("SPF Policy", f"[{spf_color}]{spf_policy}[/{spf_color}]")
+        table.add_row(check["label"], f"[{color}]{value}[/{color}]")
 
-    # DMARC
-    dmarc_policy = data.get("email_security", {}).get("dmarc",
-                                                      {}).get("p", "Not Found")
-    dmarc_color = "red" if dmarc_policy in ["none", "Not Found", "Error"] else "green"
-    table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
-
-    # Security Audit
-    audit_data = data.get("security", {})
-    if isinstance(audit_data, dict) and "error" not in audit_data:
-        weak_checks = [check for check, info in audit_data.items() if
-                       info.get("status") in ("Weak", "Vulnerable")]
-        if weak_checks:
-            table.add_row(
-                "Security Audit",
-                f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})"
-            )
-        else:
-            table.add_row("Security Audit", "[green]All checks passed[/green]")
-    else:
-        table.add_row("Security Audit", "[dim]No audit data[/dim]")
     return table
 
 
 @console_display_handler("🚨 Critical Findings")
 def display_critical_findings(data: dict, quiet: bool = False):
-    """Creates a rich Panel for the most critical findings."""
-    critical_findings = []
+    """
+    Creates a rich Panel for the most critical findings by using the
+    centralized `critical_findings_info`.
+    """
+    # This function now simply formats the pre-aggregated findings.
+    from .analysis.critical_findings import aggregate_critical_findings
 
-    if "Vulnerable" in data.get("zone_info", {}).get("summary", ""):
-        critical_findings.append(
-            "Zone Transfer Successful (AXFR): Domain is vulnerable to full zone "
-            "enumeration."
-        )
-
-    # Subdomain Takeover
-    vulnerable_takeovers = data.get("takeover_info", {}).get("vulnerable", [])
-    if vulnerable_takeovers:
-        critical_findings.append(f"Subdomain Takeover: Found {len(vulnerable_takeovers)} "
-                                 "potentially vulnerable subdomains."
-        )
-
-    ssl_info = data.get("ssl_info", {})
-    if ssl_info.get("valid_until") and (
-        datetime.datetime.now().timestamp() > ssl_info["valid_until"]
-    ):
-        critical_findings.append(
-            "Expired SSL/TLS Certificate: The main web server's certificate has "
-            "expired."
-        )
-
-    # High IP Reputation Abuse Score
-    reputation_info = data.get("reputation_info", {})
-    high_risk_ips = [
-        ip
-        for ip, info in reputation_info.items()
-        if isinstance(info, dict) and info.get("abuseConfidenceScore", 0) > 75
-    ]
-    if high_risk_ips:
-        critical_findings.append(
-            f"High-Risk IP Reputation: {len(high_risk_ips)} IP(s) have a high abuse "
-            f"score ({', '.join(high_risk_ips)})."
-        )
+    # We call the aggregator here to ensure findings are fresh for display.
+    aggregated_data = aggregate_critical_findings(data)
+    critical_findings = aggregated_data.get("critical_findings", [])
 
     if not critical_findings:
         return None  # Return nothing if there are no findings
@@ -772,6 +762,31 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
             node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
         panel = Panel(
             tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"  # noqa: E124
+        )
+
+    return panel
+
+
+@console_display_handler("Open Redirect Scan")
+def display_open_redirect(data: dict, quiet: bool = False):
+    """Creates a rich Panel of Open Redirect scan results."""
+    vulnerable_urls = data.get("vulnerable_urls", [])
+
+    if not vulnerable_urls:
+        panel = Panel(
+            "[green]✓ No potential open redirects found.[/green]",
+            title="Open Redirect Scan",
+            box=box.ROUNDED,
+        )
+    else:
+        tree = Tree(
+            f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]"
+        )
+        for item in vulnerable_urls:
+            node = tree.add(f"URL: [yellow]{item['url']}[/yellow]")
+            node.add(f"Redirects To: [dim]{item['redirects_to']}[/dim]")
+        panel = Panel(
+            tree, title="Open Redirect Scan", box=box.ROUNDED, border_style="red"
         )
 
     return panel
