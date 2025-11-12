@@ -72,33 +72,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image for scanning
+      - name: Build Docker image
         id: docker_build
         uses: docker/build-push-action@v5
         with:
           context: .
-          # Do not push, just load the image into the local Docker daemon
+          # Do not push yet, just build and load the image into the local Docker daemon
+          push: false
           load: true
-          tags: ghcr.io/${{ github.repository_owner }}/zone-poker:ci-scan
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: 'ghcr.io/${{ github.repository_owner }}/zone-poker:ci-scan'
+          image-ref: ${{ steps.meta.outputs.tags }}
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          # Push only when the event is a push to the main branch
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          # Enable build cache to speed up future builds
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Push Docker image
+        if: github.event_name != 'pull_request'
+        run: docker push --all-tags ${{ steps.meta.outputs.tags }}
