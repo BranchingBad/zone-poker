@@ -98,10 +98,10 @@ async def _scan_single_domain(
     if not is_valid_domain(domain):
         console.print(f"[bold red]Error: '{domain}' is not a valid domain.[/bold red]")
         return {}
+
+    from .dispatch_table import MODULE_DISPATCH_TABLE
     if not args.quiet and args.output == "table":
         console.print(f"Target: {domain}")
-        from .dispatch_table import MODULE_DISPATCH_TABLE
-
         scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         console.print(f"Scan started at {scan_time}\n")
 
