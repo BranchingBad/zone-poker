@@ -6,7 +6,6 @@ and displaying results.
 """
 import logging
 import asyncio
-import argparse
 import traceback
 from rich.progress import Progress
 from collections import deque
@@ -14,9 +13,10 @@ import dns.resolver
 from datetime import datetime
 from typing import Dict, Any, List, Set, Coroutine
 
-# Import shared config for the console object
+# Import shared config for the console object # noqa
 from .config import console, PUBLIC_RESOLVERS
 from .export import handle_output
+
 # Import the central configuration and display functions
 from .utils import is_valid_domain
 from .display import display_summary, display_critical_findings
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 
 def _create_execution_plan(initial_modules: List[str]) -> List[str]:
-    """Create an execution plan.
- 
+    """Create an execution plan. # noqa
+
     Creates a complete and ordered execution plan by performing a topological sort.
 
     This function automatically includes all transitive dependencies for the requested
@@ -39,6 +39,7 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
         A list of module names in the correct order of execution.
     """
     from .dispatch_table import MODULE_DISPATCH_TABLE
+
     # 1. Build the full set of modules to run, including all dependencies
     modules_to_run: Set[str] = set()
     queue = deque(initial_modules)
@@ -72,15 +73,17 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
 
     # 3. Check for cycles
     if len(sorted_order) != len(modules_to_run):
-        msg = ("Circular dependency detected in modules. Please check the "
-               "`dependencies` in `dispatch_table.py`.")
+        msg = (
+            "Circular dependency detected in modules. Please check the "
+            "`dependencies` in `dispatch_table.py`."
+        )
         raise ValueError(msg)
 
     return sorted_order
 
 
 async def _scan_single_domain(
-    domain: str, args: argparse.Namespace, modules_to_run: List[str]
+    domain: str, args: Any, modules_to_run: List[str]
 ) -> Dict[str, Any]:
     """Scan a single domain.
 
@@ -91,16 +94,15 @@ async def _scan_single_domain(
     It raises exceptions on failure, which are caught by the calling `run_scans`
     function.
     """
-    domain = domain.strip().rstrip('.')
+    domain = domain.strip().rstrip(".")
     if not is_valid_domain(domain):
-        console.print(
-            f"[bold red]Error: '{domain}' is not a valid domain.[/bold red]"
-        )
+        console.print(f"[bold red]Error: '{domain}' is not a valid domain.[/bold red]")
         return {}
-    if not args.quiet and args.output == 'table':
+    if not args.quiet and args.output == "table":
         console.print(f"Target: {domain}")
         from .dispatch_table import MODULE_DISPATCH_TABLE
-        scan_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         console.print(f"Scan started at {scan_time}\n")
 
     all_data = {
@@ -108,7 +110,7 @@ async def _scan_single_domain(
         "scan_timestamp": datetime.now().isoformat(),
         "args_namespace": args,
         # Pre-seed data keys for a consistent structure.
-        **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()}
+        **{details["data_key"]: {} for details in MODULE_DISPATCH_TABLE.values()},
     }
 
     # Create a single, shared DNS resolver for all modules.
@@ -120,9 +122,9 @@ async def _scan_single_domain(
     resolver.timeout = float(args.timeout)
     resolver.lifetime = float(args.timeout)
 
-    # Use user-provided resolvers if available, otherwise fall back to public.
-    if getattr(args, 'resolvers', None):
-        resolver.nameservers = args.resolvers.split(',')
+    # Use user-provided resolvers if available, otherwise fall back to public. # noqa
+    if getattr(args, "resolvers", None):
+        resolver.nameservers = args.resolvers.split(",")
     else:
         resolver.nameservers = list(PUBLIC_RESOLVERS.values())
 
@@ -138,12 +140,12 @@ async def _scan_single_domain(
     # Determine the correct execution order for modules based on their dependencies.
     # This avoids recursive calls and simplifies the execution flow.
     execution_plan = _create_execution_plan(modules_to_run)
-    from .dispatch_table import MODULE_DISPATCH_TABLE
+    from .dispatch_table import MODULE_DISPATCH_TABLE  # noqa
 
     for module_name in execution_plan:
         module_info = MODULE_DISPATCH_TABLE[module_name]
         analysis_func: Coroutine = module_info["analysis_func"]
-        if not args.quiet and args.output == 'table': # noqa: E501
+        if not args.quiet and args.output == "table":
             console.print(f"[cyan]» {module_info['description']}[/cyan]")
 
         analysis_func = module_info["analysis_func"]
@@ -151,22 +153,22 @@ async def _scan_single_domain(
 
         # Build the keyword arguments for the analysis function.
         # Start with the base context.
-        func_kwargs = analysis_context.copy() 
-        # Add results from dependencies. Keys (e.g., 'records_info') must
+        func_kwargs = analysis_context.copy()
+        # Add results from dependencies. Keys (e.g., 'records_info') must # noqa
         # match the argument names in the function signature.
 
         for dep_name in module_info.get("dependencies", []):
-            dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]  # noqa: E501
-            func_kwargs[dep_key] = all_data.get(dep_key, {})  # noqa: E501
+            dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
+            func_kwargs[dep_key] = all_data.get(dep_key, {})
 
         try:
             # Unify async and sync function calls.
-            # `asyncio.to_thread` is used to run blocking sync functions
+            # `asyncio.to_thread` is used to run blocking sync functions # noqa
             # without stalling the event loop.
             if asyncio.iscoroutinefunction(analysis_func):
                 result = await analysis_func(**func_kwargs)
             else:
-                # Pass the dynamically built kwargs to the function
+                # Pass the dynamically built kwargs to the function # noqa
                 # running in the thread.
                 result = await asyncio.to_thread(analysis_func, **func_kwargs)
         except Exception as e:
@@ -184,7 +186,7 @@ async def _scan_single_domain(
         # Display results immediately after analysis if not in quiet mode.
         if (
             not args.quiet
-            and args.output == 'table'
+            and args.output == "table"
             and (display_func := module_info.get("display_func"))
         ):
             renderable = display_func(result, quiet=False)
@@ -193,7 +195,7 @@ async def _scan_single_domain(
                 console.print()
 
     # Display summary information if not in quiet mode and output is 'table'
-    if not args.quiet and args.output == 'table':
+    if not args.quiet and args.output == "table":
         critical_renderable = display_critical_findings(all_data, quiet=False)
         if critical_renderable:
             console.print(critical_renderable)
@@ -201,24 +203,25 @@ async def _scan_single_domain(
         if summary_renderable:
             console.print(summary_renderable)
         console.print(f"✓ Scan completed for {domain}")
-        finish_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        finish_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         console.print(f"Finished at {finish_time}\n")
 
     # Handle console output (e.g., json, xml, html)
-    if not args.quiet and args.output != 'table':
+    if not args.quiet and args.output != "table":
         handle_output(all_data, args.output)
 
     # Handle file exports (txt, json).
-    handle_output(all_data, 'file')  # Use a dedicated identifier for file exports
+    handle_output(all_data, "file")  # Use a dedicated identifier for file exports
 
     return all_data
 
 
-async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
+async def run_scans(domains_to_scan: List[str], args: Any):
     """
     Manages the scanning of one or more domains with a progress bar and retry mechanism.
     """
     from .dispatch_table import MODULE_DISPATCH_TABLE
+
     # Determine which modules to run based on the final merged arguments
     modules_to_run = [
         name
@@ -226,7 +229,7 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
         if getattr(args, name, False)
     ]
 
-    if getattr(args, 'all', False) or not modules_to_run:
+    if getattr(args, "all", False) or not modules_to_run:
         modules_to_run = list(MODULE_DISPATCH_TABLE.keys())
 
     # If only one domain, run it directly without the progress bar and retry overhead
@@ -244,7 +247,7 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
         except Exception as e:
             logger.error(
                 f"An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}",
-                exc_info=args.verbose
+                exc_info=args.verbose,
             )
             console.print(
                 f"[bold red]An unexpected error occurred while scanning "
@@ -257,7 +260,7 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
     # --- Logic for multiple domains with retries and progress bar ---
     domains_to_retry = list(domains_to_scan)
     successful_domains = []
-    num_retries = int(getattr(args, 'retries', 0))
+    num_retries = int(getattr(args, "retries", 0))
 
     with Progress(  # type: ignore
         "[progress.description]{task.description}",
@@ -266,19 +269,20 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
         disable=args.quiet,
     ) as progress:
         main_task_id = progress.add_task(
-            "[cyan]Scanning domains...", total=len(domains_to_scan) # noqa: E501
+            "[cyan]Scanning domains...", total=len(domains_to_scan)
         )
 
         for attempt in range(num_retries + 1):
             if not domains_to_retry:
                 break  # All domains succeeded
 
-            current_tasks = [] 
-            if attempt > 0: 
+            current_tasks = []
+            if attempt > 0:
                 msg = (
                     f"\n[bold yellow]Retrying {len(domains_to_retry)} "
                     f"failed domains (Attempt {attempt + 1}/"
-                    f"{num_retries + 1})...[/bold yellow]")
+                    f"{num_retries + 1})...[/bold yellow]"
+                )
                 console.print(msg)
                 await asyncio.sleep(2)
 
@@ -291,9 +295,11 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
             results = await asyncio.gather(*current_tasks, return_exceptions=True)
 
             failed_this_round = []
-            for i, result in enumerate(results): 
+            for i, result in enumerate(results):
                 domain_name = (
-                    domains_to_retry[i] if isinstance(result, Exception) else result.get("domain")
+                    domains_to_retry[i]
+                    if isinstance(result, Exception)
+                    else result.get("domain")
                 )
                 if isinstance(result, Exception):
                     failed_this_round.append(domain_name)
@@ -301,7 +307,7 @@ async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
                         logger.error(
                             f"Scan for '{domain_name}' failed permanently after "
                             f"{num_retries + 1} attempts: {result}"
-                        ) 
+                        )
                         console.print(
                             "[bold red]Scan for domain "
                             f"'{domain_name}' failed permanently."

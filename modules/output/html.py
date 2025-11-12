@@ -9,10 +9,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from modules.dispatch_table import MODULE_DISPATCH_TABLE
-from modules.display import (
-    display_summary,
-    display_critical_findings
-)
+from modules.display import display_summary, display_critical_findings
 
 
 def _render_to_html(renderable: Optional[Panel]) -> str:

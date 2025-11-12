@@ -3,10 +3,8 @@
 Zone poker
 A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis
 """
-
 import asyncio
-import logging  # Import logging
-import argparse
+import logging
 
 # --- THESE IMPORTS ARE UPDATED ---
 from modules.orchestrator import run_scans
@@ -15,12 +13,12 @@ from modules.config_manager import setup_configuration_and_domains
 from modules.logger_config import setup_logging
 from modules.config import console
 
-logger = logging.getLogger(__name__)  # Get logger instance
+logger = logging.getLogger(__name__)
 
 
-def _display_welcome_banner(args: argparse.Namespace):
+def _display_welcome_banner(args):
     """Displays a welcome banner if not in quiet or machine-readable output mode."""
-    if not args.quiet and args.output == 'table':
+    if not args.quiet and args.output == "table":
         banner = """
 ██████╗ ██████╗ ███╗   ██╗███████╗    ██████╗  ██████╗ ██╗  ██╗███████╗██████╗
 ╚══███╔╝██╔═══██╗████╗  ██║██╔════╝    ██╔══██╗██╔═══██╗╚██╗██╔╝██╔════╝██╔══██╗
@@ -29,10 +27,10 @@ def _display_welcome_banner(args: argparse.Namespace):
 ███████╗╚██████╔╝██║ ╚████║███████╗    ██║     ╚██████╔╝██╔╝ ██╗███████╗██║  ██║
 ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝    ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
         """
+        console.print(f"[bold cyan]{banner}[/bold cyan]")
         console.print(
-            f"[bold cyan]{banner}[/bold cyan]")
-        console.print(
-            "[bold]A professional DNS reconnaissance and OSINT tool.[/bold]\n")
+            "[bold]A professional DNS reconnaissance and OSINT tool.[/bold]\n"
+        )
 
 
 async def main():
@@ -51,9 +49,11 @@ async def main():
     _display_welcome_banner(args)
 
     if not domains_to_scan:
-        error_msg = ("Error: No target domain specified. Provide a domain, a file with "
-                     "'-f', or a config file.")
-        logger.error(error_msg)
+        error_msg = (
+            "Error: No target domain specified. Provide a domain, a file with "
+            "'-f', or a config file."
+        )
+        logger.error(error_msg)  # noqa: F541
         console.print(f"[bold red]{error_msg}[/bold red]")
         parser.print_help()
         return
@@ -61,7 +61,6 @@ async def main():
     await run_scans(domains_to_scan, args)  # type: ignore
 
 
-# --- THIS IS THE NEW WRAPPER FUNCTION ---
 def main_wrapper():
     """Synchronous wrapper to run the async main function."""
     try:
@@ -70,5 +69,5 @@ def main_wrapper():
         console.print("\n[bold yellow]Scan aborted by user.[/bold yellow]")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main_wrapper()

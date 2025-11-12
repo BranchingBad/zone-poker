@@ -32,23 +32,53 @@ from modules.analysis.dnsbl import check_dnsbl
 
 # Import all display and export functions
 from modules.display import (  # Only display functions remain here
-    display_dns_records_table, display_ptr_lookups, display_axfr_results,
-    display_email_security, display_whois_info, display_nameserver_analysis,
-    display_propagation, display_security_audit,
-    display_technology_info, display_osint_results, display_ssl_info,
-    display_smtp_info, display_reputation_info, display_content_hash_info,
-    display_ct_logs, display_waf_detection, display_dane_analysis,
-    display_http_headers, display_port_scan, display_subdomain_takeover,
-    display_cloud_enum, display_dnsbl_check,
+    display_dns_records_table,
+    display_ptr_lookups,
+    display_axfr_results,
+    display_email_security,
+    display_whois_info,
+    display_nameserver_analysis,
+    display_propagation,
+    display_security_audit,
+    display_technology_info,
+    display_osint_results,
+    display_ssl_info,
+    display_smtp_info,
+    display_reputation_info,
+    display_content_hash_info,
+    display_ct_logs,
+    display_waf_detection,
+    display_dane_analysis,
+    display_http_headers,
+    display_port_scan,
+    display_subdomain_takeover,
+    display_cloud_enum,
+    display_dnsbl_check,
 )
 from modules.export_txt import (  # All txt export functions are imported
-    export_txt_records, export_txt_ptr, export_txt_zone, export_txt_mail,
-    export_txt_whois, export_txt_nsinfo, export_txt_propagation,
-    export_txt_security, export_txt_tech, export_txt_osint, export_txt_ssl,
-    export_txt_smtp, export_txt_reputation, export_txt_content_hash,
-    export_txt_ct_logs, export_txt_waf_detection, export_txt_dane, export_txt_geolocation,
-    export_txt_http_headers, export_txt_port_scan,
-    export_txt_subdomain_takeover, export_txt_cloud_enum, export_txt_dnsbl_check,
+    export_txt_records,
+    export_txt_ptr,
+    export_txt_zone,
+    export_txt_mail,
+    export_txt_whois,
+    export_txt_nsinfo,
+    export_txt_propagation,
+    export_txt_security,
+    export_txt_tech,
+    export_txt_osint,
+    export_txt_ssl,
+    export_txt_smtp,
+    export_txt_reputation,
+    export_txt_content_hash,
+    export_txt_ct_logs,
+    export_txt_waf_detection,
+    export_txt_dane,
+    export_txt_geolocation,
+    export_txt_http_headers,
+    export_txt_port_scan,
+    export_txt_subdomain_takeover,
+    export_txt_cloud_enum,
+    export_txt_dnsbl_check,
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -72,8 +102,8 @@ MODULE_DISPATCH_TABLE = {
         "arg_info": {
             "short": "-r",
             "long": "--records",
-            "help": "Query all standard DNS record types."
-        }
+            "help": "Query all standard DNS record types.",
+        },
     },
     "ptr": {
         "data_key": "ptr_info",
@@ -86,7 +116,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--ptr",
             "help": "Perform reverse DNS (PTR) lookups for A/AAAA records.",
-        }
+        },
     },
     "zone": {
         "data_key": "zone_info",
@@ -99,7 +129,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-z",
             "long": "--zone",
             "help": "Attempt a zone transfer (AXFR) against nameservers.",
-        }
+        },
     },
     "mail": {
         "data_key": "mail_info",
@@ -112,7 +142,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-m",
             "long": "--mail",
             "help": "Analyze email security records (SPF, DMARC, DKIM).",
-        }
+        },
     },
     "whois": {
         "data_key": "whois_info",
@@ -124,7 +154,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-w",
             "long": "--whois",
             "help": "Perform an extended WHOIS lookup on the domain.",
-        }
+        },
     },
     "nsinfo": {
         "data_key": "nsinfo_info",
@@ -137,7 +167,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-n",
             "long": "--nsinfo",
             "help": "Analyze nameserver information and check for DNSSEC.",
-        }
+        },
     },
     "propagation": {
         "data_key": "propagation_info",
@@ -149,7 +179,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-p",
             "long": "--propagation",
             "help": "Check DNS propagation across public resolvers.",
-        }
+        },
     },
     "security": {
         "data_key": "security_info",
@@ -158,14 +188,22 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_security,
         "description": "Auditing for security misconfigurations...",
         "dependencies": [
-            "records", "mail", "nsinfo", "zone", "http_headers", "ssl",
-            "takeover", "dnsbl", "port_scan", "reputation",
+            "records",
+            "mail",
+            "nsinfo",
+            "zone",
+            "http_headers",
+            "ssl",
+            "takeover",
+            "dnsbl",
+            "port_scan",
+            "reputation",
         ],
         "arg_info": {
             "short": "-s",
             "long": "--security",
             "help": "Run a basic audit for DNS security misconfigurations.",
-        }
+        },
     },
     "tech": {
         "data_key": "tech_info",
@@ -177,7 +215,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-t",
             "long": "--tech",
             "help": "Detect web technologies, CMS, and security headers.",
-        }
+        },
     },
     "osint": {
         "data_key": "osint_info",
@@ -189,7 +227,7 @@ MODULE_DISPATCH_TABLE = {
             "short": "-o",
             "long": "--osint",
             "help": "Enrich data with passive DNS and other OSINT sources.",
-        }
+        },
     },
     "ssl": {
         "data_key": "ssl_info",
@@ -201,7 +239,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--ssl",
             "help": "Analyze the SSL/TLS certificate.",
-        }
+        },
     },
     "smtp": {
         "data_key": "smtp_info",
@@ -214,7 +252,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--smtp",
             "help": "Analyze mail servers (banner, STARTTLS).",
-        }
+        },
     },
     "reputation": {
         "data_key": "reputation_info",  # This one already follows the convention
@@ -227,7 +265,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--reputation",
             "help": "Check IP reputation using AbuseIPDB.",
-        }
+        },
     },
     "hashes": {
         "data_key": "hashes_info",
@@ -239,7 +277,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--hashes",
             "help": "Get Murmur32 favicon and SHA256 page content hashes.",
-        }
+        },
     },
     "ct": {
         "data_key": "ct_info",
@@ -251,7 +289,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--ct",
             "help": "Find subdomains from Certificate Transparency logs.",
-        }
+        },
     },
     "waf": {
         "data_key": "waf_info",
@@ -263,7 +301,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--waf",
             "help": "Attempt to identify a Web Application Firewall.",
-        }
+        },
     },
     "dane": {
         "data_key": "dane_info",
@@ -275,7 +313,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--dane",
             "help": "Check for DANE (TLSA) records for HTTPS.",
-        }
+        },
     },
     "geolocation": {
         "data_key": "geo_info",
@@ -288,7 +326,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--geo",
             "help": "Geolocate IP addresses from A/AAAA records.",
-        }
+        },
     },
     "http_headers": {
         "data_key": "headers_info",
@@ -300,7 +338,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--headers",
             "help": "Perform an in-depth analysis of HTTP security headers.",
-        }
+        },
     },
     "port_scan": {
         "data_key": "port_scan_info",
@@ -313,7 +351,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--ports",
             "help": "Scan for common open TCP ports on discovered IPs.",
-        }
+        },
     },
     "takeover": {
         "data_key": "takeover_info",
@@ -326,7 +364,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--takeover",
             "help": "Check for potential subdomain takeovers.",
-        }
+        },
     },
     "cloud": {
         "data_key": "cloud_info",
@@ -338,7 +376,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--cloud",
             "help": "Enumerate common cloud services (e.g., S3 buckets).",
-        }
+        },
     },
     "dnsbl": {
         "data_key": "dnsbl_info",
@@ -351,7 +389,7 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--dnsbl",
             "help": "Check discovered IPs against common DNS blocklists.",
-        }
+        },
     },
 }
 

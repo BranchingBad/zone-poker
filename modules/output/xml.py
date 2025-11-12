@@ -40,7 +40,7 @@ def output(all_data: Dict[str, Any]):
     _dict_to_xml(root, all_data)
 
     # Pretty print the XML
-    rough_string = tostring(root, 'utf-8')
+    rough_string = tostring(root, "utf-8")
     reparsed = minidom.parseString(rough_string)
     pretty_xml = reparsed.toprettyxml(indent="  ")
 

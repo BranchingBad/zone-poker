@@ -31,7 +31,6 @@ def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any
 
 
 def load_config_file(file_path: str) -> dict:
-
     """Loads a configuration file, supporting JSON and YAML."""
     _, ext = os.path.splitext(file_path)
     ext = ext.lower()
@@ -114,8 +113,10 @@ def setup_configuration_and_domains(
         try:
             domains_from_file = load_config_file(file_input)  # Use the new loader
             if not isinstance(domains_from_file, list):
-                msg = (f"[bold red]Error: The file '{file_input}' must contain a list of "
-                       "domain strings.[/bold red]")
+                msg = (
+                    f"[bold red]Error: The file '{file_input}' must contain a list of "
+                    "domain strings.[/bold red]"
+                )
                 console.print(msg)
                 return final_args, []
 
@@ -143,7 +144,8 @@ def setup_configuration_and_domains(
     elif domain_input:
         if not is_valid_domain(domain_input):
             console.print(
-                f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]")
+                f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]"
+            )
             return final_args, []
         domains_to_scan.append(domain_input)
 

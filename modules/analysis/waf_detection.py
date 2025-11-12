@@ -7,11 +7,7 @@ from typing import Dict, Any
 import httpx
 
 
-async def detect_waf(
-    domain: str,
-    timeout: int,
-    **kwargs: Any
-) -> Dict[str, Any]:
+async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]:
     """
     Attempts to identify a Web Application Firewall by sending a malicious-like
     payload and observing the server's response.
@@ -22,14 +18,12 @@ async def detect_waf(
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
 
     try:
         async with httpx.AsyncClient(
-            timeout=timeout,
-            verify=False,
-            headers=headers
+            timeout=timeout, verify=False, headers=headers
         ) as client:
             response = await client.get(url)
 

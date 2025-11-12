@@ -4,7 +4,6 @@ Zone-Poker - SSL/TLS Analysis Module
 """
 import ssl
 import socket
-from datetime import datetime
 
 
 def analyze_ssl_certificate(domain: str, timeout: int, **kwargs) -> dict:
@@ -27,19 +26,15 @@ def analyze_ssl_certificate(domain: str, timeout: int, **kwargs) -> dict:
         with socket.create_connection((hostname, port), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert()
-
                 results["status"] = "Success"
                 results["tls_version"] = ssock.version()
                 results["cipher"] = ssock.cipher()
-
                 subject = dict(x[0] for x in cert.get("subject", []))
                 issuer = dict(x[0] for x in cert.get("issuer", []))
                 results["subject"] = subject.get("commonName", "N/A")
                 results["issuer"] = issuer.get("commonName", "N/A")
-
                 results["valid_from"] = ssl.cert_time_to_seconds(cert.get("notBefore"))
                 results["valid_until"] = ssl.cert_time_to_seconds(cert.get("notAfter"))
-
                 results["sans"] = [
                     value for type, value in cert.get("subjectAltName", [])
                 ]

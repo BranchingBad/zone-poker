@@ -20,9 +20,9 @@ def setup_logging(args: argparse.Namespace):
     Args:
         args: The final, merged argparse.Namespace object containing all configuration.
     """
-    verbose = getattr(args, 'verbose', False)
-    quiet = getattr(args, 'quiet', False)
-    log_file = getattr(args, 'log_file', None)
+    verbose = getattr(args, "verbose", False)
+    quiet = getattr(args, "quiet", False)
+    log_file = getattr(args, "log_file", None)
 
     # Determine the console logging level
     if quiet:
@@ -48,17 +48,17 @@ def setup_logging(args: argparse.Namespace):
         show_path=False,
         markup=True,
         rich_tracebacks=True,
-        show_level=verbose  # Only show [INFO], [DEBUG] etc. when verbose
+        show_level=verbose,  # Only show [INFO], [DEBUG] etc. when verbose
     )
     logger.addHandler(console_handler)
 
     # Create file handler if a path is provided
     if log_file:
-        file_handler = logging.FileHandler(log_file, mode='w')
+        file_handler = logging.FileHandler(log_file, mode="w")
         # Always log DEBUG level to file
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)

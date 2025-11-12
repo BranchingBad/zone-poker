@@ -11,10 +11,7 @@ from modules.config import console
 
 
 async def detect_technologies(
-    domain: str,
-    timeout: int,
-    verbose: bool,
-    **kwargs: Any
+    domain: str, timeout: int, verbose: bool, **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Detects web technologies, CMS, and server software using async HTTP requests.
@@ -23,14 +20,14 @@ async def detect_technologies(
         "server": "",
         "technologies": [],
         "status_code": 0,
-        "error": None
+        "error": None,
     }
     urls_to_check = [f"https://{domain}", f"http://{domain}"]
 
     async with httpx.AsyncClient(
         timeout=timeout,
         follow_redirects=True,
-        verify=False  # Ignore SSL errors for broader checking
+        verify=False,  # Ignore SSL errors for broader checking
     ) as client:
         for url in urls_to_check:
             try:

@@ -4,19 +4,18 @@ import json
 from httpx import RequestError
 from unittest.mock import patch, mock_open
 
-from modules.analysis.subdomain_takeover import (check_subdomain_takeover,
-                                                 _load_fingerprints)
+from modules.analysis.subdomain_takeover import (
+    check_subdomain_takeover,
+    _load_fingerprints,
+)
 
 # Mock fingerprint data that reflects the new schema
 MOCK_FINGERPRINTS = {
     "GitHub Pages": {
         "cname": ["github.io"],
-        "fingerprints": ["There isn't a GitHub Pages site here."]
+        "fingerprints": ["There isn't a GitHub Pages site here."],
     },
-    "Heroku": {
-        "cname": ["herokuapp.com"],
-        "fingerprints": ["no such app"]
-    }
+    "Heroku": {"cname": ["herokuapp.com"], "fingerprints": ["no such app"]},
 }
 
 
@@ -44,8 +43,8 @@ async def test_subdomain_takeover_found():
 
     # Use patch to inject our mock fingerprints and clear the cache
     with patch(
-        'modules.analysis.subdomain_takeover._load_fingerprints',
-        return_value=MOCK_FINGERPRINTS
+        "modules.analysis.subdomain_takeover._load_fingerprints",
+        return_value=MOCK_FINGERPRINTS,
     ):
         _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
@@ -69,8 +68,8 @@ async def test_subdomain_takeover_not_found():
     respx.get(url__regex=r"https?://safe\.example\.com").respond(200, text="OK")
 
     with patch(
-        'modules.analysis.subdomain_takeover._load_fingerprints',
-        return_value=MOCK_FINGERPRINTS
+        "modules.analysis.subdomain_takeover._load_fingerprints",
+        return_value=MOCK_FINGERPRINTS,
     ):
         _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
@@ -79,7 +78,7 @@ async def test_subdomain_takeover_not_found():
 
 
 @pytest.mark.asyncio
-async def test_subdomain_takeover_no_cnames(): # noqa E302
+async def test_subdomain_takeover_no_cnames():  # noqa E302
     """
     Test that the function returns empty results when no CNAME records are provided.
     """
@@ -126,8 +125,8 @@ async def test_subdomain_takeover_missing_keys():
     respx.get("http://vuln.example.com").respond(200, text=github_fingerprint)
 
     with patch(
-        'modules.analysis.subdomain_takeover._load_fingerprints',
-        return_value=MOCK_FINGERPRINTS
+        "modules.analysis.subdomain_takeover._load_fingerprints",
+        return_value=MOCK_FINGERPRINTS,
     ):
         _load_fingerprints.cache_clear()
         results = await check_subdomain_takeover(records)
@@ -148,7 +147,7 @@ async def test_fingerprint_caching():
     # Clear the cache before the test to ensure a clean state
     _load_fingerprints.cache_clear()
 
-    with patch('builtins.open', m):
+    with patch("builtins.open", m):
         # First call should read the file
         first_call_result = _load_fingerprints()
         m.assert_called_once()
