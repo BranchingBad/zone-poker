@@ -6,17 +6,33 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# [IMPROVEMENT] Add concurrency to cancel redundant builds
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# [IMPROVEMENT] Set default permissions to read-only for security
+permissions:
+  contents: read
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    
+    # [IMPROVEMENT] Add Python version matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11']
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Get pip cache dir
         id: pip-cache
@@ -27,8 +43,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          # Include python-version in the key for the matrix
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
@@ -54,14 +72,15 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          # The Codecov token is optional for public repositories.
-          # For private repos, set the CODECOV_TOKEN secret in your repository settings.
-          # token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true # Fail the build if Codecov upload fails
+          fail_ci_if_error: true
 
   build-and-push-docker:
     needs: lint-and-test
     runs-on: ubuntu-latest
+    
+    # [IMPROVEMENT] Grant write permissions for packages (GHCR)
+    permissions:
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -79,7 +98,6 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # Use github.repository (e.g., BranchingBad/zone-poker)
           images: ghcr.io/${{ github.repository }}
 
       - name: Set up Docker Buildx
@@ -90,19 +108,16 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          # Do not push yet, just build and load the image
           push: false
           load: true
-          # Use a single, predictable tag for the scanner
           tags: ghcr.io/${{ github.repository }}:ci-scan
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
 
       - name: Scan container image for vulnerabilities with Trivy
-        uses: aquasecurity/trivy-action@v0 # Use the stable v0 tag
+        uses: aquasecurity/trivy-action@v0
         with:
-          # Scan the locally loaded image
           image-ref: 'ghcr.io/${{ github.repository }}:ci-scan'
           format: 'table'
           exit-code: '1'
@@ -111,12 +126,11 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Build and Push
-        # Only run on pushes to main, not on pull requests
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true # This step actually pushes
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.workflow }}
