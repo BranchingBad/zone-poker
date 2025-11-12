@@ -108,8 +108,10 @@ def test_security_audit_weak(mock_weak_data):
 
     assert result["SPF Policy"]["status"] == "Weak"  # type: ignore
     assert result["DMARC Policy"]["status"] == "Weak"  # type: ignore
-    assert ("Additionally, no 'rua' reporting address is configured"
-            in result["DMARC Policy"]["details"])
+    assert (
+        "Additionally, no 'rua' reporting address is configured"
+        in result["DMARC Policy"]["details"]
+    )
     assert result["CAA Record"]["status"] == "Weak"
     assert result["DNSSEC"]["status"] == "Weak"
     assert result["Zone Transfer"]["status"] == "Vulnerable"
@@ -212,4 +214,4 @@ async def test_whois_lookup_pywhois_error():
         mock_to_thread.side_effect = PywhoisError("Domain not found.")
         result = await whois_lookup(domain="nonexistent.com", verbose=False)
 
-    assert "WHOIS lookup failed: Domain not found." in result["error"] 
+    assert "WHOIS lookup failed: Domain not found." in result["error"]
