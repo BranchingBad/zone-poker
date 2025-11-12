@@ -1,7 +1,7 @@
 {
   "Acquia": {
     "cname": ["acquia-test.co"],
-    "fingerprints": ["The site you are looking for could not be found.", "If you are an Acquia Cloud customer"]
+    "fingerprints": ["The site you are looking for could not be found", "If you are an Acquia Cloud customer"]
   },
   "Agile CRM": {
     "cname": ["cname.agilecrm.com", "agilecrm.com"],
@@ -13,7 +13,7 @@
   },
   "Amazon S3": {
     "cname": ["s3.amazonaws.com"],
-    "fingerprints": ["The specified bucket does not exist", "NoSuchBucket"]
+    "fingerprints": ["The specified bucket does not exist", "NoSuchBucket", "Bucket not found"]
   },
   "Azure App Service": {
     "cname": ["azurewebsites.net"],
@@ -21,7 +21,7 @@
   },
   "Azure Blob Storage": {
     "cname": ["blob.core.windows.net"],
-    "fingerprints": ["The specified account does not exist.", "InvalidQueryParameterValue"]
+    "fingerprints": ["The specified account does not exist", "InvalidQueryParameterValue"]
   },
   "Bitbucket": {
     "cname": ["bitbucket.io"],
@@ -33,7 +33,7 @@
   },
   "Campaign Monitor": {
     "cname": ["createsend.com"],
-    "fingerprints": ["Trying to access your account?"]
+    "fingerprints": ["Trying to access your account?", "Double check the URL"]
   },
   "Cargo Collective": {
     "cname": ["cargocollective.com"],
@@ -69,7 +69,7 @@
   },
   "Heroku": {
     "cname": ["herokuapp.com"],
-    "fingerprints": ["No such app", "herokucdn.com/error-pages/no-such-app.html"]
+    "fingerprints": ["no such app", "herokucdn.com/error-pages/no-such-app.html"]
   },
   "Intercom": {
     "cname": ["intercom.help"],
@@ -85,7 +85,7 @@
   },
   "Netlify": {
     "cname": ["netlify.app"],
-    "fingerprints": ["Not Found", "Not found"]
+    "fingerprints": ["Not Found"]
   },
   "Pantheon": {
     "cname": ["pantheonsite.io"],

@@ -4,15 +4,18 @@ Zone-Poker - Orchestrator Module
 Handles the logic for running analysis, managing data dependencies,
 and displaying results.
 """
+import logging
 import asyncio
 import argparse
+import traceback
 from collections import deque
-import dns.resolver # --- THIS IS THE FIX (reverted to standard resolver) ---
+import dns.resolver
 from datetime import datetime
 from typing import Dict, Any, List, Set
 
 # Import shared config for the console object
 from .config import console, PUBLIC_RESOLVERS
+from .export import handle_output
 # Import the central configuration and display functions
 from .dispatch_table import MODULE_DISPATCH_TABLE
 from .display import display_summary, display_critical_findings
@@ -66,11 +69,14 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
         raise ValueError("Circular dependency detected in modules. Please check the `dependencies` in `dispatch_table.py`.")
 
     return sorted_order
-async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any) -> Dict[str, Any]:
+
+async def _scan_single_domain(domain: str, args: argparse.Namespace, modules_to_run: List[str]) -> Dict[str, Any]:
     """
-    Orchestrates the execution of analysis modules, manages data dependencies,
-    and calls the corresponding display functions.
+    Orchestrates the scanning process for a single domain.
+    This function runs the analysis modules and returns all collected data.
+    It raises exceptions on failure, which are caught by the calling `run_scans` function.
     """
+    domain = domain.strip().rstrip('.')
     if not args.quiet and args.output == 'table':
         console.print(f"Target: {domain}")
         console.print(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -159,4 +165,85 @@ async def run_analysis_modules(modules_to_run: List[str], domain: str, args: Any
         console.print(f"✓ Scan completed for {domain}")
         console.print(f"Finished at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
+    # Handle console output (e.g., json, xml, html)
+    if args.output != 'table':
+        handle_output(all_data, args.output)
+
+    # Handle file exports (txt, json)
+    handle_output(all_data, 'file') # Use a dedicated identifier for file exports
+
     return all_data
+
+
+async def run_scans(domains_to_scan: List[str], args: argparse.Namespace):
+    """
+    Manages the scanning of one or more domains with a progress bar and retry mechanism.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Determine which modules to run based on the final merged arguments
+    modules_to_run = [
+        name
+        for name, details in MODULE_DISPATCH_TABLE.items()
+        if (arg_name := details.get("arg_info", {}).get("name"))
+        and getattr(args, arg_name, False)
+    ]
+    if getattr(args, 'all', False) or not modules_to_run:
+        modules_to_run = list(MODULE_DISPATCH_TABLE.keys())
+
+    # If only one domain, run it directly without the progress bar and retry overhead
+    if len(domains_to_scan) == 1:
+        try:
+            await _scan_single_domain(domains_to_scan[0], args, modules_to_run)
+        except dns.resolver.NXDOMAIN:
+            logger.error(f"Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN).")
+            console.print(f"[bold red]Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN).[/bold red]")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}", exc_info=args.verbose)
+            console.print(f"[bold red]An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}[/bold red]")
+            if args.verbose:
+                console.print(f"\n[dim]{traceback.format_exc()}[/dim]")
+        return
+
+    # --- Logic for multiple domains with retries and progress bar ---
+    from rich.progress import Progress
+    domains_to_retry = list(domains_to_scan)
+    successful_domains = []
+    num_retries = getattr(args, 'retries', 0)
+
+    with Progress(
+        "[progress.description]{task.description}",
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        console=console,
+        disable=args.quiet,
+    ) as progress:
+        main_task_id = progress.add_task("[cyan]Scanning domains...", total=len(domains_to_scan))
+
+        for attempt in range(num_retries + 1):
+            if not domains_to_retry:
+                break  # All domains succeeded
+
+            current_tasks = []
+            if attempt > 0:
+                console.print(f"\n[bold yellow]Retrying {len(domains_to_retry)} failed domains (Attempt {attempt + 1}/{num_retries + 1})...[/bold yellow]")
+                await asyncio.sleep(2)
+
+            for domain in domains_to_retry:
+                task = asyncio.create_task(_scan_single_domain(domain, args, modules_to_run))
+                current_tasks.append(task)
+
+            results = await asyncio.gather(*current_tasks, return_exceptions=True)
+
+            failed_this_round = []
+            for i, result in enumerate(results):
+                domain_name = domains_to_retry[i]
+                if isinstance(result, Exception):
+                    failed_this_round.append(domain_name)
+                    if attempt == num_retries:  # Final attempt failed
+                        logger.error(f"Scan for domain '{domain_name}' failed permanently after {num_retries + 1} attempts: {result}")
+                        console.print(f"[bold red]Scan for domain '{domain_name}' failed permanently.[/bold red]")
+                elif domain_name not in successful_domains:
+                    successful_domains.append(domain_name)
+                    progress.advance(main_task_id)
+
+            domains_to_retry = failed_this_round

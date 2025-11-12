@@ -7,11 +7,13 @@ import json
 import asyncio
 import logging
 from pathlib import Path
+from functools import lru_cache
 from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-def _load_fingerprints() -> Dict:
+@lru_cache(maxsize=None)
+def _load_fingerprints() -> dict:
     """Loads takeover fingerprints from the JSON file."""
     try:
         fingerprint_path = Path(__file__).parent / "takeover_fingerprints.json"
@@ -23,45 +25,54 @@ def _load_fingerprints() -> Dict:
 
 async def check_subdomain_takeover(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
-    Checks for potential subdomain takeovers via dangling CNAME records.
+    Checks for potential subdomain takeovers by matching CNAME records against a list
+    of vulnerable services and their fingerprints.
     """
     cname_records = records_info.get("CNAME", [])
-
     takeover_fingerprints = _load_fingerprints()
 
-    if not cname_records or not isinstance(cname_records, list):
+    if not cname_records or not takeover_fingerprints or not isinstance(cname_records, list):
         return {"vulnerable": []}
-    
+
     results: Dict[str, Any] = {"vulnerable": []}
     logger.debug(f"Checking {len(cname_records)} CNAME records for takeover vulnerabilities.")
 
-    async def check_cname(record: Dict[str, Any], client: httpx.AsyncClient) -> Dict[str, Any] | None:
+    async def check_record(record: Dict[str, Any], client: httpx.AsyncClient) -> Dict[str, Any] | None:
         subdomain = record.get("name")
-        if not subdomain:
+        cname_target = record.get("value")
+
+        if not subdomain or not cname_target:
             return None
 
-        # Check both HTTP and HTTPS
-        for scheme in ["http", "https"]:
-            url = f"{scheme}://{subdomain}"
-            try:
-                response = await client.get(url, timeout=10)
-                response_text_lower = response.text.lower()
-                for service, details in takeover_fingerprints.items():
-                    fingerprints = details.get("fingerprints", [])
-                    for fingerprint in fingerprints:
-                        if fingerprint in response_text_lower:
-                            return {
-                                "subdomain": subdomain,
-                                "cname_target": record.get("value"),
-                                "service": service,
-                                "protocol": scheme,
-                            }
-            except httpx.RequestError as e:
-                logger.debug(f"Subdomain takeover check for {url} failed: {e}")
+        # Find a matching service based on the CNAME target
+        for service, details in takeover_fingerprints.items():
+            service_cnames = details.get("cname", [])
+            # Check if the CNAME target ends with any of the known vulnerable service CNAMEs
+            if any(cname_target.endswith(sc) for sc in service_cnames):
+                # If it matches, now check for fingerprints via HTTP/S
+                for scheme in ["http", "https"]:
+                    url = f"{scheme}://{subdomain}"
+                    try:
+                        response = await client.get(url, timeout=10)
+                        response_text_lower = response.text.lower()
+                        fingerprints = details.get("fingerprints", [])
+                        for fingerprint in fingerprints:
+                            if fingerprint.lower() in response_text_lower:
+                                logger.info(f"Potential takeover found for {subdomain} pointing to {service}")
+                                return {
+                                    "subdomain": subdomain,
+                                    "cname_target": cname_target,
+                                    "service": service,
+                                    "protocol": scheme,
+                                }
+                    except httpx.RequestError as e:
+                        logger.debug(f"Subdomain takeover check for {url} failed: {e}")
+                # If we found a CNAME match but no fingerprint, we can stop checking this record against other services.
+                break
         return None
 
     async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=10) as client:
-        tasks = [check_cname(rec, client) for rec in cname_records]
+        tasks = [check_record(rec, client) for rec in cname_records]
         task_results = await asyncio.gather(*tasks)
 
     # Filter out None results and aggregate
