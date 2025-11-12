@@ -3,7 +3,7 @@ import asyncio
 import whois as whois_lib
 from whois.exceptions import WhoisError
 from datetime import datetime
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, Union
 from ..config import console
 
 
