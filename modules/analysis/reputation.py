@@ -11,14 +11,14 @@ ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 
 
 async def analyze_reputation(
-    domain: str, args: argparse.Namespace, records: dict, **kwargs
+    domain: str, args: argparse.Namespace, records_info: dict, **kwargs
 ) -> dict:
     """
     Checks the reputation of domain IPs against AbuseIPDB.
 
     Args:
         domain: The target domain (unused in this implementation but good practice).
-        records: The dictionary of DNS records from the 'records' module.
+        records_info: The dictionary of DNS records from the 'records' module.
         args: The application's arguments namespace, used for API keys and timeout.
 
     Returns:
@@ -31,8 +31,8 @@ async def analyze_reputation(
     # Consolidate all A and AAAA records
     ip_addresses = []
     for record_type in ("A", "AAAA"):
-        if records := records.get(record_type):
-            ip_addresses.extend(rec.get("value") for rec in records if rec.get("value"))
+        if record_list := records_info.get(record_type):
+            ip_addresses.extend(rec.get("value") for rec in record_list if rec.get("value"))
 
     if not ip_addresses:
         return {"error": "No A or AAAA records found to check reputation."}

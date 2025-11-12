@@ -7,10 +7,7 @@ import ssl
 import socket
 from typing import Dict, Any
 
-
-async def analyze_smtp_servers(
-    domain: str, timeout: int, records_info: dict, **kwargs
-) -> dict:
+async def analyze_smtp_servers(domain: str, timeout: int, records_info: dict, **kwargs) -> dict:
     """
     Asynchronously connects to mail servers from MX records to analyze their SMTP configuration.
     Args:
@@ -25,7 +22,7 @@ async def analyze_smtp_servers(
     if not mx_records:
         return {"error": "No MX records found to analyze."}
 
-    sorted_mx = sorted(mx_records, key=lambda r: r.get("priority", 99))
+    sorted_mx = sorted(mx_records, key=lambda r: r.get('priority', 99))
 
     async def analyze_server(record: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
         server = record.get("value")
@@ -39,50 +36,49 @@ async def analyze_smtp_servers(
             )
 
             banner = await asyncio.wait_for(reader.read(1024), timeout=timeout)
-            server_results["banner"] = banner.decode("utf-8", "ignore").strip()
+            server_results['banner'] = banner.decode('utf-8', 'ignore').strip()
 
             writer.write(f"EHLO {domain}\r\n".encode())
             await writer.drain()
             ehlo_resp = await asyncio.wait_for(reader.read(4096), timeout=timeout)
 
-            if b"250-STARTTLS" in ehlo_resp:
-                server_results["starttls"] = "Supported"
+            if b'250-STARTTLS' in ehlo_resp:
+                server_results['starttls'] = 'Supported'
                 writer.write(b"STARTTLS\r\n")
                 await writer.drain()
                 await asyncio.wait_for(reader.read(1024), timeout=timeout)
 
                 # Upgrade the connection
                 ssl_context = ssl.create_default_context()
+                # Create a new SSL-wrapped connection over the existing socket
                 new_reader, new_writer = await asyncio.open_connection(
-                    sock=writer.get_extra_info("socket"),
+                    sock=writer.get_extra_info('socket'),
                     ssl=ssl_context,
-                    server_hostname=server,
+                    server_hostname=server
                 )
-                cert = new_writer.get_extra_info("ssl_object").getpeercert()
+
+                # Get the certificate from the new secure writer
+                cert = new_writer.get_extra_info('ssl_object').getpeercert()
                 cert_info = {
-                    "subject": dict(x[0] for x in cert.get("subject", [])).get(
-                        "commonName", "N/A"
-                    ),
-                    "issuer": dict(x[0] for x in cert.get("issuer", [])).get(
-                        "commonName", "N/A"
-                    ),
-                    "valid_from": ssl.cert_time_to_seconds(cert.get("notBefore")),
-                    "valid_until": ssl.cert_time_to_seconds(cert.get("notAfter")),
+                    'subject': dict(x[0] for x in cert.get('subject', [])).get('commonName', 'N/A'),
+                    'issuer': dict(x[0] for x in cert.get('issuer', [])).get('commonName', 'N/A'),
+                    'valid_from': ssl.cert_time_to_seconds(cert.get('notBefore')),
+                    'valid_until': ssl.cert_time_to_seconds(cert.get('notAfter')),
                 }
-                server_results["certificate"] = cert_info
+                server_results['certificate'] = cert_info
                 new_writer.close()
                 await new_writer.wait_closed()
             else:
-                server_results["starttls"] = "Not Supported"
+                server_results['starttls'] = 'Not Supported'
                 writer.close()
                 await writer.wait_closed()
 
         except (asyncio.TimeoutError, socket.timeout):
-            server_results["error"] = f"Connection timed out after {timeout} seconds."
+            server_results['error'] = f"Connection timed out after {timeout} seconds."
         except (ConnectionRefusedError, OSError) as e:
-            server_results["error"] = f"Could not connect to {server}:25: {e}"
+            server_results['error'] = f"Could not connect to {server}:25: {e}"
         except Exception as e:
-            server_results["error"] = f"An unexpected error occurred: {e}"
+            server_results['error'] = f"An unexpected error occurred: {e}"
 
         return server, server_results
 

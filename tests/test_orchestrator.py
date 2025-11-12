@@ -78,12 +78,16 @@ async def test_orchestrator_with_dependencies(mock_table, mock_args):
     mock_table.return_value = {
         "records": {
             "analysis_func": AsyncMock(return_value={"A": []}),
-            "display_func": MagicMock(), "dependencies": [], "data_key": "records_info"
+            "display_func": MagicMock(),
+            "dependencies": [],
+            "data_key": "records_info",
         },
         "ptr": {
             "analysis_func": AsyncMock(return_value={}),
-            "display_func": MagicMock(), "dependencies": ["records_info"], "data_key": "ptr_info"
-        }
+            "display_func": MagicMock(),
+            "dependencies": ["records_info"],
+            "data_key": "ptr_info",
+        },
     }
     with patch(
         "modules.orchestrator._create_execution_plan", return_value=["records", "ptr"]
@@ -121,8 +125,18 @@ async def test_orchestrator_selective_run(mock_table, mock_args):
     }.get
     mock_table.keys.return_value = ["records", "whois"]
     mock_table.return_value = {
-        "records": {"analysis_func": AsyncMock(), "display_func": MagicMock(), "dependencies": [], "data_key": "records_info"},
-        "whois": {"analysis_func": AsyncMock(), "display_func": MagicMock(), "dependencies": [], "data_key": "whois_info"}
+        "records": {
+            "analysis_func": AsyncMock(),
+            "display_func": MagicMock(),
+            "dependencies": [],
+            "data_key": "records_info",
+        },
+        "whois": {
+            "analysis_func": AsyncMock(),
+            "display_func": MagicMock(),
+            "dependencies": [],
+            "data_key": "whois_info",
+        },
     }
 
     modules_to_run = ["whois"]

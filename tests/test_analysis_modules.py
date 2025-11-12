@@ -158,9 +158,9 @@ async def test_detect_technologies_found():
 
     result = await detect_technologies(domain=domain, timeout=5, verbose=False)
 
-    assert "WordPress" in result["technologies"] # type: ignore
+    assert "WordPress" in result["technologies"]  # type: ignore
     assert "Joomla" in result["technologies"]  # From meta tag
-    assert "React" in result["technologies"] # type: ignore
+    assert "React" in result["technologies"]  # type: ignore
     assert "PHP" in result["technologies"]  # From fingerprint on X-Powered-By header
 
 

@@ -24,10 +24,8 @@ def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
     if rtype == "MX" and "priority" in record:
         return f"Priority: {record['priority']}"
     if rtype == "SRV":
-        return (
-            f"P:{record.get('priority')} W:{record.get('weight')} "
-            f"Port:{record.get('port')}"
-        )
+        return (f"P:{record.get('priority')} W:{record.get('weight')} "
+                f"Port:{record.get('port')}")
     if rtype == "SOA":
         return f"Serial: {record.get('serial')}"
     if rtype == "CAA":
@@ -42,25 +40,18 @@ def console_display_handler(title: str):
     - Handles and displays a standardized error panel if `data['error']` exists.
     - Prints a newline after the content is displayed.
     """
-
     def decorator(func: Callable):
         def wrapper(data: dict, quiet: bool, *args, **kwargs) -> Optional[Panel]:
             if quiet or not data or not isinstance(data, dict):
                 return None
 
             if error := data.get("error"):
-                return Panel(
-                    f"[dim]{error}[/dim]",
-                    title=f"{title} - Error",
-                    box=box.ROUNDED,
-                    border_style="dim",
-                )
+                return Panel(f"[dim]{error}[/dim]", title=f"{title} - Error",
+                             box=box.ROUNDED, border_style="dim")
 
             renderable = func(data, quiet, *args, **kwargs)
             return renderable
-
         return wrapper
-
     return decorator
 
 
@@ -120,7 +111,7 @@ def display_ptr_lookups(ptr_records: Dict[str, str], quiet: bool = False):
         return Panel(
             "[dim]No PTR records to display.[/dim]",
             title="Reverse DNS (PTR) Lookups",
-            box=box.ROUNDED,
+            box=box.ROUNDED
         )
 
     for ip, hostname in ptr_records.items():
@@ -310,7 +301,8 @@ def display_propagation(data: dict, quiet: bool = False, **kwargs):
             # Sort the IPs for each resolver to ensure consistent display order.
             # The `append` method with a `style` argument is the correct way to add styled text.
             for ip in sorted(result.get("ips", [])):
-                color = color_map.get(ip, "white")
+                color = color_map.get(ip,
+                                      "white")
                 ip_text.append(f"{ip}\n", style=color)
             table.add_row(server, ip_text)
 
@@ -326,77 +318,33 @@ def display_security_audit(data: dict, quiet: bool = False):
         box=box.ROUNDED,
         show_header=True,
         header_style=None,
-        show_edge=True,
+        show_edge=True
     )
     table.add_column("Check", style="bold", width=20)
-    table.add_column("Status", width=12)
-    table.add_column("Details", max_width=60)
-
-    # Define categories to group the checks
-    categories = {
-        "DNS Security": [
-            "SPF Policy",
-            "SPF Record",
-            "DMARC Policy",
-            "CAA Record",
-            "DNSSEC",
-            "Zone Transfer",
-        ],
-        "Web Security": [
-            "HTTP Headers",
-            "HSTS Policy",
-            "SSL/TLS Certificate",
-            "SSL/TLS Ciphers",
-            "Subdomain Takeover",
-        ],
-        "Reputation": ["IP Blocklist Status"],
-        "Network Security": ["Open Ports"],
-    }
+    table.add_column("Severity", width=12)
+    table.add_column("Recommendation", max_width=60)
 
     # A mapping of status to color and icon for visual clarity
     STATUS_MAP = {
-        "Secure": {"color": "green", "icon": "✓"},
-        "Moderate": {"color": "yellow", "icon": "!"},
-        "Weak": {"color": "red", "icon": "✗"},
-        "Vulnerable": {"color": "red", "icon": "✗"},
+        "Critical": {"color": "bold red", "icon": "🚨"},
+        "High": {"color": "red", "icon": "✗"},
+        "Medium": {"color": "yellow", "icon": "!"},
+        "Low": {"color": "cyan", "icon": "•"},
     }
 
-    # Keep track of which checks have been displayed
-    displayed_checks = set()
+    findings = data.get("findings", [])
 
-    for category, checks_in_category in categories.items():
-        # Add a header row for the category if any of its checks are present in the data
-        category_checks_present = [c for c in checks_in_category if c in data]
-        if not category_checks_present:
-            continue
+    if not findings:
+        table.add_row("[green]All checks passed[/green]", "", "")
+        return table
 
-        table.add_section()
-        table.add_row(f"[bold cyan]{category}[/bold cyan]", "", "")
+    for finding in findings:
+        check_name = finding.get("finding", "Unknown Check")
+        severity = finding.get("severity", "Unknown")
+        recommendation = finding.get("recommendation", "N/A")
 
-        for check in category_checks_present:
-            info = data.get(check, {})
-            status = info.get("status", "Unknown")
-            details = info.get("details", "N/A")
-
-            style = STATUS_MAP.get(status, {"color": "dim", "icon": "?"})
-            color = style["color"]
-            icon = style["icon"]
-
-            table.add_row(check, f"{icon} [{color}]{status}[/{color}]", details)
-            displayed_checks.add(check)
-
-    # Display any remaining checks that weren't in a defined category
-    for check, info in data.items():
-        if check in displayed_checks:
-            continue
-        status = info.get("status", "Unknown")
-        details = info.get("details", "N/A")
-        style = STATUS_MAP.get(status, {"color": "dim", "icon": "?"})
-        table.add_row(
-            check,
-            f"{style['icon']} [{style['color']}]{status}[/{style['color']}]",
-            details,
-        )
+        style = STATUS_MAP.get(severity, {"color": "dim", "icon": "?"})
+        table.add_row(check_name, f"{style['icon']} [{style['color']}]{severity}[/{style['color']}]", recommendation)
 
     return table
 
@@ -658,9 +606,8 @@ def display_summary(data: dict, quiet: bool = False):
     table.add_row("Zone Transfer", f"[{axfr_color}]{axfr_summary}[/{axfr_color}]")
 
     # SPF
-    spf_policy = (
-        data.get("email_security", {}).get("spf", {}).get("all_policy", "Not Found")
-    )
+    spf_policy = data.get("email_security", {}).get("spf", {}).get("all_policy",
+                                                                   "Not Found")
     spf_color = (
         "red"
         if spf_policy in ["?all", "Not Found"]
@@ -669,22 +616,20 @@ def display_summary(data: dict, quiet: bool = False):
     table.add_row("SPF Policy", f"[{spf_color}]{spf_policy}[/{spf_color}]")
 
     # DMARC
-    dmarc_policy = data.get("email_security", {}).get("dmarc", {}).get("p", "Not Found")
+    dmarc_policy = data.get("email_security", {}).get("dmarc",
+                                                      {}).get("p", "Not Found")
     dmarc_color = "red" if dmarc_policy in ["none", "Not Found", "Error"] else "green"
     table.add_row("DMARC Policy", f"[{dmarc_color}]{dmarc_policy}[/{dmarc_color}]")
 
     # Security Audit
     audit_data = data.get("security", {})
     if isinstance(audit_data, dict) and "error" not in audit_data:
-        weak_checks = [
-            check
-            for check, info in audit_data.items()
-            if info.get("status") in ("Weak", "Vulnerable")
-        ]
+        weak_checks = [check for check, info in audit_data.items() if
+                       info.get("status") in ("Weak", "Vulnerable")]
         if weak_checks:
             table.add_row(
                 "Security Audit",
-                f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})",
+                f"[red]Found {len(weak_checks)} issues[/red] ({', '.join(weak_checks)})"
             )
         else:
             table.add_row("Security Audit", "[green]All checks passed[/green]")
@@ -707,9 +652,8 @@ def display_critical_findings(data: dict, quiet: bool = False):
     # Subdomain Takeover
     vulnerable_takeovers = data.get("takeover_info", {}).get("vulnerable", [])
     if vulnerable_takeovers:
-        critical_findings.append(
-            f"Subdomain Takeover: Found {len(vulnerable_takeovers)} "
-            "potentially vulnerable subdomains."
+        critical_findings.append(f"Subdomain Takeover: Found {len(vulnerable_takeovers)} "
+                                 "potentially vulnerable subdomains."
         )
 
     ssl_info = data.get("ssl_info", {})
@@ -754,12 +698,9 @@ def display_critical_findings(data: dict, quiet: bool = False):
 def display_http_headers(data: dict, quiet: bool = False):
     """Creates a rich Table of HTTP Security Headers analysis."""
     final_url = data.get("final_url", "N/A")
-    title = f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]"
-    table = Table(
-        title=title,
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
+    title = (f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]")
+    table = Table(title=title, box=box.ROUNDED, show_header=True,
+                  header_style=None,
     )
     table.add_column("Header", style="bold", width=28)
     table.add_column("Status", width=10)
@@ -782,7 +723,8 @@ def display_http_headers(data: dict, quiet: bool = False):
     recommendations = data.get("recommendations", [])
     if recommendations:
         rec_text = "\n".join([f"• {rec}" for rec in recommendations])
-        table.caption = Text(rec_text, style="yellow")
+        table.caption = Text(rec_text,
+                             style="yellow")
 
     return table
 
@@ -829,10 +771,7 @@ def display_subdomain_takeover(data: dict, quiet: bool = False):
             node.add(f"Service: [bold]{item['service']}[/bold]")
             node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
         panel = Panel(
-            tree,
-            title="Subdomain Takeover",
-            box=box.ROUNDED,
-            border_style="red",  # noqa: E124
+            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"  # noqa: E124
         )
 
     return panel

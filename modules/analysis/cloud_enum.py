@@ -10,17 +10,14 @@ from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-
-async def enumerate_cloud_services(
-    domain: str, **kwargs
-) -> Dict[str, List[Dict[str, Any]]]:
+async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Enumerates potential public cloud storage (e.g., S3 buckets, Azure Blobs) based on the domain name.
     """
     results: Dict[str, List[Dict[str, Any]]] = {"s3_buckets": [], "azure_blobs": []}
 
     # Generate potential bucket names from the domain
-    domain_parts = domain.split(".")
+    domain_parts = domain.split('.')
     base_name = domain_parts[0]
 
     # A simple list of permutations to check
@@ -35,15 +32,14 @@ async def enumerate_cloud_services(
         domain,
     }
 
-    # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars)
-    sanitized_permutations = set()
-    for p in permutations:
-        s = re.sub(r"[^a-z0-9]", "", p.lower())
-        if 3 <= len(s) <= 24:
-            sanitized_permutations.add(s)
+    # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars) and remove duplicates
+    sanitized_permutations = {
+        re.sub(r'[^a-z0-9]', '', p.lower()) for p in permutations
+    }
 
     logger.debug(
-        f"Checking {len(permutations)} potential S3 bucket names and {len(sanitized_permutations)} Azure blob containers."
+        f"Checking {len(permutations)} potential S3 bucket names and "
+        f"{len(sanitized_permutations)} Azure blob containers."
     )
 
     async def check_s3_bucket(bucket_name: str, client: httpx.AsyncClient):
@@ -54,46 +50,30 @@ async def enumerate_cloud_services(
             # A 404 status code means the bucket does not exist.
             # Other status codes (like 200, 403) indicate the bucket name is taken.
             if response.status_code != 404:
-                status_code = response.status_code
-                if status_code == 200:
-                    status = "public"
-                elif status_code == 403:
-                    status = "forbidden"
-                else:
-                    status = "invalid"
+                status = "public" if response.status_code == 200 else "forbidden"
                 results["s3_buckets"].append({"url": url, "status": status})
         except httpx.RequestError as e:
             logger.debug(f"S3 check for '{bucket_name}' failed: {e}")
-            # Optionally, you could record the failure:
-            # results["s3_buckets"].append({"url": url, "status_code": 0, "error": str(e)})
 
     async def check_azure_blob(account_name: str, client: httpx.AsyncClient):
+        if not (3 <= len(account_name) <= 24 and account_name.isalnum()):
+            return
+
         url = f"https://{account_name}.blob.core.windows.net"
         try:
-            # A HEAD request to an existing account's base URL often returns 400 (Bad Request)
-            # because a container isn't specified, which still confirms the account's existence.
             response = await client.head(url, timeout=5, follow_redirects=False)
             if response.status_code != 404:
-                status_code = response.status_code
-                if status_code == 200:
-                    status = "public"
-                elif status_code in [400, 403]:
-                    status = "forbidden"
-                else:
-                    status = "invalid"
+                status = "public" if response.status_code == 200 else "forbidden"
                 results["azure_blobs"].append({"url": url, "status": status})
         except httpx.RequestError as e:
             logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")
-            # Optionally, you could record the failure:
-            # results["azure_blobs"].append({"url": url, "status_code": 0, "error": str(e)})
 
     async with httpx.AsyncClient() as client:
-        tasks = [check_s3_bucket(p, client) for p in permutations] + [
-            check_azure_blob(p, client) for p in sanitized_permutations
-        ]
+        tasks = [check_s3_bucket(p, client) for p in permutations] + \
+                [check_azure_blob(p, client) for p in sanitized_permutations]
         await asyncio.gather(*tasks)
 
     # Sort by URL
-    results["s3_buckets"].sort(key=lambda x: x["url"])
-    results["azure_blobs"].sort(key=lambda x: x["url"])
+    results["s3_buckets"].sort(key=lambda x: x['url'])
+    results["azure_blobs"].sort(key=lambda x: x['url'])
     return results

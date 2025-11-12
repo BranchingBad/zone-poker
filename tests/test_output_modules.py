@@ -12,19 +12,24 @@ def sample_scan_data():
     return {
         "domain": "example.com",
         "scan_timestamp": "2025-01-01T12:00:00",
-        "records": {"A": [{"value": "93.184.216.34", "ttl": 86400,
-                           "name": "example.com"}],
-                    "MX": [{"value": "mail.example.com", "priority": 10,
-                            "ttl": 3600, "name": "example.com"}]},
-        "whois": {
-            "registrar": "Test Registrar Inc."
+        "records": {
+            "A": [{"value": "93.184.216.34", "ttl": 86400, "name": "example.com"}],
+            "MX": [
+                {
+                    "value": "mail.example.com",
+                    "priority": 10,
+                    "ttl": 3600,
+                    "name": "example.com",
+                }
+            ],
         },
+        "whois": {"registrar": "Test Registrar Inc."},
         "empty_module": {},  # Test that empty modules are correctly skipped
-        "zone_info": None  # Test that None modules are correctly skipped
+        "zone_info": None,  # Test that None modules are correctly skipped
     }
 
 
-@patch('builtins.print')
+@patch("builtins.print")
 def test_xml_output_generation(mock_console_print, sample_scan_data):
     """
     Tests that the XML output module correctly converts scan data into an XML string.
@@ -51,7 +56,7 @@ def test_xml_output_generation(mock_console_print, sample_scan_data):
     assert root.find("zone_info") is None  # Ensure None modules are not added
 
 
-@patch('builtins.print')
+@patch("builtins.print")
 def test_html_output_generation(mock_print, sample_scan_data):
     """
     Tests that the HTML output module correctly generates an HTML string and that it

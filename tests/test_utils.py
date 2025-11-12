@@ -38,6 +38,7 @@ def test_is_valid_domain(domain, expected):
         ("example.com", "com"),
         ("localhost", None),
         ("co.uk", None), # Should be treated as a TLD
+        ("co.uk", None),  # Should be treated as a TLD
     ],
 )
 def test_get_parent_zone(domain, expected):
@@ -134,6 +135,7 @@ def test_get_desktop_path_linux_xdg(mock_is_dir, mock_exists):
 
 @patch("sys.platform", "linux")
 @patch("os.environ", {}) # No XDG var
+@patch("os.environ", {})  # No XDG var
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_dir")
 def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
@@ -142,7 +144,7 @@ def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
     desktop_path = home_path / "Desktop"
 
     # Simulate Desktop path not existing
-    def side_effect(*args, **kwargs):
+    def side_effect(path_obj):
         return path != desktop_path
 
     mock_exists.side_effect = side_effect
