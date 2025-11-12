@@ -6,7 +6,7 @@ import pytest
 import respx
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from whois import PywhoisError
+from whois.parser import PywhoisError
 from modules.analysis.security_audit import security_audit
 from modules.analysis.tech import detect_technologies
 from modules.analysis.whois import whois_lookup
