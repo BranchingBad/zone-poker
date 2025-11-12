@@ -48,8 +48,10 @@ dev = [
     "black",
     "pre-commit",
     "pytest-cov",
+    "pytest-asyncio",
     "bandit",
-    "pip-audit"
+    "pip-audit",
+    "respx"
 ]
 
 # --- THIS IS THE FIX ---
