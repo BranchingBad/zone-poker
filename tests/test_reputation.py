@@ -31,7 +31,13 @@ async def test_analyze_reputation_success(mock_args):
     Test successful reputation analysis for given IP addresses.
     """
     domain = "example.com"
-    records = {"A": [{"value": "1.1.1.1"}], "AAAA": [{"value": "2606:4700:4700::1111"}]}
+    all_data = {
+        "records_info": {
+            "A": [{"value": "1.1.1.1"}],
+            "AAAA": [{"value": "2606:4700:4700::1111"}],
+        },
+        "headers_info": {"ip_address": "8.8.8.8"},  # Also check header IP
+    }
 
     # Mock AbuseIPDB API responses
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=1.1.1.1&maxAgeInDays=90").respond(
@@ -46,13 +52,18 @@ async def test_analyze_reputation_success(mock_args):
             "data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}
         },
     )
+    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=8.8.8.8&maxAgeInDays=90").respond(
+        200, json={"data": {"ipAddress": "8.8.8.8", "abuseConfidenceScore": 5}}
+    )
 
-    results = await analyze_reputation(domain, mock_args, records_info=records)
+    results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 
     assert "1.1.1.1" in results
     assert "2606:4700:4700::1111" in results
+    assert "8.8.8.8" in results
     assert results["1.1.1.1"]["abuseConfidenceScore"] == 0
     assert results["2606:4700:4700::1111"]["abuseConfidenceScore"] == 90
+    assert results["8.8.8.8"]["abuseConfidenceScore"] == 5
 
 
 @pytest.mark.asyncio
@@ -61,9 +72,11 @@ async def test_analyze_reputation_no_api_key(mock_args_no_key):
     Test that the function returns an error if no API key is provided.
     """
     domain = "example.com"
-    records = {"A": [{"value": "1.1.1.1"}]}
+    all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
-    results = await analyze_reputation(domain, mock_args_no_key, records_info=records)
+    results = await analyze_reputation(
+        domain=domain, args=mock_args_no_key, all_data=all_data
+    )
 
     assert "error" in results
     assert results["error"] == "AbuseIPDB API key not found in config file."
@@ -75,9 +88,9 @@ async def test_analyze_reputation_no_ip_records(mock_args):
     Test that the function returns an error if no A or AAAA records are found.
     """
     domain = "example.com"
-    records = {"MX": [{"value": "mail.example.com"}]}
+    all_data = {"records_info": {"MX": [{"value": "mail.example.com"}]}}
 
-    results = await analyze_reputation(domain, mock_args, records_info=records)
+    results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 
     assert "error" in results
     assert results["error"] == "No A or AAAA records found to check reputation."
@@ -90,18 +103,18 @@ async def test_analyze_reputation_auth_error(mock_args):
     Test handling of an authentication error (401) from the API.
     """
     domain = "example.com"
-    records = {"A": [{"value": "1.1.1.1"}]}
+    all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
     # Mock a 401 Unauthorized response
     respx.get(url__regex=r".*").respond(
         401, json={"errors": [{"detail": "Authentication failed"}]}
     )
 
-    results = await analyze_reputation(domain, mock_args, records_info=records)
+    results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 
     assert "1.1.1.1" in results
     assert "error" in results["1.1.1.1"]
-    assert "Authentication failed" in results["1.1.1.1"]["error"]
+    assert "Authentication failed (invalid API key)" in results["1.1.1.1"]["error"]
 
 
 @pytest.mark.asyncio
@@ -111,13 +124,13 @@ async def test_analyze_reputation_network_error(mock_args):
     Test handling of a network request error.
     """
     domain = "example.com"
-    records = {"A": [{"value": "1.1.1.1"}]}
+    all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
     # Mock a network error
     respx.get(url__regex=r".*").mock(side_effect=RequestError("Connection timeout"))
 
-    results = await analyze_reputation(domain, mock_args, records_info=records)
+    results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 
     assert "1.1.1.1" in results
     assert "error" in results["1.1.1.1"]
-    assert "Connection error" in results["1.1.1.1"]["error"]
+    assert "Connection error: Connection timeout" in results["1.1.1.1"]["error"]

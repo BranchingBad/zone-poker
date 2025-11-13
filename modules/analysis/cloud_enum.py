@@ -22,6 +22,8 @@ async def enumerate_cloud_services(
     # Generate potential bucket names from the domain
     domain_parts = domain.split(".")
     base_name = domain_parts[0]
+    # Add permutation for domain without dots, e.g., 'google.ca' -> 'googleca'
+    domain_no_dots = domain.replace(".", "")
 
     # A simple list of permutations to check
     permutations = {
@@ -32,11 +34,14 @@ async def enumerate_cloud_services(
         f"{base_name}-backups",
         f"{base_name}-media",
         f"{base_name}-www",
+        domain_no_dots,
         domain,
     }
 
     # Sanitize permutations for Azure (lowercase, alphanumeric, 3-24 chars) and remove duplicates
-    sanitized_permutations = {re.sub(r"[^a-z0-9]", "", p.lower()) for p in permutations}
+    sanitized_permutations = {  # noqa
+        re.sub(r"[^a-z0-9]", "", p.lower()) for p in permutations
+    }
 
     logger.debug(
         f"Checking {len(permutations)} potential S3 bucket names and "
@@ -64,7 +69,14 @@ async def enumerate_cloud_services(
         try:
             response = await client.head(url, timeout=5, follow_redirects=False)
             if response.status_code != 404:
-                status = "public" if response.status_code == 200 else "forbidden"
+                if response.status_code == 200:
+                    status = "public"
+                elif (
+                    response.status_code == 400
+                ):  # Azure returns 400 for valid accounts without a container
+                    status = "valid_account"
+                else:
+                    status = "forbidden"
                 results["azure_blobs"].append({"url": url, "status": status})
         except httpx.RequestError as e:
             logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")

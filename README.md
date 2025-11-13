@@ -26,7 +26,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **SSL/TLS Analysis**: Inspects the SSL certificate, including validity, issuer, and Subject Alternative Names (SANs).
 - **HTTP Security Headers**: Checks for the presence and configuration of key security headers.
 - **Subdomain Takeover**: Scans CNAME records for fingerprints of services vulnerable to takeover.
-- **Cloud Enumeration**: Discovers potential public S3 buckets and Azure Blob containers based on domain permutations.
+- **Cloud Enumeration**: Discovers potential public S3 buckets and Azure Blob containers using a comprehensive set of domain permutations.
 - **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist (requires API key).
 - **DNS Blocklist (DNSBL)**: Checks discovered IPs against common real-time spam blocklists.
 - **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
@@ -38,7 +38,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **WHOIS Lookup**: Retrieves detailed registration information for the domain.
 - **Technology Detection**: Identifies web server software, frameworks, and other technologies.
 - **OSINT Enrichment**: Gathers subdomains and passive DNS data from external sources (e.g., AlienVault OTX).
-- **Certificate Transparency**: Finds subdomains by searching CT logs.
+- **Certificate Transparency**: Finds subdomains by comprehensively searching CT logs for both base domain and wildcard results.
 - **IP Geolocation**: Determines the physical location, city, and ISP of IP addresses.
 - **Content Hashing**: Calculates Murmur32 (favicon) and SHA256 (page content) hashes for hunting related infrastructure.
 
@@ -134,14 +134,14 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--smtp` | Analyze mail servers (banner, STARTTLS). |
 | `--reputation` | Check IP reputation using AbuseIPDB. |
 | `--hashes` | Get Murmur32 favicon and SHA256 page content hashes. |
-| `--ct` | Find subdomains from Certificate Transparency logs. |
+| `--ct` | Finds subdomains by comprehensively searching Certificate Transparency logs. |
 | `--waf` | Attempt to identify a Web Application Firewall. |
 | `--dane` | Check for DANE (TLSA) records for HTTPS. |
 | `--geo` | Geolocate IP addresses from A/AAAA records. |
 | `--headers` | Perform an in-depth analysis of HTTP security headers. |
 | `--ports` | Scan for common open TCP ports on discovered IPs. |
 | `--takeover` | Check for potential subdomain takeovers. |
-| `--cloud` | Enumerate common cloud services (e.g., S3 buckets). |
+| `--cloud` | Enumerates potential cloud storage (S3, Azure Blobs) using comprehensive domain permutations. |
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
 | `--security-txt` | Check for a `security.txt` file and parse its contents. |
 | `--redirect` | Check for common open redirect vulnerabilities. |

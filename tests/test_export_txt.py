@@ -24,6 +24,7 @@ from modules.export_txt import (
     _format_ssl_txt,
     _format_open_redirect_txt,
 )
+from modules.export_txt import _format_geolocation_txt
 from modules.export_txt import _format_security_txt_txt
 
 # --- Fixtures for Test Data ---
@@ -234,6 +235,19 @@ def open_redirect_data() -> Dict[str, Any]:
     """Provides sample open redirect data."""
     return {
         "vulnerable_urls": [{"url": "http://a.com", "redirects_to": "http://b.com"}]
+    }
+
+
+@pytest.fixture
+def geolocation_data() -> Dict[str, Any]:
+    """Provides sample geolocation data."""
+    return {
+        "1.1.1.1": {"country": "Australia", "city": "Sydney", "isp": "Cloudflare"},
+        "8.8.8.8": {
+            "country": "United States",
+            "city": "Mountain View",
+            "isp": "Google LLC",
+        },
     }
 
 
@@ -490,3 +504,17 @@ def test_format_security_txt_found_empty():
         {"found": True, "url": "https://a.com", "parsed": {}}
     )
     assert "File was empty or could not be parsed" in "\n".join(result)
+
+
+def test_format_geolocation_txt(geolocation_data):
+    """Tests the geolocation formatter."""
+    result = _format_geolocation_txt(geolocation_data)
+    result_str = "\n".join(result)
+    assert "1.1.1.1" in result_str
+    assert "Australia, Sydney" in result_str
+    assert "Cloudflare" in result_str
+    assert "8.8.8.8" in result_str
+    assert "United States, Mountain View" in result_str
+    assert "Google LLC" in result_str
+    assert "IP Address" in result_str
+    assert "Location" in result_str

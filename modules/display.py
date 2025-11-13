@@ -638,9 +638,18 @@ def display_ct_logs(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
             title="[bold]CT Log Search[/bold]",
         )
 
-    tree = Tree(f"Found {len(subdomains)} subdomains in CT logs")
-    for sub in subdomains:
-        tree.add(f"[green]{sub}[/green]")
+    MAX_DISPLAY_SUBDOMAINS = 20
+    num_subdomains = len(subdomains)
+    tree = Tree(f"Found {num_subdomains} subdomains in CT logs")
+
+    for i, sub in enumerate(subdomains):
+        if i < MAX_DISPLAY_SUBDOMAINS:
+            tree.add(f"[green]{sub}[/green]")
+        else:
+            tree.add(
+                f"[dim]... and {num_subdomains - MAX_DISPLAY_SUBDOMAINS} more.[/dim]"
+            )
+            break
 
     return Panel(tree, title="[bold]Certificate Transparency Log Search[/bold]")
 
@@ -794,7 +803,12 @@ def display_cloud_enum(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
         azure_branch = tree.add(f"Found {len(azure_blobs)} Azure Blobs ☁️")
         for blob in azure_blobs:
             status = blob.get("status", "unknown")
-            color = "green" if status == "public" else "yellow"
+            if status == "public":
+                color = "green"
+            elif status == "valid_account":
+                color = "cyan"
+            else:  # forbidden, etc.
+                color = "yellow"
             icon = "✓" if status == "public" else "✗"
             azure_branch.add(
                 f"{icon} [{color}]{blob.get('url')}[/{color}] (Status: {status})"

@@ -72,6 +72,11 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     flake8 .
     ```
 
+-   **Testing External Services**: Unit tests **must not** make live network requests. Any module that queries an external service (e.g., via HTTP API, DNS query) must have its network calls mocked to ensure tests are fast, reliable, and independent of external factors.
+    -   For HTTP requests, we use the `respx` library to mock `httpx` calls. See `tests/test_analysis_modules.py` for examples.
+    -   For other protocols like DNS, use appropriate mocking techniques (e.g., `unittest.mock.patch`) to simulate server responses.
+    -   Tests should cover both successful responses and potential error cases (e.g., API errors, timeouts, non-existent domains).
+
 -   **Separation of Concerns**: The project maintains a strict separation between data gathering (analysis) and data presentation (display/output).
     -   **Analysis Modules (`modules/analysis/`)**: These modules should *only* contain the logic for gathering and processing data. They must not contain any `print()` statements or `rich` components. Their sole responsibility is to perform a task and return a data dictionary.
     -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing console output using the `rich` library.

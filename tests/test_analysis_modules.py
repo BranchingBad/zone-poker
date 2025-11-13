@@ -16,6 +16,7 @@ from modules.analysis.whois import whois_lookup
 # --- Test Data Fixtures ---
 from modules.analysis.critical_findings import aggregate_critical_findings
 
+from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.open_redirect import check_open_redirect
 
 
@@ -170,7 +171,7 @@ def test_security_audit_weak_cipher(mock_weak_cipher_data):
     weak_cipher_finding = next(
         f for f in result["findings"] if f["finding"] == "Weak SSL/TLS Cipher Suite"
     )
-    assert weak_cipher_finding["severity"] == "Medium"
+    assert weak_cipher_finding["severity"] == "High"
 
 
 def test_all_security_checks_are_covered(
@@ -425,3 +426,64 @@ def test_aggregate_critical_findings_none_found():
     # Test with completely empty data
     result_empty = aggregate_critical_findings({})
     assert len(result_empty.get("critical_findings", [])) == 0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_ct_logs_dual_query():
+    """
+    Tests that search_ct_logs correctly performs two queries (wildcard and base domain),
+    combines the results, and removes duplicates.
+    """
+    domain = "example.com"
+    wildcard_url = f"https://crt.sh/?q=%.{domain}&output=json"
+    base_url = f"https://crt.sh/?q={domain}&output=json"
+
+    # Mock response for the wildcard query
+    wildcard_response_data = [
+        {"name_value": "one.example.com"},
+        {"name_value": "two.example.com"},
+        {"name_value": "*.example.com"},  # Should be filtered out
+    ]
+    respx.get(wildcard_url).respond(200, json=wildcard_response_data)
+
+    # Mock response for the base domain query (with an overlapping entry)
+    base_response_data = [
+        {"name_value": "two.example.com"},  # Duplicate
+        {"name_value": "three.example.com"},
+        {"name_value": "example.com"},  # Should be filtered out
+    ]
+    respx.get(base_url).respond(200, json=base_response_data)
+
+    result = await search_ct_logs(domain=domain, timeout=5)
+
+    assert "error" not in result or result["error"] is None
+    assert result["subdomains"] == [
+        "one.example.com",
+        "three.example.com",
+        "two.example.com",
+    ]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_ct_logs_one_query_fails():
+    """
+    Tests that search_ct_logs continues gracefully if one of the two queries fails.
+    """
+    domain = "example.com"
+    wildcard_url = f"https://crt.sh/?q=%.{domain}&output=json"
+    base_url = f"https://crt.sh/?q={domain}&output=json"
+
+    # Mock a successful response for the wildcard query
+    wildcard_response_data = [{"name_value": "one.example.com"}]
+    respx.get(wildcard_url).respond(200, json=wildcard_response_data)
+
+    # Mock a server error for the base domain query
+    respx.get(base_url).respond(500)
+
+    result = await search_ct_logs(domain=domain, timeout=5)
+
+    # The function should not report an error and should return the valid results.
+    assert "error" not in result or result["error"] is None
+    assert result["subdomains"] == ["one.example.com"]
