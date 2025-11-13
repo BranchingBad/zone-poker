@@ -170,9 +170,11 @@ def test_fingerprints_file_is_packaged():
         # importlib.resources.files() is the modern way to access package data
         # and will correctly find the file in the installed package.
         # This will raise an exception if the file is not found.
-        with importlib.resources.files("modules.analysis").joinpath(
-            "takeover_fingerprints.json"
-        ).open("r") as f:
+        with (
+            importlib.resources.files("modules.analysis")
+            .joinpath("takeover_fingerprints.json")
+            .open("r") as f
+        ):
             data = json.load(f)
             # A simple assertion to ensure the file content is as expected
             assert "GitHub Pages" in data
