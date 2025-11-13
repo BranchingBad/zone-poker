@@ -205,7 +205,7 @@ jobs:
 
       - name: Push image to GHCR
         if: github.event_name != 'pull_request'
-        run: docker push --all-tags ${{ steps.meta.outputs.images[0] }}
+        run: docker push --all-tags ${{ steps.meta.outputs.images }}
 
   publish-to-pypi:
     name: Publish to PyPI
