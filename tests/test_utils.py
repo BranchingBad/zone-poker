@@ -150,13 +150,9 @@ def test_get_desktop_path_linux_xdg(mock_is_dir, mock_exists):
 def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
     """Tests the fallback mechanism of get_desktop_path."""
     home_path = Path.home()
-    desktop_path = home_path / "Desktop"
 
-    # Simulate Desktop path not existing
-    def side_effect():
-        return False
-
-    mock_exists.side_effect = side_effect
+    # Simulate Desktop path not existing, it should fall back to home.
+    mock_exists.return_value = False
 
     # Should fall back to the home directory
     assert get_desktop_path() == home_path

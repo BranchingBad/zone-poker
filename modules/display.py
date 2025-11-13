@@ -90,7 +90,7 @@ def display_ptr_lookups(
     ptr_info: Dict[str, Any], quiet: bool, **kwargs
 ) -> Optional[Table]:
     """Displays PTR lookup results using the generic table builder."""
-    if quiet or not ptr_info.get("ptr_records"):
+    if quiet or not ptr_info or not ptr_info.get("ptr_records"):
         return None
 
     columns = {
@@ -225,8 +225,10 @@ def display_summary(all_data: Dict[str, Any], quiet: bool, **kwargs) -> Optional
         result_text = "Not Scanned"
         if "func" in check:
             result_text = check["func"](all_data)
-        elif (data := all_data.get(check["data_key"])) and (
-            val := data.get(check["value_path"])
+        elif (
+            (data := all_data.get(check["data_key"]))
+            and isinstance(data, dict)
+            and (val := data.get(check["value_path"]))
         ):
             result_text = str(val)
 

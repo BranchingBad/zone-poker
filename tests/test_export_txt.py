@@ -422,13 +422,16 @@ def test_format_reputation_txt(reputation_data):
 
 def test_format_port_scan_txt(port_scan_data):
     """Tests the open port scan formatter."""
-    data = {"scan_results": [{"ip": "1.2.3.4", "ports": [80, 443]},
-                             {"ip": "2.3.4.5", "ports": [22]}]}
+    data = {
+        "scan_results": [
+            {"ip": "1.2.3.4", "ports": [80, 443]},
+            {"ip": "2.3.4.5", "ports": [22]},
+        ]
+    }
     result = _format_port_scan_txt(data)
-    result_str = "".join(result)
+    result_str = "\n".join(result)
     assert "1.2.3.4: 80, 443" in result_str
-    assert "1.2.3.4: [80, 443]" in result_str
-    assert "2.3.4.5: [22]" in result_str
+    assert "2.3.4.5: 22" in result_str
 
 
 def test_format_dnsbl_check_txt(dnsbl_data_listed):

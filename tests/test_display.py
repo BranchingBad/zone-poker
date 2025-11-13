@@ -2,6 +2,8 @@ import pytest
 from rich.panel import Panel
 from rich.table import Table
 
+from rich.console import Console
+
 # Assume display_security_txt is in modules.display, even if not in context
 from modules.display import display_security_txt
 
@@ -65,10 +67,13 @@ def test_display_security_txt_found_empty(security_txt_found_empty_data):
 
     assert isinstance(result, Panel)
     assert "Found at https://example.com/security.txt" in result.title
-    # The renderable can be a string or a Table. Check both possibilities.
-    assert isinstance(result.renderable, Table)
-    # The message for an empty file is now in the first row of the table.
-    assert "File was empty or could not be parsed" in result.renderable.caption
+    # Check the content of the first cell in the first row of the table
+    # To reliably test rich renderables, we render them to a test console
+    console = Console(width=80, record=True)
+    console.print(result.renderable)
+    output = console.export_text()
+
+    assert output.strip().startswith("File was empty or")
 
 
 def test_display_security_txt_quiet_mode(security_txt_found_data):

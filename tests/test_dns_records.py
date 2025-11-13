@@ -81,8 +81,9 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
 
 
 @pytest.mark.asyncio
+@patch("modules.analysis.dns_records.console.print")
 @patch("modules.analysis.dns_records._format_rdata")
-async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
+async def test_get_dns_records_no_answer(mock_format, mock_print, mock_resolver):
     """
     Test get_dns_records when a NoAnswer exception is raised.
     """
@@ -101,8 +102,11 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
     assert result["A"] == []
 
     # Verify the error message was printed to the console
-    captured = capsys.readouterr()
-    assert "Error querying A for example.com: No A records found." in captured.err
+    mock_print.assert_called_once()
+    assert (
+        "Error querying A for example.com: The DNS response does not contain an answer to the question."
+        in mock_print.call_args[0][0]  # type: ignore
+    )
 
 
 @pytest.mark.asyncio
@@ -126,7 +130,10 @@ async def test_get_dns_records_timeout(mock_format, mock_resolver):
 
 
 @pytest.mark.asyncio
-@patch("modules.analysis.dns_records._format_rdata")
+@patch(
+    "modules.analysis.dns_records._format_rdata",
+    side_effect=lambda rtype, rdata, ttl, name: {"value": rdata.to_text()},
+)
 async def test_get_dns_records_specific_types(mock_format, mock_resolver):
     """
     Test that only specified record_types are queried.

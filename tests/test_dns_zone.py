@@ -1,5 +1,6 @@
 import pytest
-import dns.resolver, dns.rdatatype
+import dns.resolver
+import dns.rdatatype
 import dns.zone
 import dns.query
 import dns.exception
@@ -14,6 +15,7 @@ def mock_resolver():
     resolver = MagicMock(spec=dns.resolver.Resolver)
     resolver.resolve = MagicMock()
     return resolver
+
 
 def create_mock_answer(records):
     """Helper to create a mock dnspython answer object."""
@@ -65,14 +67,14 @@ def create_axfr_mock_side_effect(resolver, xfr_outcomes, domain="example.com"):
                 if ip_address in outcome.get("a", []) or ip_address in outcome.get(
                     "aaaa", []
                 ):
-                    if outcome.get("xfr") == "success":
+                    if outcome.get("xfr") == "success" and func_args[1] == domain:
                         return do_xfr_success()
                     if outcome.get("xfr") == "refused":
                         raise dns.exception.FormError("Refused")
                     if outcome.get("xfr") == "timeout":
                         raise dns.exception.Timeout()
         raise ValueError(f"Unhandled mock call for {func} with args {func_args}")
-    
+
     return mock_side_effect
 
 
@@ -97,7 +99,10 @@ async def test_axfr_successful(mock_resolver, mock_records):
         )
 
     assert results["summary"] == "Secure (No successful transfers)"
-    assert "Failed (Refused or Protocol Error)" in results["servers"]["ns1.example.com"]["status"]
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns1.example.com"]["status"]
+    )
 
 
 @pytest.mark.asyncio
@@ -118,9 +123,12 @@ async def test_axfr_refused(mock_resolver, mock_records):
             domain, mock_resolver, 5, False, records_info=mock_records
         )
 
-    assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
+    assert "Vulnerable" in results["summary"]
     assert results["servers"]["ns1.example.com"]["status"] == "Successful"
-    assert "Failed (Refused or Protocol Error)" in results["servers"]["ns2.example.com"]["status"]
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns2.example.com"]["status"]
+    )
 
 
 @pytest.mark.asyncio

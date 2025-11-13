@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import asyncio
 import dns.resolver
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional  # noqa
 import logging
-from ..config import RECORD_TYPES
+from ..config import RECORD_TYPES, console
 from ..utils import _format_rdata
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,11 @@ async def get_dns_records(
         ) as e:
             records[rtype] = []
             if verbose:
-                logger.debug(f"Error querying {rtype} for {domain}: {e}")
+                console.print(f"[dim]Error querying {rtype} for {domain}: {e}[/dim]")
         except dns.resolver.NoNameservers as e:
             records[rtype] = []
             if verbose:
-                logger.debug(f"Error querying {rtype} for {domain}: {e}")
+                console.print(f"[dim]Error querying {rtype} for {domain}: {e}[/dim]")
 
     # Create a list of tasks to run concurrently.
     # This is generally safe for a limited number of record types.

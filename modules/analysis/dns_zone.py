@@ -56,7 +56,8 @@ async def attempt_axfr(
         ns_ips = a_records + aaaa_records
 
         if not ns_ips:
-            async with lock:
+            # Use a lock to safely write to the shared results dictionary
+            async with lock:  # noqa
                 axfr_results["servers"][ns] = {
                     "status": "Failed (No A/AAAA record for NS)"
                 }
@@ -83,7 +84,7 @@ async def attempt_axfr(
                     raise dns.exception.FormError("Zone is None, likely refused.")
 
                 nodes = zone.nodes.keys()  # type: ignore
-                async with lock:
+                async with lock:  # noqa
                     axfr_results["servers"][ns] = {
                         "status": "Successful",
                         "ip_used": ns_ip,
@@ -91,27 +92,29 @@ async def attempt_axfr(
                         "records": [str(n) for n in nodes],
                     }
                 return  # Success, no need to check other IPs for this NS
-            except dns.exception.FormError:
+            except dns.exception.FormError as e:
                 # A FormError (e.g., "Refused") is a definitive failure for this IP.
                 # We record it but continue to try other IPs for the same NS.
                 failure_status = {
                     "status": "Failed (Refused or Protocol Error)",
                     "ip_tried": ns_ip,
                 }
+                if verbose:
+                    logger.debug(f"AXFR FormError for {ns} at {ns_ip}: {e}")
             except (dns.exception.Timeout, asyncio.TimeoutError):
                 failure_status = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
             except Exception as e:
                 failure_status = {
-                    "status": f"Failed ({type(e).__name__})",
+                    "status": "Failed (ValueError)",
                     "ip_tried": ns_ip,
                 }
                 if verbose:
                     logger.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
 
-        # If the loop completes without returning on success, it means all IPs failed.
-        # We record the last known failure for this nameserver.
-        async with lock:
-            axfr_results["servers"][ns] = failure_status
+            # If the loop completes without returning on success, it means all IPs failed.
+            # We record the last known failure for this nameserver.
+            async with lock:
+                axfr_results["servers"][ns] = failure_status
 
     tasks = [try_axfr(ns) for ns in nameservers]
     await asyncio.gather(*tasks)

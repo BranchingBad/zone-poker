@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Set, Coroutine
 from .config import console, PUBLIC_RESOLVERS
 from .export import handle_output
 from .utils import get_desktop_path
+
 # Import the central configuration and display functions
 from .utils import is_valid_domain
 from .display import display_summary, display_critical_findings
@@ -49,8 +50,14 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
         module = queue.popleft()
         if module not in modules_to_run:
             modules_to_run.add(module)
-            for dep in MODULE_DISPATCH_TABLE.get(module, {}).get("dependencies", []):
+            # Gracefully skip if a module is not in the dispatch table
+            module_details = MODULE_DISPATCH_TABLE.get(module, {})
+            for dep in module_details.get("dependencies", []):
                 queue.append(dep)
+
+    # Filter out any modules that aren't actually in the dispatch table
+    # This prevents KeyErrors if an invalid module name was passed in.
+    modules_to_run = {m for m in modules_to_run if m in MODULE_DISPATCH_TABLE}
 
     # 2. Perform topological sort (Kahn's algorithm)
     in_degree = {module: 0 for module in MODULE_DISPATCH_TABLE}

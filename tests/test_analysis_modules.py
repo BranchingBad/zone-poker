@@ -18,7 +18,6 @@ from modules.analysis.critical_findings import aggregate_critical_findings
 
 from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.open_redirect import check_open_redirect
-from modules.analysis.open_redirect import REDIRECT_PAYLOADS as OPEN_REDIRECT_PAYLOADS
 
 
 @pytest.fixture

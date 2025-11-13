@@ -82,13 +82,13 @@ def setup_configuration_and_domains(
             console.print(
                 f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]"
             )
-            return None, []
-        except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
+            return None, []  # type: ignore
+        except (ValueError, yaml.YAMLError, json.JSONDecodeError) as e:
             console.print(
-                f"[bold red]Error: Could not decode config file "
-                f"'{config_file_path}'. {e}[/bold red]"
+                f"[bold red]Error: Could not decode config file '{config_file_path}'. "
+                f"Details: {e}[/bold red]",
             )
-            return None, []
+            return None, []  # type: ignore
 
     # 3. Layer explicit CLI arguments over the top (highest priority)
     cli_vars = vars(cli_args)

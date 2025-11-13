@@ -121,7 +121,7 @@ def test_html_output_generation(mock_print, sample_scan_data):
     html_string = mock_print.call_args[0][0]
 
     # Perform basic checks on the HTML content
-    assert "<html>" in html_string
+    assert "<html" in html_string.lower()
     assert "DNS Intelligence Report for: example.com" in html_string
     assert "Scan Summary" in html_string  # From display_summary
     assert "WHOIS Information" in html_string

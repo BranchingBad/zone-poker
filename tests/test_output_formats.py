@@ -4,6 +4,7 @@ Unit tests for the output format handlers in Zone-Poker.
 """
 import pytest
 from modules.export import handle_output
+from unittest.mock import patch, mock_open
 
 
 @pytest.fixture
@@ -42,21 +43,22 @@ def mock_all_data():
 
 def test_handle_output_txt(mock_all_data, capsys):
     """
-    Tests that the 'txt' console output format correctly generates and prints
-    a text-based report to the console.
+    Tests that the 'txt' file output format correctly generates and prints
+    a text-based report to a file (mocked to console).
     """
-    # Call the handler with the 'txt' format. output_path is None for console output.
-    handle_output(mock_all_data, "txt", None)
+    # Call the handler with the 'txt' format. We use a mock path.
+    with patch("builtins.open", new_callable=mock_open) as m:
+        handle_output(mock_all_data, "txt", "mock_report.txt")
+        m.assert_called_once_with("mock_report.txt", "w", encoding="utf-8")
+        # Get the content that was written to the file
+        output = m().write.call_args[0][0]
 
-    captured = capsys.readouterr()
-    output = captured.out
-
-    # Check for key components of the TXT report
-    assert "DNS Records" in output
-    assert "[A]" in output
-    assert "1.2.3.4" in output
-    assert "WHOIS Information" in output
-    assert "Domain Name         : EXAMPLE.COM" in output
-    assert "Security Audit" in output
-    assert "[Medium Severity Findings]" in output
-    assert "Finding: DNSSEC Not Enabled" in output
+        # Check for key components of the TXT report
+        assert "DNS Records" in output
+        assert "[A]" in output
+        assert "1.2.3.4" in output
+        assert "WHOIS Information" in output
+        assert "Domain Name         : EXAMPLE.COM" in output
+        assert "Security Audit" in output
+        assert "[Medium Severity Findings]" in output
+        assert "Finding: DNSSEC Not Enabled" in output
