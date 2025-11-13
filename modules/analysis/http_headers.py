@@ -13,34 +13,31 @@ logger = logging.getLogger(__name__)
 
 def _evaluate_hsts(value: str) -> Dict[str, Any]:
     """Evaluates the Strict-Transport-Security header."""
-    directives = {part.strip().lower() for part in value.split(";")}
+    directives = {p.strip().lower() for p in value.split(";")}
     has_subdomains = "includesubdomains" in directives
     has_preload = "preload" in directives
     recommendations = []
+    max_age = -1  # Use -1 to indicate not found
 
     try:
-        max_age_str = next(
-            (part for part in value.split(";") if "max-age" in part), None
-        )
-        max_age = int(max_age_str.split("=")[1].strip()) if max_age_str else 0
+        # Find and parse max-age more robustly
+        for part in directives:
+            if part.startswith("max-age="):
+                max_age = int(part.split("=")[1])
+                break
 
-        if max_age < 31536000:  # 1 year
-            recommendations.append(
-                "HSTS 'max-age' is less than one year. Consider setting it to 31536000."
-            )
-        if not has_subdomains:
-            recommendations.append("HSTS is missing the 'includeSubDomains' directive.")
-        if not has_preload and has_subdomains and max_age >= 31536000:
-            recommendations.append(
-                "Consider adding the 'preload' directive to HSTS for maximum protection."
-            )
-
-        status = "Strong" if max_age >= 31536000 and has_subdomains else "Weak"
-        return {
-            "status": status,
-            "value": value,
-            "recommendation": " ".join(recommendations),
-        }
+        if max_age == 0:
+            return {
+                "status": "Disabled",
+                "value": value,
+                "recommendation": "HSTS is explicitly disabled with max-age=0.",
+            }
+        if max_age == -1:
+            return {
+                "status": "Invalid",
+                "value": value,
+                "recommendation": "HSTS header is present but missing the required 'max-age' directive.",
+            }
     except (ValueError, IndexError):
         return {
             "status": "Invalid",
@@ -48,34 +45,81 @@ def _evaluate_hsts(value: str) -> Dict[str, Any]:
             "recommendation": "HSTS 'max-age' is malformed.",
         }
 
+    # Recommendations based on parsed values
+    if max_age < 31536000:  # 1 year
+        recommendations.append(
+            "HSTS 'max-age' is less than one year (31536000 seconds)."
+        )
+    if not has_subdomains:
+        recommendations.append(
+            "HSTS is missing the 'includeSubDomains' directive, which is required for preloading."
+        )
+    if not has_preload and has_subdomains and max_age >= 31536000:
+        recommendations.append(
+            "The policy is eligible for HSTS preloading. Consider adding the 'preload' directive."
+        )
+
+    status = "Strong" if max_age >= 31536000 and has_subdomains else "Weak"
+    return {
+        "status": status,
+        "value": value,
+        "recommendation": " ".join(recommendations),
+    }
+
 
 def _evaluate_csp(value: str) -> Dict[str, Any]:
-    """Performs a basic evaluation of the Content-Security-Policy header."""
+    """Performs a more comprehensive evaluation of the Content-Security-Policy header."""
     recommendations = []
-    status = "Present"  # Start with Present, downgrade if issues found
+    is_weak = False
 
-    # Lowercase for easier parsing
-    csp = value.lower()
+    # Parse the CSP into a dictionary of directives and their sources
+    directives = {}
+    for directive_part in value.split(";"):
+        parts = directive_part.strip().split()
+        if not parts:
+            continue
+        directive_name = parts[0].lower()
+        sources = [p.lower() for p in parts[1:]]
+        directives[directive_name] = sources
 
-    if "'unsafe-inline'" in csp:
-        recommendations.append(
-            "CSP contains 'unsafe-inline', which allows inline scripts/styles, increasing XSS risk."
-        )
-        status = "Weak"
-    if "'unsafe-eval'" in csp:
-        recommendations.append(
-            "CSP contains 'unsafe-eval', which allows string evaluation APIs like eval(), increasing XSS risk."
-        )
-        status = "Weak"
-    if "script-src * " in csp or "object-src *" in csp:
-        recommendations.append(
-            "CSP uses a wildcard '*' for script-src or object-src, which is overly permissive."
-        )
-        status = "Weak"
+    # --- Check for common weaknesses ---
+    script_src = directives.get("script-src", directives.get("default-src", []))
+    object_src = directives.get("object-src", directives.get("default-src", []))
 
-    # If no major issues were found, we can consider it strong for this basic check.
-    if status == "Present":
-        status = "Strong"
+    if "'unsafe-inline'" in script_src:
+        is_weak = True
+        # Check if it's mitigated by a nonce or hash
+        if not any(s.startswith("'nonce-") for s in script_src) and not any(
+            s.startswith("'sha") for s in script_src
+        ):
+            recommendations.append(
+                "CSP: 'script-src' contains 'unsafe-inline' without a nonce or hash, which completely bypasses protection against XSS."
+            )
+
+    if "'unsafe-eval'" in script_src:
+        is_weak = True
+        recommendations.append(
+            "CSP: 'script-src' contains 'unsafe-eval', which allows string evaluation APIs like eval(), increasing XSS risk."
+        )
+
+    if "*" in script_src or "http:" in script_src or "https:" in script_src:
+        is_weak = True
+        recommendations.append(
+            "CSP: 'script-src' uses a wildcard (*) or a broad scheme (http:), which is overly permissive. Specify trusted domains instead."
+        )
+
+    # --- Check for missing but important directives ---
+    if "object-src" not in directives:
+        recommendations.append(
+            "CSP: The 'object-src' directive is missing. It's recommended to set it to 'none' to prevent plugin execution."
+        )
+    elif object_src and object_src != ["'none'"]:
+        is_weak = True
+        recommendations.append(
+            "CSP: 'object-src' is not set to 'none'. Disabling plugins via `object-src 'none'` is recommended."
+        )
+
+    status = "Weak" if is_weak or not recommendations else "Strong"
 
     return {
         "status": status,
@@ -183,9 +227,14 @@ HEADER_CHECKS = {
 }
 
 
-async def analyze_http_headers(domain: str, **kwargs) -> Dict[str, Any]:
+async def analyze_http_headers(
+    domain: str, verify_ssl: bool = True, **kwargs
+) -> Dict[str, Any]:
     """
     Performs a detailed analysis of HTTP security headers.
+    Args:
+        domain: The domain to analyze.
+        verify_ssl: Whether to verify SSL certificates. Defaults to True.
     """
     results: Dict[str, Any] = {
         "analysis": {},
@@ -196,7 +245,7 @@ async def analyze_http_headers(domain: str, **kwargs) -> Dict[str, Any]:
     urls_to_check = [f"https://{domain}", f"http://{domain}"]
     logger.debug(f"Analyzing HTTP headers for {domain}")
 
-    async with httpx.AsyncClient(follow_redirects=True, verify=False) as client:
+    async with httpx.AsyncClient(follow_redirects=True, verify=verify_ssl) as client:
         for url in urls_to_check:
             try:
                 response = await client.get(url, timeout=10)

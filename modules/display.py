@@ -919,3 +919,45 @@ def display_ip_geolocation(data: dict, quiet: bool, **kwargs) -> Optional[Table]
     data_list = [{**info, "ip": ip} for ip, info in data.items()]
 
     return _create_generic_table(data_list, "IP Geolocation", columns, "IP")
+
+
+def display_robots_txt(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays robots.txt analysis results."""
+    if quiet:
+        return None
+
+    if not data.get("found"):
+        return Panel(
+            "[dim]No robots.txt file found.[/dim]",
+            title="[bold]robots.txt Analysis[/bold]",
+            border_style="dim",
+        )
+
+    tree = Tree(f"Analysis of [green]{data.get('url')}[/green]")
+
+    wildcards = data.get("wildcard_disallows", [])
+    if wildcards:
+        tree.add(
+            f"[bold yellow]! Found {len(wildcards)} wildcard Disallow rule(s) blocking all crawlers: {', '.join(wildcards)}[/bold yellow]"
+        )
+
+    sitemaps = data.get("sitemaps", [])
+    if sitemaps:
+        sitemap_branch = tree.add(f"Found {len(sitemaps)} sitemap(s)")
+        for sitemap in sitemaps:
+            sitemap_branch.add(f"[cyan]{sitemap}[/cyan]")
+
+    sensitive = data.get("disallowed_sensitive", [])
+    if sensitive:
+        sensitive_branch = tree.add(
+            f"[bold yellow]Found {len(sensitive)} potentially sensitive disallowed paths[/bold yellow]"
+        )
+        for path in sensitive:
+            sensitive_branch.add(f"[red]{path}[/red]")
+
+    if not sitemaps and not sensitive and not wildcards:
+        tree.add(
+            "[dim]No sitemaps or sensitive paths found in disallowed entries.[/dim]"
+        )
+
+    return Panel(tree, title="[bold]robots.txt Analysis[/bold]")

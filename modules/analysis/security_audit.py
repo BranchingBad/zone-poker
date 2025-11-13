@@ -178,6 +178,25 @@ def security_audit(
                     }
                 )
 
+    # --- ROBOTS.TXT CHECK ---
+    # This check is separate as it doesn't fit the AUDIT_CHECKS lambda model
+    robots_data = all_data.get("robots_info", {})
+    if isinstance(robots_data, dict) and "error" not in robots_data:
+        sensitive_paths = robots_data.get("disallowed_sensitive", [])
+
+        if sensitive_paths:
+            findings.append(
+                {
+                    "finding": "Sensitive Paths in robots.txt",
+                    "severity": "Low",
+                    "recommendation": (
+                        f"robots.txt disallows crawling of {len(sensitive_paths)} potentially sensitive path(s): "
+                        f"{', '.join(sensitive_paths)}. Review these paths to ensure they do not "
+                        "expose sensitive information or endpoints."
+                    ),
+                }
+            )
+
     # Sort findings by severity (Critical, High, Medium, Low)
     severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
     findings.sort(key=lambda x: severity_order.get(x.get("severity", ""), 4))

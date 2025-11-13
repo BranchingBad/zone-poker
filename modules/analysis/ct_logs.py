@@ -32,7 +32,11 @@ async def search_ct_logs(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
             # Process successful responses
             if isinstance(response, httpx.Response) and response.status_code == 200:
                 try:
-                    for entry in response.json():
+                    json_data = response.json()
+                    # Handle cases where crt.sh returns an empty list for a valid domain
+                    if not json_data:
+                        continue
+                    for entry in json_data:
                         names = entry.get("name_value", "").split("\n")
                         for name in names:
                             # Filter out wildcards, the domain itself, and ensure it's a valid subdomain
@@ -52,8 +56,7 @@ async def search_ct_logs(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
                 pass
 
         results["subdomains"] = sorted(list(unique_subdomains))
-
     except Exception as e:
-        results["error"] = f"An unexpected error occurred: {e}"
+        results["error"] = f"An unexpected error occurred: {type(e).__name__}"
 
     return results

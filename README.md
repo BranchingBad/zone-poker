@@ -193,6 +193,7 @@ After the scan, your reports will be available in the `my-reports` directory on 
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
 | `--security-txt` | Check for a `security.txt` file and parse its contents. |
 | `--redirect` | Check for common open redirect vulnerabilities. |
+| `--robots` | Check for a `robots.txt` file and analyze its contents. |
 
 ---
 

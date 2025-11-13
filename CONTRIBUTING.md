@@ -65,6 +65,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     -   `fix(display): Correctly format output for empty results`
     -   `docs(readme): Update usage examples`
     -   `test(orchestrator): Add test for module dependency resolution`
+    -   `feat(security): Add support for parsing security.txt files`
 
 9.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues.
 

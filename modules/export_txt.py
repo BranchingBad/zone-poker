@@ -616,3 +616,22 @@ def _format_security_txt_txt(data: Dict[str, Any]) -> List[str]:
 def export_txt_security_txt(data: Dict[str, Any]) -> str:
     """Formats security.txt analysis for the text report."""
     return _create_report_section("Security.txt Check", data, _format_security_txt_txt)
+
+
+def _format_robots_txt_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats robots.txt results for the text report."""
+    if not data.get("found"):
+        return ["No robots.txt file found."]
+
+    report = [f"Found at: {data.get('url', 'N/A')}\n"]
+    if disallowed := data.get("disallowed_sensitive"):
+        report.extend(
+            ["Found potentially sensitive disallowed paths:"]
+            + [f"  - {path}" for path in disallowed]
+        )
+    return report
+
+
+def export_txt_robots_txt(data: Dict[str, Any]) -> str:
+    """Formats robots.txt analysis for the text report."""
+    return _create_report_section("Robots.txt Check", data, _format_robots_txt_txt)

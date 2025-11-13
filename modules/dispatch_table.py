@@ -31,6 +31,7 @@ from modules.analysis.cloud_enum import enumerate_cloud_services
 from modules.analysis.dnsbl import check_dnsbl
 from modules.analysis.open_redirect import check_open_redirect
 from modules.analysis.security_txt import check_security_txt
+from modules.analysis.robots_txt import analyze_robots_txt
 from modules.analysis.critical_findings import aggregate_critical_findings
 
 # Import all display and export functions
@@ -59,6 +60,7 @@ from modules.display import (  # Only display functions remain here
     display_dnsbl_check,
     display_security_txt,
     display_open_redirect,
+    display_robots_txt,
     display_ip_geolocation,
 )
 from modules.export_txt import (  # All txt export functions are imported
@@ -87,6 +89,7 @@ from modules.export_txt import (  # All txt export functions are imported
     export_txt_dnsbl_check,
     export_txt_security_txt,
     export_txt_open_redirect,
+    export_txt_robots_txt,
 )
 
 # The MODULE_DISPATCH_TABLE is the central configuration for the orchestrator.
@@ -208,6 +211,7 @@ MODULE_DISPATCH_TABLE = {
             "security_txt",
             "reputation",
             "redirect",
+            "robots",
         ],
         "arg_info": {
             "short": "-s",
@@ -430,6 +434,18 @@ MODULE_DISPATCH_TABLE = {
         },
     },
     # This is a meta-module that doesn't have its own display/export functions
+    "robots": {
+        "data_key": "robots_info",
+        "analysis_func": analyze_robots_txt,
+        "display_func": display_robots_txt,
+        "export_func": export_txt_robots_txt,
+        "description": "Checking for robots.txt file...",
+        "arg_info": {
+            "short": None,
+            "long": "--robots",
+            "help": "Check for a robots.txt file and analyze its contents.",
+        },
+    },
     # in the traditional sense. It's used to aggregate data for summary views.
     "critical_findings": {
         "data_key": "critical_findings_info",
