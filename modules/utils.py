@@ -44,10 +44,13 @@ def get_parent_zone(domain: str) -> str | None:
     """Get the parent zone for a domain (for DS record lookup)"""
     # Use tldextract to reliably get the registered domain (e.g., 'example.co.uk')
     # which serves as the parent zone for DS lookups.
-    extracted = tldextract.extract(domain)
-    if extracted.subdomain:
-        return extracted.registered_domain
-    return None  # It's already a root domain, no parent zone to check
+    try:
+        extracted = tldextract.extract(domain)
+        if extracted.subdomain:
+            return extracted.top_domain_under_public_suffix
+        return None  # It's already a root domain, no parent zone to check
+    except (ValueError, AttributeError):
+        return None
 
 
 # --- Helper Functions Moved from Analysis.py ---
@@ -146,6 +149,9 @@ def is_valid_domain(domain: str) -> bool:
     This is a basic check and does not guarantee the domain exists or is resolvable.
     """
     if not isinstance(domain, str) or not domain:
+        return False
+
+    if domain.startswith("."):
         return False
 
     # A domain can end with a dot (FQDN)

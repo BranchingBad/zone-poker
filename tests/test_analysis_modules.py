@@ -18,6 +18,7 @@ from modules.analysis.critical_findings import aggregate_critical_findings
 
 from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.open_redirect import check_open_redirect
+from modules.analysis.open_redirect import REDIRECT_PAYLOADS as OPEN_REDIRECT_PAYLOADS
 
 
 @pytest.fixture
@@ -490,17 +491,11 @@ def setup_open_redirect_mocks(domain: str, outcomes: dict):
                   The outcome can be a status code (int) or a dictionary
                   for redirects, e.g., {"status": 302, "location": "/dashboard"}.
     """
-    # Get the list of payloads from the module itself to keep tests in sync
-    from modules.analysis.open_redirect import PAYLOADS
-
-    for payload in PAYLOADS:
+    # Mock specific outcomes
+    for payload, outcome in outcomes.items():
         url = f"https://{domain}{payload}"
-        outcome = outcomes.get(payload)
 
-        if outcome is None:
-            # Default to a non-vulnerable response if not specified
-            respx.get(url).respond(200)
-        elif isinstance(outcome, int):
+        if isinstance(outcome, int):
             respx.get(url).respond(outcome)
         elif isinstance(outcome, dict):
             respx.get(url).respond(
@@ -508,6 +503,10 @@ def setup_open_redirect_mocks(domain: str, outcomes: dict):
             )
         elif isinstance(outcome, Exception):
             respx.get(url).mock(side_effect=outcome)
+
+    # Add a catch-all for any other payloads that might be tested by the module
+    # but are not relevant to this specific test case.
+    respx.get(url__regex=f"https?://{domain}/.*").respond(200)
 
 
 @pytest.mark.asyncio

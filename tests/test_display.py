@@ -66,7 +66,8 @@ def test_display_security_txt_found_empty(security_txt_found_empty_data):
     assert isinstance(result, Panel)
     assert "Found at https://example.com/security.txt" in result.title
     # The renderable can be a string or a Table. Check both possibilities.
-    renderable_str = str(result.renderable)
+    assert isinstance(result.renderable, Table)
+    # The message for an empty file is now in the first row of the table.
     assert "File was empty or could not be parsed" in result.renderable.caption
 
 

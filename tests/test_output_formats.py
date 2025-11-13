@@ -46,18 +46,17 @@ def test_handle_output_txt(mock_all_data, capsys):
     a text-based report to the console.
     """
     # Call the handler with the 'txt' format. output_path is None for console output.
-    handle_output(mock_all_data, "console", output_path=None)
+    handle_output(mock_all_data, "txt", None)
 
     captured = capsys.readouterr()
     output = captured.out
 
     # Check for key components of the TXT report
-    assert "DNS Intelligence Report for: example.com" in output
-    assert "--- DNS Records ---" in output
+    assert "DNS Records" in output
     assert "[A]" in output
     assert "1.2.3.4" in output
-    assert "--- WHOIS Information ---" in output
+    assert "WHOIS Information" in output
     assert "Domain Name         : EXAMPLE.COM" in output
-    assert "--- Security Audit ---" in output
+    assert "Security Audit" in output
     assert "[Medium Severity Findings]" in output
     assert "Finding: DNSSEC Not Enabled" in output

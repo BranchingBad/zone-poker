@@ -4,6 +4,7 @@ Zone-Poker - Orchestrator Module
 Handles the logic for running analysis, managing data dependencies,
 and displaying results.
 """
+import inspect
 import logging
 import asyncio
 import traceback
@@ -18,7 +19,6 @@ from typing import Dict, Any, List, Set, Coroutine
 from .config import console, PUBLIC_RESOLVERS
 from .export import handle_output
 from .utils import get_desktop_path
-
 # Import the central configuration and display functions
 from .utils import is_valid_domain
 from .display import display_summary, display_critical_findings
@@ -168,7 +168,7 @@ async def _scan_single_domain(
             # Unify async and sync function calls.
             # `asyncio.to_thread` is used to run blocking sync functions # noqa
             # without stalling the event loop.
-            if asyncio.iscoroutinefunction(analysis_func):
+            if inspect.iscoroutinefunction(analysis_func):
                 result = await analysis_func(**func_kwargs)
             else:
                 # Pass the dynamically built kwargs to the function # noqa

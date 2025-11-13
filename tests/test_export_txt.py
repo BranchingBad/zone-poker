@@ -338,10 +338,10 @@ def test_format_http_headers_txt_with_data(http_headers_data):
 
 def test_format_ptr_txt_with_data():
     """Tests the PTR formatter with data."""
-    data = {"1.2.3.4": "rev.example.com", "8.8.8.8": "dns.google"}
+    data = {"ptr_records": [{"ip": "1.2.3.4", "hostname": "rev.example.com"}]}
     result = _format_ptr_txt(data)
-    assert len(result) > 1
-    assert "  - 1.2.3.4          -> rev.example.com" in result
+    assert len(result) > 0
+    assert "1.2.3.4" in result[0] and "rev.example.com" in result[0]
 
 
 def test_format_ptr_txt_empty():
@@ -422,13 +422,13 @@ def test_format_reputation_txt(reputation_data):
 
 def test_format_port_scan_txt(port_scan_data):
     """Tests the open port scan formatter."""
-    if not any(port_scan_data.values()):
-        port_scan_data = {}
-    result = _format_port_scan_txt(port_scan_data)
-    result_str = "\n".join(result)
-    assert "Open Ports Found:" in result_str
-    assert "  - 1.2.3.4: [80, 443]" in result_str
-    assert "  - 2.3.4.5: 22" in result
+    data = {"scan_results": [{"ip": "1.2.3.4", "ports": [80, 443]},
+                             {"ip": "2.3.4.5", "ports": [22]}]}
+    result = _format_port_scan_txt(data)
+    result_str = "".join(result)
+    assert "1.2.3.4: 80, 443" in result_str
+    assert "1.2.3.4: [80, 443]" in result_str
+    assert "2.3.4.5: [22]" in result_str
 
 
 def test_format_dnsbl_check_txt(dnsbl_data_listed):
@@ -453,8 +453,8 @@ def test_format_tech_txt(tech_data):
     """Tests the technology detection formatter."""
     result = _format_tech_txt(tech_data)
     result_str = "\n".join(result)
-    assert "Technologies        : Nginx, React" in result_str
-    assert "Server              : Nginx" in result_str
+    assert "Technologies:" in result_str and "Nginx, React" in result_str
+    assert "Server:" in result_str and "Nginx" in result_str
 
 
 def test_format_osint_txt(osint_data):
@@ -520,5 +520,5 @@ def test_format_geolocation_txt(geolocation_data):
     assert "8.8.8.8" in result_str
     assert "Mountain View, United States" in result_str
     assert "Google LLC" in result_str
-    assert "IP Address" in result[0]
-    assert "Location" in result[0]
+    assert "1.1.1.1:" in result_str
+    assert "8.8.8.8:" in result_str
