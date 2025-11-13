@@ -134,7 +134,7 @@ def test_malformed_config_file(parser, tmp_path, capsys):
 
     captured = capsys.readouterr()
     # This error message comes from the underlying PyYAML/json library
-    assert "Could not decode config file" in captured.out or "Could not decode config file" in captured.err
+    assert "Could not decode config file" in captured.err
 
 
 def test_domain_file_not_found(parser, capsys):

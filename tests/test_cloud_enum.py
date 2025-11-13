@@ -45,6 +45,9 @@ async def test_enumerate_cloud_services_found():
     respx.head("https://exampledev.blob.core.windows.net").mock(
         side_effect=RequestError("Connection failed")
     )
+    # Add mocks for other permutations that are now being checked
+    respx.head("https://examplemedia.blob.core.windows.net/").respond(404)
+    respx.head("https://exampleprod.blob.core.windows.net/").respond(404)
     respx.head("https://examplewww.blob.core.windows.net/").mock(
         side_effect=RequestError("Connection failed")
     )
@@ -105,6 +108,9 @@ async def test_enumerate_cloud_services_none_found():
     respx.head("http://notfound-backups.s3.amazonaws.com").respond(404)
     respx.head("https://notfound.blob.core.windows.net/").respond(404)
     respx.head("https://notfoundcom.blob.core.windows.net/").respond(404)
+    respx.head("https://notfound-assets.blob.core.windows.net/").respond(404)
+    respx.head("https://notfound-dev.blob.core.windows.net/").respond(404)
+    respx.head("https://notfoundprod.blob.core.windows.net/").respond(404)
     respx.head("https://notfound-www.blob.core.windows.net/").respond(404)
 
     result = await enumerate_cloud_services(domain=domain)
@@ -131,6 +137,7 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     respx.head("http://ex-www.s3.amazonaws.com").respond(404)
     respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
     respx.head("http://ex.com.s3.amazonaws.com/").respond(404)
+    respx.head("https://excom.blob.core.windows.net/").respond(404)
     with respx.mock:
         result = await enumerate_cloud_services(domain=domain)
         assert not result["azure_blobs"]
