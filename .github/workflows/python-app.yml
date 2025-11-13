@@ -35,24 +35,26 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     # 3. Caches pip dependencies to speed up future builds
+    # (We'll keep the cache-busting key as good practice)
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
-        # This is the path to the cache directory
         path: ~/.cache/pip
-        
-        #
-        # --- THIS IS THE FIX ---
-        # We added '-v2-' to the key.
-        # This makes the key unique and forces GitHub Actions
-        # to create a NEW cache, ignoring the old, broken one.
-        #
         key: ${{ runner.os }}-${{ matrix.python-version }}-pip-v2-${{ hashFiles('**/pyproject.toml') }}
-        
-        # This provides fallback keys if a new cache isn't found
         restore-keys: |
           ${{ runner.os }}-${{ matrix.python-version }}-pip-v2-
           ${{ runner.os }}-${{ matrix.python-version }}-pip-
+
+    #
+    # --- THIS IS THE NEW DEBUG STEP ---
+    # This will print the contents of pyproject.toml to the log
+    # so we can see exactly what the runner is seeing before install.
+    #
+    - name: Debug pyproject.toml
+      run: |
+        echo "--- Displaying pyproject.toml contents ---"
+        cat pyproject.toml
+        echo "-------------------------------------------"
 
     # 4. Installs your project dependencies
     - name: Install dependencies
@@ -61,7 +63,6 @@ jobs:
         pip install .[dev]
 
     # 5. (Optional but recommended) Run your tests or linter
-    # This is why you installed the [dev] dependencies.
     - name: Run tests (e.g., pytest)
       run: |
         # Replace this with your actual test or linting command
