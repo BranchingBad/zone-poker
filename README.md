@@ -44,47 +44,95 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 
 ---
 
-## Installation
+## Getting Started
 
-Zone-Poker can be installed directly from the cloned repository. It is recommended to use a virtual environment.
+Follow these steps to install Zone-Poker and run your first scan.
+
+### 1. Prerequisites
+
+- Python 3.10+
+- Git
+
+### 2. Installation
+
+We recommend installing Zone-Poker in a virtual environment to avoid conflicts with other system packages.
 
 ```bash
-# Clone the repository
+# 1. Clone the repository from GitHub
 git clone https://github.com/BranchingBad/zone-poker.git
 cd zone-poker
-# Install the project and its dependencies
+
+# 2. Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Install the project and its dependencies
 pip install .
 ```
 
-## Usage
+### 3. Running Your First Scan
 
-The simplest way to run a full scan on a domain is with the `--all` flag.
+You can now run Zone-Poker directly from your command line.
 
+**Run a basic scan for DNS records and WHOIS information:**
+```bash
+zone-poker example.com --records --whois
+```
+
+**Run a comprehensive scan using all modules:**
 ```bash
 zone-poker example.com --all
 ```
 
-### Examples
+### 4. Exporting Reports
 
-**Run all modules and export reports:**
+To save the results, use the `--export` flag. This will create `.json` and `.txt` files in a new directory on your Desktop.
+
 ```bash
+# Run all modules and save the reports
 zone-poker example.com --all --export
+
+# Save reports to a specific directory
+zone-poker example.com --all --export -O /tmp/my-scan-reports
 ```
 
-**Run specific modules and save reports to a custom directory:**
+---
+
+## Using with Docker
+
+For users who prefer containerized workflows, Zone-Poker is available as a Docker image on the GitHub Container Registry (GHCR). This allows you to run the tool without installing Python or any dependencies on your host machine.
+
+### 1. Pull the Image
+
+Pull the latest stable image from GHCR:
 ```bash
-zone-poker example.com --mail --whois --export -O /path/to/reports/
+docker pull ghcr.io/branchingbad/zone-poker:latest
 ```
 
-**Query for specific DNS record types:**
+### 2. Basic Usage
+
+Run a scan by passing the arguments directly to the container. The command is the same as the local version, just prefixed by `docker run --rm -it ghcr.io/branchingbad/zone-poker:latest`:
 ```bash
-zone-poker example.com --records --types A,MX,TXT
+docker run --rm -it ghcr.io/branchingbad/zone-poker:latest example.com --all
 ```
 
-**Scan multiple domains from a file and generate an HTML report:**
+### 3. Using Local Files (Configuration & Reports)
+
+To use local files like a configuration file or to save reports, you need to mount a local directory into the container as a volume.
+
+**Example with a config file and exported reports:**
+
+This command mounts your current working directory (`$(pwd)`) to the `/app` directory inside the container.
+
 ```bash
-zone-poker -f domains.txt --all --output html > report.html
+# Create a reports directory
+mkdir -p my-reports
+
+# Run the scan, mounting the current directory
+docker run --rm -it -v "$(pwd):/app" ghcr.io/branchingbad/zone-poker:latest \
+  example.com --all --export -O /app/my-reports
 ```
+After the scan, your reports will be available in the `my-reports` directory on your host machine.
 
 ---
 
@@ -218,66 +266,36 @@ Zone-Poker supports multiple output formats for both console display and file ex
   - Use the `--html-file` argument to save a comprehensive, self-contained HTML report to a specific file path.
   - The `csv` and `xml` formats can be redirected to a file (e.g., `zone-poker example.com --all --output csv > report.csv`).
 
-## Configuration File
+---
 
-You can use a YAML or JSON configuration file to manage your scan settings. This is especially useful for setting up complex or repeated scans, managing API keys securely, and avoiding long command-line strings.
+## Troubleshooting
 
-### Configuration Priority
+If you encounter issues, here are some common problems and their solutions:
 
-The settings are applied in the following order of precedence, with later settings overriding earlier ones:
-1.  **Tool Defaults**: The built-in default values.
-2.  **Configuration File**: Values loaded from your `config.yaml` or `config.json` file.
-3.  **Command-Line Arguments**: Any flags you provide when running the command will always have the final say.
+*   **Modules Failing Due to Missing API Keys**:
+    *   **Problem**: Modules like `--reputation` (AbuseIPDB) or `--osint` (AlienVault OTX) fail with an "API key is missing" error.
+    *   **Solution**: These modules require you to provide an API key. The recommended way is to add them to a `config.yaml` file and pass it with the `-c` flag. See the `config.yaml` example section for the correct structure.
 
-For example, if your config file has `timeout: 10` but you run `zone-poker example.com --timeout 5`, the timeout used for the scan will be `5`.
+*   **Network Timeouts or Connection Errors**:
+    *   **Problem**: The scan fails with timeout errors, or no data is returned for certain modules. This can happen on slow networks or if a firewall is blocking requests.
+    *   **Solution**: You can increase the network timeout using the `--timeout` flag. The default is 5 seconds. Try increasing it:
+        ```bash
+        zone-poker example.com --all --timeout 15
+        ```
 
-### Example `config.yaml`
+*   **Permission Denied When Exporting Reports**:
+    *   **Problem**: The tool shows a "Permission denied" error when using `--export` or `--html-file`.
+    *   **Solution**: By default, reports are saved to your Desktop. If the tool doesn't have permission to write there, specify a different directory where you have write access using the `-O` or `--output-dir` flag:
+        ```bash
+        zone-poker example.com --all --export -O /tmp/zone-poker-reports
+        ```
 
-Here is a comprehensive example demonstrating how to set various options. The keys in the file should match the long-form command-line arguments, but with underscores instead of hyphens (e.g., `--output-dir` becomes `output_dir`).
-
-```yaml
-# Zone-Poker Sample Configuration File
-
-# --- Input ---
-# Specify a single domain or a file containing a list of domains.
-# These are overridden by a domain or -f/--file argument on the command line.
-# domain: "example.com"
-# file: "domains.txt"
-
-# --- API Keys ---
-# Store API keys here to be used by relevant modules.
-api_keys:
-  abuseipdb: "YOUR_ABUSEIPDB_API_KEY"
-  otx: "YOUR_ALIENVAULT_OTX_API_KEY"
-
-# --- Scan Control ---
-timeout: 10
-retries: 1
-
-# --- Output Control ---
-export: true
-output_dir: "~/Desktop/Zone-Poker-Reports"
-filename_template: "{domain}_{timestamp}"
-output: "table" # Console output format
-verbose: false
-
-# --- Analysis Modules ---
-# Enable specific modules. This is equivalent to using flags like --whois, --ssl, etc.
-all: false # Set to true to run all modules
-
-records: true
-whois: true
-mail: true
-ssl: true
-security: true
-```
-
-**Usage:**
-```bash
-zone-poker example.com --all -c config.yaml
-```
-
-Command-line arguments will always override settings from a configuration file.
+*   **Getting More Detailed Error Information**:
+    *   **Problem**: A module fails, but the reason isn't clear from the standard output.
+    *   **Solution**: Use the `-v` or `--verbose` flag to print detailed error messages and stack traces to the console. For comprehensive debugging, save the entire log to a file with `--log-file`:
+        ```bash
+        zone-poker example.com --all -v --log-file error.log
+        ```
 
 ---
 

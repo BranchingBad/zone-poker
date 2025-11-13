@@ -66,18 +66,8 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 
 ## Development Guidelines
 
--   **Code Style**: We use `black` for code formatting and `flake8` for linting to maintain a consistent style. If you set up `pre-commit` as suggested, these checks will run automatically. Otherwise, you can run them manually:
-    ```bash
-    black .
-    flake8 .
-    ```
-
--   **Testing External Services**: Unit tests **must not** make live network requests. Any module that queries an external service (e.g., via HTTP API, DNS query) must have its network calls mocked to ensure tests are fast, reliable, and independent of external factors.
-    -   For HTTP requests, we use the `respx` library to mock `httpx` calls. See `tests/test_analysis_modules.py` for examples.
-    -   For other protocols like DNS, use appropriate mocking techniques (e.g., `unittest.mock.patch`) to simulate server responses.
-    -   Tests should cover both successful responses and potential error cases (e.g., API errors, timeouts, non-existent domains).
-
--   **Validating the Package Build Locally**: Before submitting a pull request, especially if you've made changes to `pyproject.toml` or file structures, it's a good practice to verify that the package builds correctly and includes all necessary files. This process mimics the `validate-package` job in our CI pipeline.
+### Validating the Package Build
+Before submitting a pull request, especially if you've made changes to `pyproject.toml` or file structures, it's a good practice to verify that the package builds correctly and includes all necessary files. This process mimics the `validate-package` job in our CI pipeline.
     1.  **Build the package:**
         ```bash
         # Ensure you have the 'build' package installed (pip install build)
@@ -124,6 +114,15 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     6.  **Unit Tests**: Write unit tests for your new analysis function in the `tests/` directory.
     7.  **Documentation**: Update the `README.md` to include the new module's command-line flag and description in the "Analysis Modules" table.
 
+#### Adding a New Output Format
+To add a new console or file output format (e.g., `yaml`):
+    1.  **Create a Formatter**: In `modules/output/`, create a new file (e.g., `yaml.py`) with a function like `format_yaml(data: dict) -> str` that converts the data dictionary into a string.
+    2.  **Update the Handler**: In `modules/export.py`, import your new function and add a case for it in the `handle_output` function.
+    3.  **Update the Parser**: In `modules/parser_setup.py`, add your new format's name to the `choices` list for the `--output` argument.
+    4.  **Update Documentation**: Add the new format to the `README.md` in the "Output Formats" section.
+
+---
+
 ## Release Process (For Maintainers)
 
 This project uses a CI/CD pipeline to automate releases to PyPI. The process is triggered by pushing a new version tag to the `main` branch.
@@ -155,12 +154,6 @@ This project uses a CI/CD pipeline to automate releases to PyPI. The process is 
 ## Code of Conduct
 
 All contributors are expected to adhere to our Code of Conduct. Please be respectful and constructive in all interactions.
-
--   **Adding a New Output Format**: To add a new console or file output format (e.g., `yaml`):
-    1.  **Create a Formatter**: In `modules/output/`, create a new file (e.g., `yaml.py`) with a function like `format_yaml(data: dict) -> str` that converts the data dictionary into a string.
-    2.  **Update the Handler**: In `modules/export.py`, import your new function and add a case for it in the `handle_output` function.
-    3.  **Update the Parser**: In `modules/parser_setup.py`, add your new format's name to the `choices` list for the `--output` argument.
-    4.  **Update Documentation**: Add the new format to the `README.md` in the "Output Formats" section.
 
 ---
 *This document is actively maintained. If you find any instructions to be outdated, please open an issue or a pull request.*
