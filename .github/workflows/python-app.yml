@@ -29,7 +29,7 @@ jobs:
     permissions:
       pull-requests: write
 
-    
+
     # [IMPROVEMENT] Add Python version matrix
     strategy:
       fail-fast: false
@@ -130,14 +130,14 @@ jobs:
   build-and-push-docker:
     needs: lint-and-test
     runs-on: ubuntu-latest
-    
+
     # [IMPROVEMENT] Grant write permissions for packages (GHCR)
     permissions:
       packages: write
       # This permission is needed for tools like cosign to authenticate with OIDC.
       # It's a good practice to include it for future supply chain security enhancements.
       id-token: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
