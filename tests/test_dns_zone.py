@@ -25,25 +25,21 @@ async def test_axfr_successful(mock_resolver, mock_records):
     domain = "example.com"
 
     # Mock NS resolution
-    async def resolve_side_effect(ns, rtype):
-        if ns == "ns1.example.com" and rtype == "A":
-            return ["1.1.1.1"]
-        return []
+    def resolve_side_effect(target, rtype):
+        if target == "ns1.example.com" and rtype == "A":
+            return create_mock_answer(["1.1.1.1"])
+        raise dns.resolver.NoAnswer
+
+    mock_resolver.resolve.side_effect = resolve_side_effect
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        # Mock the resolver inside the helper
-        mock_resolver.resolve.side_effect = Exception("Should be mocked by to_thread")
-
-        # Mock the top-level to_thread calls
-        # First for _resolve_ns_ips, then for _do_xfr
         def do_xfr_success():
             # Simulate a successful zone transfer
             zone_text = f"""
             {domain}. 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5
             {domain}. 3600 IN NS ns1.{domain}.
             """
-            zone = dns.zone.from_text(zone_text, origin=domain)
-            return zone
+            return dns.zone.from_text(zone_text, origin=domain)
 
         mock_to_thread.side_effect = [
             ["1.1.1.1"],  # A record for ns1

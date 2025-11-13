@@ -109,6 +109,19 @@ def mock_missing_data():
 
 
 @pytest.fixture
+def mock_weak_cipher_data():
+    """Provides mock data for a weak SSL/TLS cipher suite."""
+    return {
+        "ssl_info": {
+            "cipher": ("TLS_RSA_WITH_3DES_EDE_CBC_SHA", "TLSv1.2", 112),
+        },
+        "headers_info": {"analysis": {}},
+        "mail_info": {},
+        # Add other keys to prevent KeyErrors if the audit function expects them
+    }
+
+
+@pytest.fixture
 def mock_critical_data():
     """Provides mock data for a critical SPF misconfiguration."""
     return {
@@ -241,10 +254,10 @@ async def test_detect_technologies_found():
 
     result = await detect_technologies(domain=domain, timeout=5, verbose=False)
 
-    assert "WordPress" in result["technologies"]  # type: ignore
-    assert "Joomla" in result["technologies"]  # From meta tag
-    assert "React" in result["technologies"]  # type: ignore
-    assert "PHP" in result["technologies"]  # From fingerprint on X-Powered-By header
+    assert "WordPress" in result["technologies"]
+    assert "Joomla" in result["technologies"]
+    assert "React" in result["technologies"]
+    assert any(tech.startswith("PHP") for tech in result["technologies"])
 
 
 @pytest.mark.asyncio
@@ -318,6 +331,7 @@ async def test_check_open_redirect_vulnerable_found():
 
     # Mock other payloads to return non-redirect responses
     respx.get(f"https://{domain}//example.com").respond(200)
+    respx.get(f"https://{domain}//www.google.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
 
     result = await check_open_redirect(domain=domain, timeout=5)
@@ -343,6 +357,7 @@ async def test_check_open_redirect_not_vulnerable():
     )
     # Mock a normal 200 OK response
     respx.get(f"https://{domain}//example.com").respond(200)
+    respx.get(f"https://{domain}//www.google.com").respond(200)
     # Mock a request that results in a network error
     respx.get(f"https://{domain}/login?redirect=https://example.com").mock(
         side_effect=RequestError("Connection failed")

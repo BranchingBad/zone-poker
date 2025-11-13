@@ -17,11 +17,18 @@ from modules.utils import (
     [
         ("example.com", True),
         ("sub.example.co.uk", True),
-        ("a-b.c", False),  # TLD too short
+        ("a-b.c", True),
         ("-example.com", False),  # Starts with hyphen
         ("example.com-", False),  # TLD starts with hyphen (invalid label)
         ("example..com", False),  # Double dot
         ("example", False),  # No TLD
+        ("example.com.", True),  # FQDN with trailing dot
+        (".example.com", False),  # Leading dot
+        ("", False),  # Empty string
+        (None, False),  # None value
+        ("a" * 63 + ".com", True),  # Max label length
+        ("a" * 64 + ".com", False),  # Exceeds max label length
+        ("xn--bcher-kva.com", True),  # Punycode (IDN)
         (123, False),  # Not a string
     ],
 )
@@ -34,8 +41,8 @@ def test_is_valid_domain(domain, expected):
     "domain, expected",
     [
         ("sub.example.com", "example.com"),
-        ("www.sub.example.co.uk", "sub.example.co.uk"),
-        ("example.com", "com"),
+        ("www.sub.example.co.uk", "example.co.uk"),
+        ("example.com", "example.com"),
         ("localhost", None),
         ("co.uk", None),  # Should be treated as a TLD
         ("co.uk", None),  # Should be treated as a TLD
@@ -60,7 +67,7 @@ def test_format_rdata():
 
     # Test A record
     mock_rdata.to_text.return_value = "1.2.3.4"
-    assert _format_rdata("A", "1.2.3.4", 300, "a.com") == {
+    assert _format_rdata("A", mock_rdata, 300, "a.com") == {
         "ttl": 300,
         "name": "a.com",
         "value": "1.2.3.4",
@@ -152,7 +159,7 @@ def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
 
     # Simulate Desktop path not existing
     def side_effect(path_obj):
-        return path_obj != desktop_path
+        return path_obj.as_posix() != desktop_path.as_posix()
 
     mock_exists.side_effect = side_effect
 

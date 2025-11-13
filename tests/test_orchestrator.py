@@ -2,7 +2,7 @@ import pytest
 import argparse
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from modules.orchestrator import _scan_single_domain
+from modules.orchestrator import _scan_single_domain, _create_execution_plan
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def mock_dispatch_table():
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.get_module_dispatch_table")
+@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
 async def test_orchestrator_with_dependencies(mock_table, mock_args):
     """
     Tests that the orchestrator runs modules and their dependencies in the correct order.
@@ -102,7 +102,7 @@ async def test_orchestrator_with_dependencies(mock_table, mock_args):
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.get_module_dispatch_table")
+@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
 async def test_orchestrator_selective_run(mock_table, mock_args):
     """
     Tests that only specified modules are run when there are no dependencies.
@@ -149,7 +149,7 @@ async def test_orchestrator_selective_run(mock_table, mock_args):
 
 
 @pytest.mark.asyncio
-@patch("modules.orchestrator.get_module_dispatch_table")
+@patch("modules.orchestrator.MODULE_DISPATCH_TABLE")
 async def test_orchestrator_quiet_mode(mock_table, mock_args):
     """
     Tests that display functions are NOT called when quiet mode is enabled.

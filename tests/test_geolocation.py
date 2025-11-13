@@ -74,6 +74,7 @@ async def test_geolocate_ips_api_failure():
     assert results["127.0.0.1"]["error"] == "private range"
 
 
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_geolocate_ips_request_error():
@@ -147,8 +148,10 @@ async def test_geolocate_ips_batching():
 
     # 3. Mock the two consecutive POST requests to the batch endpoint
     url = f"{IP_API_BATCH_ENDPOINT}?fields=status,message,country,city,isp,query"
-    respx.post(url).respond(200, json=batch1_response)
-    respx.post(url).respond(200, json=batch2_response)
+    respx.post(url).mock(
+        side_effect=[httpx.Response(200, json=batch1_response),
+                     httpx.Response(200, json=batch2_response)]
+    )
 
     # 4. Run the function and assert the results
     results = await geolocate_ips(all_data)
@@ -171,12 +174,7 @@ async def test_geolocate_ip_from_headers():
 
     mock_response_data = [
         {"query": "8.8.8.8", "status": "success", "country": "USA", "isp": "Google"},
-        {
-            "query": "1.1.1.1",
-            "status": "success",
-            "country": "Australia",
-            "isp": "Cloudflare",
-        },
+        {"query": "1.1.1.1", "status": "success", "country": "Australia", "isp": "Cloudflare"},
     ]
     url = f"{IP_API_BATCH_ENDPOINT}?fields=status,message,country,city,isp,query"
     respx.post(url).respond(200, json=mock_response_data)

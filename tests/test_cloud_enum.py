@@ -29,6 +29,7 @@ async def test_enumerate_cloud_services_found():
     respx.head("http://example.ca.s3.amazonaws.com").respond(200)
     # Bucket from the domain without dots (e.g., exampleca)
     respx.head("http://exampleca.s3.amazonaws.com").respond(403)
+    respx.head("http://example-dev.s3.amazonaws.com").respond(404)
 
     # --- Mock Azure Responses ---
     # Forbidden blob (valid account)
@@ -98,6 +99,11 @@ async def test_enumerate_cloud_services_none_found():
 async def test_enumerate_cloud_services_invalid_azure_name():
     """Tests that invalid Azure names (e.g., too short) are skipped."""
     # This test doesn't require mocking because the invalid name `ex`
-    # should be filtered out before any network call is made.
-    result = await enumerate_cloud_services(domain="ex.com")
-    assert not result["azure_blobs"]
+    # should be filtered out. However, permutations like 'exdev' are valid.
+    domain = "ex.com"
+    # Mock the valid permutation to avoid network calls
+    respx.head("https://exdev.blob.core.windows.net").respond(404)
+    respx.head("https://ex.blob.core.windows.net").respond(404)
+    with respx.mock:
+        result = await enumerate_cloud_services(domain=domain)
+        assert not result["azure_blobs"]

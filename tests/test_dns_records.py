@@ -9,8 +9,7 @@ from modules.analysis.dns_records import get_dns_records
 @pytest.fixture
 def mock_resolver():
     """Fixture to create a mock dns.resolver.Resolver."""
-    resolver = MagicMock(spec=dns.resolver.Resolver)  # type: ignore
-    # We use AsyncMock for `resolve` because it's called via asyncio.to_thread
+    resolver = MagicMock(spec=dns.resolver.Resolver)
     resolver.resolve = AsyncMock()
     return resolver
 
@@ -46,7 +45,7 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
     # Verify the result
     assert "A" in result
     assert len(result["A"]) == 1
-    assert result["A"][0]["value"].to_text() == "1.2.3.4"
+    assert result["A"][0]["value"] == "1.2.3.4"
 
 
 @pytest.mark.asyncio
@@ -56,7 +55,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
     Test get_dns_records when a NoAnswer exception is raised.
     """
     # Simulate a NoAnswer exception
-    mock_resolver.resolve.side_effect = dns.resolver.NoAnswer("No A records found.")
+    mock_resolver.resolve.side_effect = dns.resolver.NoAnswer
 
     result = await get_dns_records(
         "example.com", mock_resolver, verbose=True, record_types=["A"]
@@ -78,7 +77,7 @@ async def test_get_dns_records_timeout(mock_format, mock_resolver):
     Test get_dns_records when a Timeout exception is raised.
     """
     # Simulate a Timeout exception
-    mock_resolver.resolve.side_effect = dns.exception.Timeout("Query timed out.")
+    mock_resolver.resolve.side_effect = dns.exception.Timeout
 
     result = await get_dns_records(
         "example.com", mock_resolver, verbose=False, record_types=["MX"]
