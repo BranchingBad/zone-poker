@@ -69,7 +69,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
 
     # Verify the error message was printed to the console
     captured = capsys.readouterr()
-    assert "Error querying A for example.com: No A records found." in captured.err
+    assert "Error querying A for example.com: No A records found." in captured.out
 
 
 @pytest.mark.asyncio

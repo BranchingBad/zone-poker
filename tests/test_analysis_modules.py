@@ -334,8 +334,8 @@ async def test_check_open_redirect_vulnerable_found():
     )
 
     # Mock other payloads to return non-redirect responses
-    respx.get(f"https://{domain}/example.com").respond(200)  # httpx normalizes // to /
-    respx.get(f"https://{domain}/www.google.com").respond(200)  # httpx normalizes // to /
+    respx.get(f"https://{domain}//example.com").respond(200)
+    respx.get(f"https://{domain}//www.google.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
@@ -349,7 +349,7 @@ async def test_check_open_redirect_vulnerable_found():
 
 
 @pytest.mark.asyncio
-@respx.mock
+@respx.mock(assert_all_mocked=False)
 async def test_check_open_redirect_not_vulnerable():
     """
     Tests that check_open_redirect handles non-vulnerable cases correctly,

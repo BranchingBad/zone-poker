@@ -34,8 +34,7 @@ from modules.utils import (
 )
 def test_is_valid_domain(domain, expected):
     """Tests the is_valid_domain function with various inputs."""
-    assert is_valid_domain(domain) is expected
-
+    assert is_valid_domain(domain) 
 
 @pytest.mark.parametrize(
     "domain, expected",

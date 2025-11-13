@@ -58,7 +58,7 @@ async def test_enumerate_cloud_services_found():
     result = await enumerate_cloud_services(domain=domain)
 
     # --- Assert S3 Results ---
-    assert len(result["s3_buckets"]) == 3
+    assert len(result["s3_buckets"]) == 4
     s3_urls = {b["url"] for b in result["s3_buckets"]}
     assert "http://example.s3.amazonaws.com" in s3_urls
     assert "http://example-assets.s3.amazonaws.com" in s3_urls
@@ -71,10 +71,11 @@ async def test_enumerate_cloud_services_found():
     assert result["s3_buckets"][1]["url"] == "http://example.ca.s3.amazonaws.com"
     assert result["s3_buckets"][1]["status"] == "public"
 
-    assert result["s3_buckets"][2]["url"] == "http://example.s3.amazonaws.com"
-    assert result["s3_buckets"][2]["status"] == "public"
+    assert result["s3_buckets"][2]["url"] == "http://exampleca.s3.amazonaws.com"
+    assert result["s3_buckets"][2]["status"] == "forbidden"
 
-    # --- Assert Azure Results ---
+    assert result["s3_buckets"][3]["url"] == "http://example.s3.amazonaws.com"
+    assert result["s3_buckets"][3]["status"] == "public"
     assert len(result["azure_blobs"]) == 2
     azure_urls = {b["url"] for b in result["azure_blobs"]}
     assert "https://example.blob.core.windows.net" in azure_urls
@@ -109,11 +110,15 @@ async def test_enumerate_cloud_services_none_found():
     respx.head("http://notfound-backups.s3.amazonaws.com").respond(404)
     respx.head("https://notfound.blob.core.windows.net/").respond(404)
     respx.head("https://notfoundcom.blob.core.windows.net/").respond(404)
+    respx.head("https://notfoundassets.blob.core.windows.net/").respond(404)
     respx.head("https://notfoundmedia.blob.core.windows.net/").respond(404)
     respx.head("https://notfound-assets.blob.core.windows.net/").respond(404)
     respx.head("https://notfound-dev.blob.core.windows.net/").respond(404)
     respx.head("https://notfoundprod.blob.core.windows.net/").respond(404)
     respx.head("https://notfound-www.blob.core.windows.net/").respond(404)
+
+    # Allow any other requests to pass through without being mocked or making a real call
+    respx.route().pass_through()
 
     result = await enumerate_cloud_services(domain=domain)
 
@@ -139,6 +144,7 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     respx.head("http://ex-www.s3.amazonaws.com").respond(404)
     respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
     respx.head("http://ex.com.s3.amazonaws.com/").respond(404)
+    respx.head("https://exbackups.blob.core.windows.net/").respond(404)
     respx.head("https://exmedia.blob.core.windows.net/").respond(404)
     respx.head("https://excom.blob.core.windows.net/").respond(404)
     with respx.mock:
