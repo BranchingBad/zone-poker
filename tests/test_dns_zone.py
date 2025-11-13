@@ -72,10 +72,10 @@ async def test_axfr_refused(mock_resolver, mock_records):
         mock_to_thread.side_effect = [
             create_mock_answer(["1.1.1.1"]),
             create_mock_answer([]),
-            do_xfr_refused,  # ns1 results
+            AsyncMock(side_effect=dns.exception.FormError("Refused")),  # ns1 results
             create_mock_answer(["2.2.2.2"]),
             create_mock_answer([]),
-            do_xfr_refused,  # ns2 results
+            AsyncMock(side_effect=dns.exception.FormError("Refused")),  # ns2 results
         ]
         results = await attempt_axfr(
             domain, mock_resolver, 5, False, records_info=mock_records
@@ -104,10 +104,10 @@ async def test_axfr_timeout(mock_resolver, mock_records):
         mock_to_thread.side_effect = [
             create_mock_answer(["1.1.1.1"]),
             create_mock_answer([]),
-            do_xfr_timeout,  # ns1 results
+            AsyncMock(side_effect=dns.exception.Timeout()),  # ns1 results
             create_mock_answer(["2.2.2.2"]),
             create_mock_answer([]),
-            do_xfr_timeout,  # ns2 results
+            AsyncMock(side_effect=dns.exception.Timeout()),  # ns2 results
         ]
         results = await attempt_axfr(
             domain, mock_resolver, 1, False, records_info=mock_records

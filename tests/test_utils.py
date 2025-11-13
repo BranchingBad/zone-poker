@@ -17,7 +17,7 @@ from modules.utils import (
     [
         ("example.com", True),
         ("sub.example.co.uk", True),
-        ("a-b.c", True),
+        ("a-b.c", False),  # .c is not a widely recognized TLD by default tldextract
         ("-example.com", False),
         ("example.com-", False),
         ("example..com", False),  # Double dot

@@ -145,17 +145,29 @@ def is_valid_domain(domain: str) -> bool:
     Check if a given string is a syntactically valid domain name.
     This is a basic check and does not guarantee the domain exists or is resolvable.
     """
-    if not isinstance(domain, str):
+    if not isinstance(domain, str) or not domain:
         return False
 
-    # Use tldextract for robust parsing. A valid domain must have a domain part
-    # and a known TLD/suffix.
+    # A domain can end with a dot (FQDN)
+    if domain.endswith("."):
+        domain = domain[:-1]
+
+    # Overall length check
+    if len(domain) > 253:
+        return False
+
+    # Use tldextract for robust parsing
     extracted = tldextract.extract(domain)
 
-    # Check if the suffix is in the known list of TLDs.
-    # The `is_private` check handles internal domains like 'localhost'.
-    if not extracted.suffix or extracted.is_private:
+    # A valid domain must have a domain part and a known TLD/suffix.
+    # It must not be a private/internal TLD.
+    if not extracted.domain or not extracted.suffix or extracted.is_private:
         return False
 
-    # A valid domain must have at least the domain and suffix parts.
-    return bool(extracted.domain and extracted.suffix)
+    # Check each part (label) of the domain
+    labels = (extracted.subdomain + "." + extracted.domain).strip(".").split(".")
+    for label in labels:
+        if not (0 < len(label) <= 63) or label.startswith("-") or label.endswith("-"):
+            return False
+
+    return True

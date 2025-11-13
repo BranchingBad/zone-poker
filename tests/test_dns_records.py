@@ -26,7 +26,7 @@ def create_mock_answer(records, ttl=300, name="example.com"):
 @pytest.mark.asyncio
 @patch(
     "modules.analysis.dns_records._format_rdata",
-    side_effect=lambda rtype, rdata, ttl, name: {"value": rdata},
+    side_effect=lambda rtype, rdata, ttl, name: {"value": rdata.to_text()},
 )
 async def test_get_dns_records_success(mock_format, mock_resolver):
     """
@@ -69,7 +69,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
 
     # Verify the error message was printed to the console
     captured = capsys.readouterr()
-    assert "Error querying A for example.com: No A records found." in captured.out
+    assert "Error querying A for example.com: No A records found." in captured.err
 
 
 @pytest.mark.asyncio
