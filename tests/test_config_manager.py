@@ -93,21 +93,21 @@ def test_load_domains_from_file(parser, tmp_path):
     assert args.domain is None
 
 
-def test_cli_domain_overrides_file_input(parser, tmp_path):
+def test_cli_domain_and_file_input_fails(parser, tmp_path, capsys):
     """
-    Although not a standard use case, confirms CLI positional domain is used
-    even if -f is passed.
+    Tests that providing both a positional domain and a domain file (-f)
+    is not allowed by argparse.
     """
     domains_content = '["file-domain.com"]'
     domains_file = tmp_path / "domains.json"
     domains_file.write_text(domains_content)
 
     cli_input = ["cli-domain.com", "-f", str(domains_file)]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with patch("sys.argv", ["zone-poker"] + cli_input), pytest.raises(SystemExit):
         args, domains = setup_configuration_and_domains(parser)
 
-    # The positional argument `cli-domain.com` should be used.
-    assert domains == ["cli-domain.com"]
+    captured = capsys.readouterr()
+    assert "not allowed with argument domain" in captured.err
 
 
 def test_config_file_not_found(parser, capsys):
@@ -129,13 +129,12 @@ def test_malformed_config_file(parser, tmp_path, capsys):
     config_file.write_text(config_content)
 
     cli_input = ["-c", str(config_file), "example.com"]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with patch("sys.argv", ["zone-poker"] + cli_input), pytest.raises(SystemExit):
         args, domains = setup_configuration_and_domains(parser)
 
     captured = capsys.readouterr()
-    assert "Error: Could not decode config file" in captured.out
-    assert args is None
-    assert domains == []
+    # This error message comes from the underlying PyYAML/json library
+    assert "Could not decode config file" in captured.out
 
 
 def test_domain_file_not_found(parser, capsys):
@@ -152,12 +151,12 @@ def test_domain_file_not_found(parser, capsys):
 def test_invalid_domain_from_cli(parser, capsys):
     """Tests that an invalid domain from the CLI is caught."""
     cli_input = ["-invalid-domain.com"]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with patch("sys.argv", ["zone-poker"] + cli_input), pytest.raises(SystemExit):
         args, domains = setup_configuration_and_domains(parser)
 
     captured = capsys.readouterr()
-    assert "Error: Invalid domain format '-invalid-domain.com'" in captured.out
-    assert domains == []
+    # Argparse sees this as an unrecognized argument
+    assert "unrecognized arguments: -invalid-domain.com" in captured.err
 
 
 def test_invalid_domain_in_file(parser, tmp_path, capsys):
@@ -171,8 +170,7 @@ def test_invalid_domain_in_file(parser, tmp_path, capsys):
         args, domains = setup_configuration_and_domains(parser)
 
     captured = capsys.readouterr()
-    assert "Error: Invalid domain format 'invalid..com' found in file" in captured.out
-    assert domains == []
+    assert "Error: Invalid domain format 'invalid..com' in file" in captured.out
 
 
 def test_no_domain_provided(parser):

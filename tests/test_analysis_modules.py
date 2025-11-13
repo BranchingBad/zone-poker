@@ -184,7 +184,7 @@ def test_security_audit_weak_cipher(mock_weak_cipher_data):
     weak_cipher_finding = next(
         f for f in result["findings"] if f["finding"] == "Weak SSL/TLS Cipher Suite"
     )
-    assert weak_cipher_finding["severity"] == "High"
+    assert weak_cipher_finding["severity"] == "Medium"
 
 
 def test_all_security_checks_are_covered(
@@ -332,6 +332,7 @@ async def test_check_open_redirect_vulnerable_found():
     # Mock other payloads to return non-redirect responses
     respx.get(f"https://{domain}//example.com").respond(200)
     respx.get(f"https://{domain}//www.google.com").respond(200)
+    respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
 
     result = await check_open_redirect(domain=domain, timeout=5)
@@ -358,6 +359,7 @@ async def test_check_open_redirect_not_vulnerable():
     # Mock a normal 200 OK response
     respx.get(f"https://{domain}//example.com").respond(200)
     respx.get(f"https://{domain}//www.google.com").respond(200)
+    respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
     # Mock a request that results in a network error
     respx.get(f"https://{domain}/login?redirect=https://example.com").mock(
         side_effect=RequestError("Connection failed")

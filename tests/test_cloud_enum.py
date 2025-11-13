@@ -30,6 +30,7 @@ async def test_enumerate_cloud_services_found():
     # Bucket from the domain without dots (e.g., exampleca)
     respx.head("http://exampleca.s3.amazonaws.com").respond(403)
     respx.head("http://example-dev.s3.amazonaws.com").respond(404)
+    respx.head("http://example-media.s3.amazonaws.com").respond(404)
 
     # --- Mock Azure Responses ---
     # Forbidden blob (valid account)
@@ -88,6 +89,13 @@ async def test_enumerate_cloud_services_none_found():
     # Mock all potential permutations to return 404
     # respx by default returns 404 for any unmatched routes, so we don't need
     # to explicitly mock them all.
+    respx.head("http://notfound.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound-assets.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound-dev.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound-media.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound-prod.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound.com.s3.amazonaws.com").respond(404)
+    respx.head("http://notfoundcom.s3.amazonaws.com").respond(404)
 
     result = await enumerate_cloud_services(domain=domain)
 
@@ -104,6 +112,12 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     # Mock the valid permutation to avoid network calls
     respx.head("https://exdev.blob.core.windows.net").respond(404)
     respx.head("https://ex.blob.core.windows.net").respond(404)
+    respx.head("http://ex.s3.amazonaws.com").respond(404)
+    respx.head("http://ex-assets.s3.amazonaws.com").respond(404)
+    respx.head("http://ex-dev.s3.amazonaws.com").respond(404)
+    respx.head("http://ex-media.s3.amazonaws.com").respond(404)
+    respx.head("http://ex-prod.s3.amazonaws.com").respond(404)
+    respx.head("http://excom.s3.amazonaws.com").respond(404)
     with respx.mock:
         result = await enumerate_cloud_services(domain=domain)
         assert not result["azure_blobs"]

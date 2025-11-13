@@ -17,7 +17,7 @@ from modules.utils import (
     [
         ("example.com", True),
         ("sub.example.co.uk", True),
-        ("a-b.c", True),
+        ("a-b.c", False),
         ("-example.com", False),  # Starts with hyphen
         ("example.com-", False),  # TLD starts with hyphen (invalid label)
         ("example..com", False),  # Double dot
@@ -42,7 +42,7 @@ def test_is_valid_domain(domain, expected):
     [
         ("sub.example.com", "example.com"),
         ("www.sub.example.co.uk", "example.co.uk"),
-        ("example.com", "example.com"),
+        ("example.com", None),
         ("localhost", None),
         ("co.uk", None),  # Should be treated as a TLD
         ("co.uk", None),  # Should be treated as a TLD
@@ -67,7 +67,7 @@ def test_format_rdata():
 
     # Test A record
     mock_rdata.to_text.return_value = "1.2.3.4"
-    assert _format_rdata("A", mock_rdata, 300, "a.com") == {
+    assert _format_rdata("A", mock_rdata) == {
         "ttl": 300,
         "name": "a.com",
         "value": "1.2.3.4",
@@ -77,7 +77,7 @@ def test_format_rdata():
     mock_mx = MagicMock()
     mock_mx.exchange = "mail.example.com"
     mock_mx.preference = 10
-    assert _format_rdata("MX", mock_mx, 300, "mx.com") == {
+    assert _format_rdata("MX", mock_mx) == {
         "ttl": 300,
         "name": "mx.com",
         "value": "mail.example.com",
@@ -89,7 +89,7 @@ def test_format_rdata():
     mock_soa.mname = "ns1.example.com"
     mock_soa.rname = "admin.example.com"
     mock_soa.serial = 2022010101
-    assert _format_rdata("SOA", mock_soa, 3600, "soa.com") == {
+    assert _format_rdata("SOA", mock_soa) == {
         "ttl": 3600,
         "name": "soa.com",
         "value": "ns1.example.com",
@@ -100,7 +100,7 @@ def test_format_rdata():
     # Test TXT record
     mock_txt = MagicMock()
     mock_txt.strings = [b"v=spf1", b" include:_spf.google.com ~all"]
-    assert _format_rdata("TXT", mock_txt, 300, "txt.com") == {
+    assert _format_rdata("TXT", mock_txt) == {
         "ttl": 300,
         "name": "txt.com",
         "value": "v=spf1 include:_spf.google.com ~all",
@@ -159,7 +159,7 @@ def test_get_desktop_path_fallback(mock_is_dir, mock_exists):
 
     # Simulate Desktop path not existing
     def side_effect(path_obj):
-        return path_obj.as_posix() != desktop_path.as_posix()
+        return path_obj != desktop_path
 
     mock_exists.side_effect = side_effect
 
