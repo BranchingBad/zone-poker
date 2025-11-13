@@ -1,0 +1,68 @@
+# Name of your GitHub Actions workflow
+name: Python CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  # Triggers the workflow on pull request events for the "main" branch
+  pull_request:
+    branches: [ "main" ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This job is named "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    
+    # Define a strategy for running the job with different Python versions
+    strategy:
+      matrix:
+        # We'll run this on Python 3.11 (from your logs) and 3.12 (as a good practice)
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    # 1. Checks out your repository code so the workflow can access it
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    # 2. Sets up the specified Python version from the matrix
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # 3. Caches pip dependencies to speed up future builds
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        # This is the path to the cache directory
+        path: ~/.cache/pip
+        
+        #
+        # --- THIS IS THE FIX ---
+        # We added '-v2-' to the key.
+        # This makes the key unique and forces GitHub Actions
+        # to create a NEW cache, ignoring the old, broken one.
+        #
+        key: ${{ runner.os }}-${{ matrix.python-version }}-pip-v2-${{ hashFiles('**/pyproject.toml') }}
+        
+        # This provides fallback keys if a new cache isn't found
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.python-version }}-pip-v2-
+          ${{ runner.os }}-${{ matrix.python-version }}-pip-
+
+    # 4. Installs your project dependencies
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[dev]
+
+    # 5. (Optional but recommended) Run your tests or linter
+    # This is why you installed the [dev] dependencies.
+    - name: Run tests (e.g., pytest)
+      run: |
+        # Replace this with your actual test or linting command
+        pytest
