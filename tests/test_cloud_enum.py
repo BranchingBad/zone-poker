@@ -145,6 +145,7 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
     respx.head("http://ex.com.s3.amazonaws.com/").respond(404)
     respx.head("https://exbackups.blob.core.windows.net/").respond(404)
+    respx.head("https://exwww.blob.core.windows.net/").respond(404)
     respx.head("https://exprod.blob.core.windows.net/").respond(404)
     respx.head("https://exmedia.blob.core.windows.net/").respond(404)
     respx.head("https://excom.blob.core.windows.net/").respond(404)
