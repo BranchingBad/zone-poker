@@ -47,7 +47,7 @@ zone-poker = "zone_poker:main_wrapper"
 dev = [
     "pytest~=9.0",
     "flake8~=7.0",
-    "black~=24.11",
+    "black~=24.10",
     "pre-commit~=4.4",
     "pytest-cov==7.0.0",
     "pytest-asyncio~=1.3",
