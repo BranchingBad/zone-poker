@@ -212,7 +212,6 @@ zone-poker -c config.yaml example.com
 ## Output Formats
 
 Zone-Poker supports multiple output formats for both console display and file exports.
-- **Console Output**: Use the `--output` flag to print results to the console in `table` (default), `json`, `csv`, or `xml` format.
 - **Console Output**: Use the `--output` flag to print results to the console in `table` (default), `json`, `csv`, `xml`, `html`, or `txt` format.
 - **File Exports**:
   - Use the `--export` flag to save `json` and `txt` reports to your Desktop or a directory specified with `-O`.
