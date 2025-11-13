@@ -99,7 +99,7 @@ Examples:
     )
     output_group.add_argument(
         "--output",
-        choices=["table", "json", "csv", "xml", "html"],
+        choices=["table", "json", "csv", "xml", "html", "txt"],
         default="table",
         help=(
             "Console output format. 'table' for human-readable, others for "

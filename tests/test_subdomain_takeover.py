@@ -3,6 +3,7 @@ import respx
 import json
 from httpx import RequestError
 from unittest.mock import patch, mock_open
+import importlib.resources
 
 from modules.analysis.subdomain_takeover import (
     check_subdomain_takeover,
@@ -157,3 +158,27 @@ async def test_fingerprint_caching():
         second_call_result = _load_fingerprints()
         m.assert_called_once()  # Still only called once
         assert second_call_result == MOCK_FINGERPRINTS
+
+
+def test_fingerprints_file_is_packaged():
+    """
+    Tests that the takeover_fingerprints.json file is correctly included
+    in the package data by trying to read it from the installed package resources.
+    This test is particularly useful when run against an installed wheel.
+    """
+    try:
+        # importlib.resources.files() is the modern way to access package data
+        # and will correctly find the file in the installed package.
+        # This will raise an exception if the file is not found.
+        with importlib.resources.files("modules.analysis").joinpath(
+            "takeover_fingerprints.json"
+        ).open("r") as f:
+            data = json.load(f)
+            # A simple assertion to ensure the file content is as expected
+            assert "GitHub Pages" in data
+            assert "Heroku" in data
+    except FileNotFoundError:
+        pytest.fail(
+            "takeover_fingerprints.json was not found. "
+            "Check that it is included in pyproject.toml's [tool.setuptools.package-data]."
+        )

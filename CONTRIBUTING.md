@@ -77,6 +77,29 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     -   For other protocols like DNS, use appropriate mocking techniques (e.g., `unittest.mock.patch`) to simulate server responses.
     -   Tests should cover both successful responses and potential error cases (e.g., API errors, timeouts, non-existent domains).
 
+-   **Validating the Package Build Locally**: Before submitting a pull request, especially if you've made changes to `pyproject.toml` or file structures, it's a good practice to verify that the package builds correctly and includes all necessary files. This process mimics the `validate-package` job in our CI pipeline.
+    1.  **Build the package:**
+        ```bash
+        # Ensure you have the 'build' package installed (pip install build)
+        python -m build
+        ```
+        This will create a `dist` directory with a `.whl` file.
+
+    2.  **Create a separate test environment:**
+        ```bash
+        # Create a new virtual environment outside your project directory
+        python3 -m venv /tmp/zone-poker-test-env
+        source /tmp/zone-poker-test-env/bin/activate
+        ```
+
+    3.  **Install the built package:**
+        ```bash
+        # Install the wheel you just built along with dev dependencies
+        pip install "dist/zone_poker-*.whl[dev]"
+        ```
+
+    4.  **Run the tests from the new environment.** If all tests pass, it confirms that all modules and data files (like `takeover_fingerprints.json`) were correctly included in the package.
+
 -   **Separation of Concerns**: The project maintains a strict separation between data gathering (analysis) and data presentation (display/output).
     -   **Analysis Modules (`modules/analysis/`)**: These modules should *only* contain the logic for gathering and processing data. They must not contain any `print()` statements or `rich` components. Their sole responsibility is to perform a task and return a data dictionary.
     -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing console output using the `rich` library.
@@ -101,9 +124,43 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     6.  **Unit Tests**: Write unit tests for your new analysis function in the `tests/` directory.
     7.  **Documentation**: Update the `README.md` to include the new module's command-line flag and description in the "Analysis Modules" table.
 
+## Release Process (For Maintainers)
+
+This project uses a CI/CD pipeline to automate releases to PyPI. The process is triggered by pushing a new version tag to the `main` branch.
+
+1.  **Ensure `main` is Ready**: Make sure the `main` branch is stable, all tests are passing, and it contains all the changes you want to include in the release.
+
+2.  **Update the Version**: Bump the version number in `pyproject.toml`. Follow Semantic Versioning.
+    ```toml
+    # pyproject.toml
+    [project]
+    version = "1.0.8" # <-- Update this
+    ```
+
+3.  **Commit the Version Change**: Commit the change to `pyproject.toml` directly to the `main` branch.
+    ```bash
+    git add pyproject.toml
+    git commit -m "chore(release): Bump version to 1.0.8"
+    git push origin main
+    ```
+
+4.  **Create and Push a Git Tag**: Create a git tag that matches the version in `pyproject.toml`, prefixed with a `v`.
+    ```bash
+    git tag v1.0.8
+    git push origin v1.0.8
+    ```
+
+5.  **Verify the Release**: Pushing the tag will trigger the `publish-to-pypi` job in the CI workflow. You can monitor its progress in the "Actions" tab on GitHub. Once it completes successfully, the new version will be live on PyPI.
+
 ## Code of Conduct
 
 All contributors are expected to adhere to our Code of Conduct. Please be respectful and constructive in all interactions.
+
+-   **Adding a New Output Format**: To add a new console or file output format (e.g., `yaml`):
+    1.  **Create a Formatter**: In `modules/output/`, create a new file (e.g., `yaml.py`) with a function like `format_yaml(data: dict) -> str` that converts the data dictionary into a string.
+    2.  **Update the Handler**: In `modules/export.py`, import your new function and add a case for it in the `handle_output` function.
+    3.  **Update the Parser**: In `modules/parser_setup.py`, add your new format's name to the `choices` list for the `--output` argument.
+    4.  **Update Documentation**: Add the new format to the `README.md` in the "Output Formats" section.
 
 ---
 *This document is actively maintained. If you find any instructions to be outdated, please open an issue or a pull request.*

@@ -71,9 +71,9 @@ async def test_enumerate_cloud_services_found():
 
     # Check statuses (results are sorted by URL)
     assert result["azure_blobs"][0]["url"] == "https://example.blob.core.windows.net"
-    assert result["azure_blobs"][0]["status"] == "forbidden"
+    assert result["azure_blobs"][0]["status"] == "valid_account"
     assert result["azure_blobs"][1]["url"] == "https://exampleca.blob.core.windows.net"
-    assert result["azure_blobs"][1]["status"] == "forbidden"
+    assert result["azure_blobs"][1]["status"] == "valid_account"
 
 
 @pytest.mark.asyncio

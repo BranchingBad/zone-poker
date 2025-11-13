@@ -112,7 +112,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--filename-template` | Template for report filenames. Use `{domain}` and `{timestamp}`. |
 | `-O`, `--output-dir` | Directory to save exported reports. |
 | `--html-file` | Path to save the HTML report directly to a file. |
-| `--output` | Console output format. Choices: `table`, `json`, `csv`, `xml`, `html`. |
+| `--output` | Console output format. Choices: `table`, `json`, `csv`, `xml`, `html`, `txt`. |
 | `-q`, `--quiet` | Show minimal console output (suppresses tables and headers). |
 | `-v`, `--verbose` | Show detailed error logs during the scan. |
 | `--log-file` | Path to a file to save detailed, verbose logs. |
@@ -128,7 +128,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `-n`, `--nsinfo` | Analyze nameserver information and check for DNSSEC. |
 | `-p`, `--propagation` | Check DNS propagation across public resolvers. |
 | `-s`, `--security` | Run a comprehensive audit for security misconfigurations. |
-| `-t`, `--tech` | Detect web technologies, CMS, and security headers. |
+| `-t`, `--tech` | Detect web server software, frameworks, and other technologies. |
 | `-o`, `--osint` | Enrich data with passive DNS and other OSINT sources. |
 | `--ssl` | Analyze the SSL/TLS certificate. |
 | `--smtp` | Analyze mail servers (banner, STARTTLS). |
@@ -141,10 +141,71 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--headers` | Perform an in-depth analysis of HTTP security headers. |
 | `--ports` | Scan for common open TCP ports on discovered IPs. |
 | `--takeover` | Check for potential subdomain takeovers. |
-| `--cloud` | Enumerates potential cloud storage (S3, Azure Blobs) using comprehensive domain permutations. |
+| `--cloud` | Enumerate potential cloud storage (S3, Azure Blobs) using comprehensive domain permutations. |
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
 | `--security-txt` | Check for a `security.txt` file and parse its contents. |
 | `--redirect` | Check for common open redirect vulnerabilities. |
+
+---
+
+## Configuration File
+
+You can use a YAML or JSON configuration file to manage your scan settings. This is especially useful for setting up complex or repeated scans, managing API keys securely, and avoiding long command-line strings.
+
+### Configuration Priority
+
+The settings are applied in the following order of precedence, with later settings overriding earlier ones:
+1.  **Tool Defaults**: The built-in default values.
+2.  **Configuration File**: Values loaded from your `config.yaml` or `config.json` file.
+3.  **Command-Line Arguments**: Any flags you provide when running the command will always have the final say.
+
+For example, if your config file has `timeout: 10` but you run `zone-poker example.com --timeout 5`, the timeout used for the scan will be `5`.
+
+### Example `config.yaml`
+
+Here is a comprehensive example demonstrating how to set various options. The keys in the file should match the long-form command-line arguments, but with underscores instead of hyphens (e.g., `--output-dir` becomes `output_dir`).
+
+```yaml
+# Zone-Poker Sample Configuration File
+
+# --- Input ---
+# Specify a single domain or a file containing a list of domains.
+# These are overridden by a domain or -f/--file argument on the command line.
+# domain: "example.com"
+# file: "domains.txt"
+
+# --- API Keys ---
+# Store API keys here to be used by relevant modules.
+api_keys:
+  abuseipdb: "YOUR_ABUSEIPDB_API_KEY"
+  otx: "YOUR_ALIENVAULT_OTX_API_KEY"
+
+# --- Scan Control ---
+timeout: 10
+retries: 1
+
+# --- Output Control ---
+export: true
+output_dir: "~/Desktop/Zone-Poker-Reports"
+filename_template: "{domain}_{timestamp}"
+output: "table" # Console output format
+verbose: false
+
+# --- Analysis Modules ---
+# Enable specific modules. This is equivalent to using flags like --whois, --ssl, etc.
+all: false # Set to true to run all modules
+
+records: true
+whois: true
+mail: true
+ssl: true
+security: true
+```
+
+**Usage:**
+```bash
+zone-poker -c config.yaml example.com
+```
 
 ---
 
@@ -152,6 +213,7 @@ zone-poker -f domains.txt --all --output html > report.html
 
 Zone-Poker supports multiple output formats for both console display and file exports.
 - **Console Output**: Use the `--output` flag to print results to the console in `table` (default), `json`, `csv`, or `xml` format.
+- **Console Output**: Use the `--output` flag to print results to the console in `table` (default), `json`, `csv`, `xml`, `html`, or `txt` format.
 - **File Exports**:
   - Use the `--export` flag to save `json` and `txt` reports to your Desktop or a directory specified with `-O`.
   - Use the `--html-file` argument to save a comprehensive, self-contained HTML report to a specific file path.
@@ -226,4 +288,4 @@ Contributions are welcome! Whether it's reporting a bug, suggesting a new featur
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the Apache License 2.0. See the LICENSE file for details.
