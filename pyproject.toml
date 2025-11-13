@@ -61,5 +61,6 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."] # Look for packages in the project root
 
+
 [tool.setuptools.package-data]
 "modules.analysis" = ["*.json"]

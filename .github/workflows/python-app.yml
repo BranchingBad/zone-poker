@@ -130,7 +130,7 @@ jobs:
   build-and-push-docker:
     needs: lint-and-test
     runs-on: ubuntu-latest
-    
+
     # [IMPROVEMENT] Grant write permissions for packages (GHCR)
     permissions:
       packages: write

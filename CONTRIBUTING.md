@@ -40,7 +40,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     # Then, install the dependencies from the lock file and the project in editable mode.
     pip install -r requirements.txt
     pip install -e .
-    ```
+    ``` 
  
 3.  **(Optional but Recommended) Set up pre-commit hooks.** This will automatically run linters and formatters on your code before you commit, ensuring it meets our style guidelines.
     ```bash
