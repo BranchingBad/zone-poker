@@ -15,8 +15,10 @@ COPY pyproject.toml .
 # Copy the rest of the application source code.
 COPY . .
 
-# Build the wheel. This will install dependencies in an isolated environment.
-RUN python -m build --wheel --outdir /wheels
+# Use 'pip wheel' to build the wheel for the current project AND download
+# all of its dependencies as wheels into the /wheels directory. This ensures
+# the next stage has all packages available for offline installation.
+RUN pip wheel . --wheel-dir /wheels
 
 
 # --- Stage 2: Runtime ---
