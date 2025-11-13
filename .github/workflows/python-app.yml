@@ -205,7 +205,10 @@ jobs:
 
       - name: Push image to GHCR
         if: github.event_name != 'pull_request'
-        run: docker push --all-tags ${{ steps.meta.outputs.images }}
+        env:
+          # Set the lowercased image name from the metadata step as an environment variable
+          IMAGE_NAME: ${{ steps.meta.outputs.images }}
+        run: docker push --all-tags $IMAGE_NAME
 
   publish-to-pypi:
     name: Publish to PyPI
