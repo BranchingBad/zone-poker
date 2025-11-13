@@ -56,32 +56,13 @@ dev = [
     "pip-tools~=7.4"
 ]
 
-# --- FIX STARTS HERE ---
 [tool.setuptools]
 # Explicitly include the top-level script module
 py-modules = ["zone_poker"]
+package-data = { "modules.analysis" = ["*.json"] }
 
 [tool.setuptools.packages.find]
 # Tell setuptools to find the 'modules' package and all its subpackages
 include = ["modules*"]
 # It's also good practice to explicitly exclude tests
 exclude = ["tests*"]
-# --- FIX ENDS HERE ---
-
-[tool.setuptools.package-data]
-"modules.analysis" = ["*.json"]
-
-# --- FIX STARTS HERE ---
-[tool.setuptools]
-# Explicitly include the top-level script module
-py-modules = ["zone_poker"]
-
-[tool.setuptools.packages.find]
-# Tell setuptools to find the 'modules' package and all its subpackages
-include = ["modules*"]
-# It's also good practice to explicitly exclude tests
-exclude = ["tests*"]
-# --- FIX ENDS HERE ---
-
-[tool.setuptools.package-data]
-"modules.analysis" = ["*.json"]
