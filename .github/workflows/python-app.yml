@@ -196,7 +196,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.20.0
         with:
           # Scan the image using the specific 'ci-scan' tag for predictability
-          image-ref: ghcr.io/${{ github.repository_owner }}/zone-poker:ci-scan
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[1] }}
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
