@@ -319,7 +319,7 @@ async def test_whois_lookup_pywhois_error():
 
 
 @pytest.mark.asyncio
-@respx.mock
+@respx.mock(assert_all_mocked=False)
 async def test_check_open_redirect_vulnerable_found():
     """
     Tests that check_open_redirect correctly identifies a vulnerable URL.
@@ -334,8 +334,8 @@ async def test_check_open_redirect_vulnerable_found():
     )
 
     # Mock other payloads to return non-redirect responses
-    respx.get(f"https://{domain}//example.com").respond(200)
-    respx.get(f"https://{domain}//www.google.com").respond(200)
+    respx.get(f"https://{domain}/example.com").respond(200)  # httpx normalizes // to /
+    respx.get(f"https://{domain}/www.google.com").respond(200)  # httpx normalizes // to /
     respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
@@ -349,27 +349,23 @@ async def test_check_open_redirect_vulnerable_found():
 
 
 @pytest.mark.asyncio
-@respx.mock(assert_all_mocked=False)
+@respx.mock
 async def test_check_open_redirect_not_vulnerable():
     """
     Tests that check_open_redirect handles non-vulnerable cases correctly,
     including safe redirects and network errors.
     """
     domain = "safe-site.com"
-
-    # Mock a redirect to a safe, internal path
-    respx.get(f"https://{domain}/?next=https://example.com").respond(
-        302, headers={"Location": "/dashboard"}
-    )
-    # Mock a normal 200 OK response
-    respx.get(f"https://{domain}//example.com").respond(200)
-    respx.get(f"https://{domain}//www.google.com").respond(200)
-    respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
-    respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
-    # Mock a request that results in a network error
-    respx.get(f"https://{domain}/login?redirect=https://example.com").mock(
-        side_effect=RequestError("Connection failed")
-    )
+    # Define outcomes for various non-vulnerable scenarios
+    outcomes = {
+        # Safe internal redirect
+        "/?next=https://example.com": {"status": 302, "location": "/dashboard"},
+        # Normal 200 OK
+        "//example.com": 200,
+        # Network error
+        "/login?redirect=https://example.com": RequestError("Connection failed"),
+    }
+    setup_open_redirect_mocks(domain, outcomes)
 
     result = await check_open_redirect(domain=domain, timeout=5)
 

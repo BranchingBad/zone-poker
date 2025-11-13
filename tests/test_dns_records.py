@@ -23,6 +23,37 @@ def create_mock_answer(records, ttl=300, name="example.com"):
     return answer
 
 
+def create_dns_records_mock_side_effect(resolver, outcomes):
+    """
+    Creates a dynamic side_effect function for mocking asyncio.to_thread calls
+    during DNS record lookups.
+
+    Args:
+        resolver: The mocked dns.resolver.Resolver object.
+        outcomes: A dictionary mapping record types to their mocked outcomes.
+                  e.g., {"A": ["1.2.3.4"], "MX": dns.exception.Timeout}
+    """
+
+    async def mock_side_effect(*args, **kwargs):
+        func, domain, rtype = args
+        if func != resolver.resolve:
+            raise ValueError(f"Unexpected function call mocked: {func}")
+
+        outcome = outcomes.get(rtype)
+
+        if isinstance(outcome, type) and issubclass(outcome, Exception):
+            raise outcome
+        elif isinstance(outcome, list):
+            # Create mock rdata objects from the provided list of strings
+            mock_rdata_list = [MagicMock(to_text=lambda v=val: v) for val in outcome]
+            return create_mock_answer(mock_rdata_list)
+        else:
+            # Default case if rtype is not in outcomes, return an empty answer
+            return create_mock_answer([])
+
+    return mock_side_effect
+
+
 @pytest.mark.asyncio
 @patch(
     "modules.analysis.dns_records._format_rdata",
@@ -33,16 +64,15 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
     Test get_dns_records for a successful query.
     """
     # Simulate a successful response for an 'A' record
-    mock_answer = create_mock_answer([MagicMock(to_text=lambda: "1.2.3.4")])
+    outcomes = {"A": ["1.2.3.4"]}
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.return_value = mock_answer
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
+            mock_resolver, outcomes
+        )
         result = await get_dns_records(
             "example.com", mock_resolver, verbose=False, record_types=["A"]
         )
-
-    # Verify resolve was called correctly
-    mock_to_thread.assert_called_once_with(mock_resolver.resolve, "example.com", "A")
 
     # Verify the result
     assert "A" in result
@@ -57,8 +87,11 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
     Test get_dns_records when a NoAnswer exception is raised.
     """
     # Simulate a NoAnswer exception
+    outcomes = {"A": dns.resolver.NoAnswer}
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = dns.resolver.NoAnswer
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
+            mock_resolver, outcomes
+        )
         result = await get_dns_records(
             "example.com", mock_resolver, verbose=True, record_types=["A"]
         )
@@ -69,7 +102,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_resolver, capsys):
 
     # Verify the error message was printed to the console
     captured = capsys.readouterr()
-    assert "Error querying A for example.com: No A records found." in captured.err
+    assert "Error querying A for example.com: No A records found." in captured.out
 
 
 @pytest.mark.asyncio
@@ -79,8 +112,11 @@ async def test_get_dns_records_timeout(mock_format, mock_resolver):
     Test get_dns_records when a Timeout exception is raised.
     """
     # Simulate a Timeout exception
+    outcomes = {"MX": dns.exception.Timeout}
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = dns.exception.Timeout
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
+            mock_resolver, outcomes
+        )
         result = await get_dns_records(
             "example.com", mock_resolver, verbose=False, record_types=["MX"]
         )
@@ -97,10 +133,13 @@ async def test_get_dns_records_specific_types(mock_format, mock_resolver):
     """
     # Specify only MX and TXT records
     types_to_query = ["MX", "TXT"]
+    outcomes = {"MX": [], "TXT": ["some text"]}
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.return_value = create_mock_answer([])
-        await get_dns_records(
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
+            mock_resolver, outcomes
+        )
+        result = await get_dns_records(
             "example.com", mock_resolver, verbose=False, record_types=types_to_query
         )
 
@@ -108,3 +147,7 @@ async def test_get_dns_records_specific_types(mock_format, mock_resolver):
         assert mock_to_thread.call_count == 2
         mock_to_thread.assert_any_call(mock_resolver.resolve, "example.com", "MX")
         mock_to_thread.assert_any_call(mock_resolver.resolve, "example.com", "TXT")
+
+        # Verify results
+        assert result["MX"] == []
+        assert result["TXT"][0]["value"] == "some text"

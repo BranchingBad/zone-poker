@@ -2,6 +2,7 @@
 """
 Unit tests for the Cloud Enumeration module in Zone-Poker.
 """
+import re
 import pytest
 import respx
 from httpx import RequestError
@@ -18,42 +19,23 @@ async def test_enumerate_cloud_services_found():
     """
     domain = "example.ca"
 
-    # --- Mock S3 Responses ---
-    # Public bucket
+    # Mock only the responses that should NOT be 404
     respx.head("http://example.s3.amazonaws.com").respond(200)
-    # Forbidden bucket
     respx.head("http://example-assets.s3.amazonaws.com").respond(403)
-    # Non-existent bucket (should be ignored)
-    respx.head("http://example-prod.s3.amazonaws.com").respond(404)
-    # Bucket from the domain with TLD (e.g., example.ca)
     respx.head("http://example.ca.s3.amazonaws.com").respond(200)
-    # Bucket from the domain without dots (e.g., exampleca)
     respx.head("http://exampleca.s3.amazonaws.com").respond(403)
-    respx.head("http://example-dev.s3.amazonaws.com").respond(404)
-    respx.head("http://example-media.s3.amazonaws.com").respond(404)
-    respx.head("http://example-www.s3.amazonaws.com").respond(404)
-    respx.head("http://example-backups.s3.amazonaws.com").respond(404)
-
-    # --- Mock Azure Responses ---
-    # Forbidden blob (valid account)
     respx.head("https://example.blob.core.windows.net").respond(400)
-    # Non-existent blob (should be ignored)
-    respx.head("https://exampleassets.blob.core.windows.net").respond(404)
-    # Blob from domain without dots
     respx.head("https://exampleca.blob.core.windows.net").respond(400)
-    # A permutation that results in a network error
     respx.head("https://exampledev.blob.core.windows.net").mock(
         side_effect=RequestError("Connection failed")
     )
-    respx.head("https://examplebackups.blob.core.windows.net/").respond(404)
-    # Add mocks for other permutations that are now being checked
-    respx.head("https://examplemedia.blob.core.windows.net/").respond(404)
-    respx.head("https://exampleprod.blob.core.windows.net/").respond(404)
-    respx.head("https://examplewww.blob.core.windows.net/").mock(
-        side_effect=RequestError("Connection failed")
-    )
 
-    # All other permutations will implicitly return 404 and be ignored.
+    # Add a catch-all for any other S3 or Azure URLs to return 404.
+    # This makes the test robust against changes in permutation logic.
+    s3_regex = re.compile(r"https?://.*\.s3\.amazonaws\.com.*")
+    azure_regex = re.compile(r"https?://.*\.blob\.core\.windows\.net.*")
+    respx.head(url=s3_regex).respond(404)
+    respx.head(url=azure_regex).respond(404)
 
     result = await enumerate_cloud_services(domain=domain)
 
@@ -96,29 +78,12 @@ async def test_enumerate_cloud_services_none_found():
     """
     domain = "notfound.com"
 
-    # Mock all potential permutations to return 404
-    # respx by default returns 404 for any unmatched routes, so we don't need
-    # to explicitly mock them all.
-    respx.head("http://notfound.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-assets.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-dev.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-media.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-prod.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound.com.s3.amazonaws.com").respond(404)
-    respx.head("http://notfoundcom.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-www.s3.amazonaws.com").respond(404)
-    respx.head("http://notfound-backups.s3.amazonaws.com").respond(404)
-    respx.head("https://notfound.blob.core.windows.net/").respond(404)
-    respx.head("https://notfoundcom.blob.core.windows.net/").respond(404)
-    respx.head("https://notfoundassets.blob.core.windows.net/").respond(404)
-    respx.head("https://notfoundmedia.blob.core.windows.net/").respond(404)
-    respx.head("https://notfound-assets.blob.core.windows.net/").respond(404)
-    respx.head("https://notfound-dev.blob.core.windows.net/").respond(404)
-    respx.head("https://notfoundprod.blob.core.windows.net/").respond(404)
-    respx.head("https://notfound-www.blob.core.windows.net/").respond(404)
-
-    # Allow any other requests to pass through without being mocked or making a real call
-    respx.route().pass_through()
+    # For this test, we expect everything to be a 404, so we can just use
+    # the catch-all routes.
+    s3_regex = re.compile(r"https?://.*\.s3\.amazonaws\.com.*")
+    azure_regex = re.compile(r"https?://.*\.blob\.core\.windows\.net.*")
+    respx.head(url=s3_regex).respond(404)
+    respx.head(url=azure_regex).respond(404)
 
     result = await enumerate_cloud_services(domain=domain)
 
@@ -127,29 +92,20 @@ async def test_enumerate_cloud_services_none_found():
 
 
 @pytest.mark.asyncio
+@respx.mock
 async def test_enumerate_cloud_services_invalid_azure_name():
     """Tests that invalid Azure names (e.g., too short) are skipped."""
     # This test doesn't require mocking because the invalid name `ex`
     # should be filtered out. However, permutations like 'exdev' are valid.
     domain = "ex.com"
-    # Mock the valid permutation to avoid network calls
-    respx.head("https://exdev.blob.core.windows.net").respond(404)
-    respx.head("https://ex.blob.core.windows.net").respond(404)
-    respx.head("http://ex.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-assets.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-dev.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-media.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-prod.s3.amazonaws.com").respond(404)
-    respx.head("http://excom.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-www.s3.amazonaws.com").respond(404)
-    respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
-    respx.head("http://ex.com.s3.amazonaws.com/").respond(404)
-    respx.head("https://exbackups.blob.core.windows.net/").respond(404)
-    respx.head("https://exassets.blob.core.windows.net/").respond(404)
-    respx.head("https://exwww.blob.core.windows.net/").respond(404)
-    respx.head("https://exprod.blob.core.windows.net/").respond(404)
-    respx.head("https://exmedia.blob.core.windows.net/").respond(404)
-    respx.head("https://excom.blob.core.windows.net/").respond(404)
-    with respx.mock:
-        result = await enumerate_cloud_services(domain=domain)
-        assert not result["azure_blobs"]
+
+    # We expect all valid permutations to be checked and return 404.
+    # The function under test should not even attempt to check invalid Azure
+    # names like "ex", so we don't need to mock them.
+    s3_regex = re.compile(r"https?://.*\.s3\.amazonaws\.com.*")
+    azure_regex = re.compile(r"https?://.*\.blob\.core\.windows\.net.*")
+    respx.head(url=s3_regex).respond(404)
+    respx.head(url=azure_regex).respond(404)
+
+    result = await enumerate_cloud_services(domain=domain)
+    assert not result["azure_blobs"]

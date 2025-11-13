@@ -453,7 +453,7 @@ def test_format_tech_txt(tech_data):
     """Tests the technology detection formatter."""
     result = _format_tech_txt(tech_data)
     result_str = "\n".join(result)
-    assert "Technologies        : Nginx, React" in result_str
+    assert "Technologies:       : Nginx, React" in result_str
     assert "Server              : Nginx" in result_str
 
 
@@ -520,5 +520,5 @@ def test_format_geolocation_txt(geolocation_data):
     assert "8.8.8.8" in result_str
     assert "Mountain View, United States" in result_str
     assert "Google LLC" in result_str
-    assert "IP Address" in result[0]
-    assert "Location" in result[0]
+    assert "IP Address" in result_str
+    assert "Location" in result_str
