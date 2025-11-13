@@ -153,6 +153,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # The `lowercase` flavor ensures the repository name is always lowercase.
+          flavor: |
+            latest=false
           images: ghcr.io/${{ github.repository }}
           tags: |
             # Create 'latest' tag for pushes to the main branch
