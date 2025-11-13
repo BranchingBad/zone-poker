@@ -116,6 +116,12 @@ jobs:
       - name: Build source and wheel distributions
         run: python -m build
 
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions-${{ matrix.python-version }}
+          path: dist/
+
       - name: "Install and test package in a new virtual environment"
         run: |
           python -m venv venv_test
@@ -158,6 +164,7 @@ jobs:
           # The `lowercase` flavor ensures the repository name is always lowercase.
           flavor: |
             latest=false
+            lowercase=true
           images: ghcr.io/${{ github.repository }}
           tags: |
             # Create 'latest' tag for pushes to the main branch
@@ -180,7 +187,7 @@ jobs:
           # Tag the image with the final tags for pushing, plus a static tag for scanning. Use the lowercase image name from the meta step.
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/${{ github.repository }}:ci-scan
+            ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}:ci-scan
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
@@ -189,27 +196,32 @@ jobs:
         uses: aquasecurity/trivy-action@0.20.0
         with:
           # Scan the image using the static tag created in the build step.
-          image-ref: 'ghcr.io/${{ github.repository }}:ci-scan'
+          image-ref: 'ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}:ci-scan'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Push image to registry
+      - name: Push image to GHCR
         if: github.event_name != 'pull_request'
-        run: docker push --all-tags ghcr.io/${{ github.repository }}
+        run: docker push --all-tags ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}
 
   publish-to-pypi:
     name: Publish to PyPI
     needs: validate-package
     runs-on: ubuntu-latest
+    # Add an environment for protection rules (e.g., required reviewers)
+    environment:
+      name: pypi-publish
+      url: https://pypi.org/p/zone-poker
     # This job should only run when a new tag is pushed
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
 
-    # Grant permissions for trusted publishing
+    # Grant permissions for trusted publishing and attestations
     permissions:
-      id-token: write
+      id-token: write # Required for trusted publishing
+      attestations: write # Required for generating SLSA attestations
 
     steps:
       - name: Checkout repository
@@ -235,11 +247,12 @@ jobs:
             exit 1
           fi
 
-      - name: Install build dependencies
-        run: python -m pip install --upgrade pip build
-
-      - name: Build source and wheel distributions
-        run: python -m build
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          # Download the artifacts built on the same python version
+          name: python-package-distributions-3.11
+          path: dist/
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.9.0
