@@ -113,13 +113,18 @@ def test_cli_domain_and_file_input_fails(parser, tmp_path, capsys):
 def test_config_file_not_found(parser, capsys):
     """Tests that a clear error is shown if the config file doesn't exist."""
     cli_input = ["-c", "nonexistent.yaml", "example.com"]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with (
+        patch("sys.argv", ["zone-poker"] + cli_input),
+        patch("modules.config_manager.console.print") as mock_print,
+        pytest.raises(SystemExit),
+    ):
         args, domains = setup_configuration_and_domains(parser)
 
-    captured = capsys.readouterr()
-    assert "Error: Config file 'nonexistent.yaml' not found." in captured.out
-    assert args is None
-    assert domains == []
+    # Check that our mock print was called with the correct error
+    mock_print.assert_called_once()
+    assert (
+        "Error: Config file 'nonexistent.yaml' not found." in mock_print.call_args[0][0]
+    )
 
 
 def test_malformed_config_file(parser, tmp_path, capsys):
@@ -129,26 +134,38 @@ def test_malformed_config_file(parser, tmp_path, capsys):
     config_file.write_text(config_content)
 
     cli_input = ["-c", str(config_file), "example.com"]
-    args, domains = None, []
-    with (
-        patch("sys.argv", ["zone-poker"] + cli_input),
-        patch("modules.config_manager.console.print") as mock_print,
-    ):
-        args, domains = setup_configuration_and_domains(parser)
-        mock_print.assert_called_once()
-        assert "Could not decode config file" in mock_print.call_args[0][0]
-        assert args is None
+
+    # We must patch the 'print' method of the 'console' object
+    # imported by config_manager, not just rely on capsys.
+    with patch("sys.argv", ["zone-poker"] + cli_input):
+        with patch("modules.config_manager.console.print") as mock_print:
+            with pytest.raises(SystemExit) as e:
+                setup_configuration_and_domains(parser)
+
+            # Check that the exit was called
+            assert e.value.code == 1
+
+            # Check that our mock print was called with the correct error
+            mock_print.assert_called_once()
+            assert "Error: Could not decode config file" in mock_print.call_args[0][0]
 
 
 def test_domain_file_not_found(parser, capsys):
     """Tests error handling when the domain input file is not found."""
     cli_input = ["-f", "nonexistent.json"]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with (
+        patch("sys.argv", ["zone-poker"] + cli_input),
+        patch("modules.config_manager.console.print") as mock_print,
+        pytest.raises(SystemExit),
+    ):
         args, domains = setup_configuration_and_domains(parser)
 
-    captured = capsys.readouterr()
-    assert "Error: The file 'nonexistent.json' was not found." in captured.out
-    assert domains == []
+    # Check that our mock print was called with the correct error
+    mock_print.assert_called_once()
+    assert (
+        "Error: The domain file 'nonexistent.json' was not found."
+        in mock_print.call_args[0][0]
+    )
 
 
 def test_invalid_domain_from_cli(parser, capsys):
@@ -169,11 +186,19 @@ def test_invalid_domain_in_file(parser, tmp_path, capsys):
     domains_file.write_text(domains_content)
 
     cli_input = ["-f", str(domains_file)]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with (
+        patch("sys.argv", ["zone-poker"] + cli_input),
+        patch("modules.config_manager.console.print") as mock_print,
+        pytest.raises(SystemExit),
+    ):
         args, domains = setup_configuration_and_domains(parser)
 
-    captured = capsys.readouterr()
-    assert "Error: Invalid domain format 'invalid..com' in file" in captured.out
+    # Check that our mock print was called with the correct error
+    mock_print.assert_called_once()
+    assert (
+        "Error: Invalid domain format 'invalid..com' in file"
+        in mock_print.call_args[0][0]
+    )
 
 
 def test_no_domain_provided(parser):

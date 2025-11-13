@@ -30,21 +30,32 @@ def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any
     return merged
 
 
-def load_config_file(file_path: str) -> dict:
-    """Loads a configuration file, supporting JSON and YAML."""
+def load_data_file(file_path: str) -> Any:
+    """Loads a data file, supporting JSON and YAML."""
     _, ext = os.path.splitext(file_path)
     ext = ext.lower()
 
     with open(file_path, "r") as f:
         if ext == ".json":
-            return json.load(f)
+            data = json.load(f)
         elif ext in (".yaml", ".yml"):
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f)
+            if data is None:  # Handle empty or malformed YAML that parses to None
+                raise ValueError("File is empty or malformed.")
         else:
             raise ValueError(
                 f"Unsupported config file extension: {ext}. "
                 "Please use .json, .yaml, or .yml."
             )
+    return data
+
+
+def load_config_file(file_path: str) -> dict:
+    """Loads a configuration file, expecting a dictionary."""
+    data = load_data_file(file_path)
+    if not isinstance(data, dict):
+        raise ValueError("Config file content must be a dictionary (key-value map).")
+    return data
 
 
 def setup_configuration_and_domains(
@@ -69,8 +80,8 @@ def setup_configuration_and_domains(
     cli_args = parser.parse_args()
 
     # 1. Establish base configuration: Start with parser defaults
-    defaults = vars(parser.parse_args([]))
-    final_config = defaults.copy()
+    defaults_dict = vars(parser.parse_args([]))
+    final_config = defaults_dict.copy()
 
     # 2. Layer config file settings over defaults
     config_file_path = cli_args.config
@@ -78,17 +89,21 @@ def setup_configuration_and_domains(
     if config_file_path:
         try:
             config_from_file_data = load_config_file(config_file_path)
+            if not isinstance(config_from_file_data, dict):
+                raise ValueError(
+                    "Config file content must be a dictionary (key-value map)."
+                )
         except FileNotFoundError:
             console.print(
                 f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]"
             )
-            return None, []  # type: ignore
+            raise SystemExit(1)
         except (ValueError, yaml.YAMLError, json.JSONDecodeError) as e:
             console.print(
                 f"[bold red]Error: Could not decode config file '{config_file_path}'. "
                 f"Details: {e}[/bold red]",
             )
-            return None, []  # type: ignore
+            raise SystemExit(1)
 
     # 3. Layer explicit CLI arguments over the top (highest priority)
     cli_vars = vars(cli_args)
@@ -97,7 +112,7 @@ def setup_configuration_and_domains(
         # An argument was explicitly provided by the user if its value is not
         # the default. This handles flags (like --all) and value-based args
         # (like --timeout 10).
-        if value != defaults.get(key):
+        if value != defaults_dict.get(key):
             cli_overrides[key] = value
 
     config_from_file = deep_merge_dicts(final_config, config_from_file_data)
@@ -111,14 +126,23 @@ def setup_configuration_and_domains(
 
     if file_input:
         try:
-            domains_from_file = load_config_file(file_input)  # Use the new loader
+            # Use load_data_file, which can handle lists or dicts
+            domains_from_file = load_data_file(file_input)
             if not isinstance(domains_from_file, list):
-                msg = (
-                    f"[bold red]Error: The file '{file_input}' must contain a list of "
-                    "domain strings.[/bold red]"
-                )
+                # Check if it's a dict, which is a common mistake for config/domain file mix-up
+                if isinstance(domains_from_file, dict):
+                    msg = (
+                        f"[bold red]Error: The file '{file_input}' contains a dictionary "
+                        f"(key-value map), but a domain file must contain a list of strings "
+                        f'(e.g., ["example.com", "test.com"]).[/bold red]'
+                    )
+                else:
+                    msg = (
+                        f"[bold red]Error: The file '{file_input}' must contain a list of "
+                        "domain strings.[/bold red]"
+                    )
                 console.print(msg)
-                return final_args, []
+                raise SystemExit(1)
 
             # Validate domains from file
             for domain in domains_from_file:
@@ -127,26 +151,26 @@ def setup_configuration_and_domains(
                         f"[bold red]Error: Invalid domain format '{domain}' in file "
                         f"'{file_input}'.[/bold red]"
                     )
-                    return final_args, []
+                    raise SystemExit(1)
                 domains_to_scan.append(domain)
 
         except FileNotFoundError:
             console.print(
-                f"[bold red]Error: The file '{file_input}' was not found.[/bold red]"
+                f"[bold red]Error: The domain file '{file_input}' was not found.[/bold red]"
             )
-            return final_args, []
+            raise SystemExit(1)
         except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
             console.print(
                 f"[bold red]Error: Could not decode domains from the file '{file_input}'. "
                 f"{e}[/bold red]"
             )
-            return final_args, []
+            raise SystemExit(1)
     elif domain_input:
         if not is_valid_domain(domain_input):
             console.print(
                 f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]"
             )
-            return final_args, []
+            raise SystemExit(1)
         domains_to_scan.append(domain_input)
 
     return final_args, domains_to_scan

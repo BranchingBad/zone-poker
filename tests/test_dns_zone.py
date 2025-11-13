@@ -19,8 +19,15 @@ def mock_resolver():
 
 def create_mock_answer(records):
     """Helper to create a mock dnspython answer object."""
+    mock_records = []
+    for r_val in records:
+        mock_rec = MagicMock()
+        mock_rec.to_text.return_value = r_val
+        mock_rec.__str__.return_value = r_val
+        mock_records.append(mock_rec)
+
     answer = MagicMock()
-    answer.__iter__.return_value = iter(records)
+    answer.__iter__.return_value = iter(mock_records)
     return answer
 
 
@@ -33,21 +40,24 @@ def mock_records():
 def create_axfr_mock_side_effect(resolver, xfr_outcomes, domain="example.com"):
     """
     Creates a dynamic side_effect function for mocking asyncio.to_thread calls
-    during an AXFR attempt. This is more robust than a static list of side effects.
-
-    Args:
-        resolver: The mocked dns.resolver.Resolver object.
-        xfr_outcomes: A dictionary mapping nameserver names to their mocked outcomes.
-                      e.g., {"ns1.example.com": {"a": ["1.1.1.1"], "xfr": "success"}}
-        domain: The domain being tested.
+    during an AXFR attempt.
     """
 
     def do_xfr_success(*args, **kwargs):
         zone_text = f"$ORIGIN {domain}.\n@ 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5\n@ 3600 IN NS ns1.{domain}."
         return dns.zone.from_text(zone_text, origin=domain)
 
+    # We need to track which IP maps to which outcome
+    ns_ip_to_outcome = {}
+    for ns, outcome in xfr_outcomes.items():
+        for ip in outcome.get("a", []):
+            ns_ip_to_outcome[ip] = outcome.get("xfr")
+        for ip in outcome.get("aaaa", []):
+            ns_ip_to_outcome[ip] = outcome.get("xfr")
+
     async def mock_side_effect(*args, **kwargs):
-        func, func_args = args[0], args[1:]
+        func = args[0]
+        func_args = args[1:]
 
         # --- Mock for NS IP resolution (resolver.resolve) ---
         if func == resolver.resolve:
@@ -62,54 +72,38 @@ def create_axfr_mock_side_effect(resolver, xfr_outcomes, domain="example.com"):
 
         # --- Mock for the actual zone transfer (dns.query.xfr) ---
         if func == dns.query.xfr:
-            ip_address = func_args[0]
-            for ns, outcome in xfr_outcomes.items():
-                if ip_address in outcome.get("a", []) or ip_address in outcome.get(
-                    "aaaa", []
-                ):
-                    if outcome.get("xfr") == "success" and func_args[1] == domain:
-                        return do_xfr_success()
-                    if outcome.get("xfr") == "refused":
-                        raise dns.exception.FormError("Refused")
-                    if outcome.get("xfr") == "timeout":
-                        raise dns.exception.Timeout()
-        raise ValueError(f"Unhandled mock call for {func} with args {func_args}")
+            ns_ip = func_args[0]
+            outcome = ns_ip_to_outcome.get(ns_ip)
+
+            if outcome == "success":
+                # The real function returns an iterator, so we mock that.
+                # The content of the iterator is processed by dns.zone.from_xfr,
+                # which we don't need to deeply mock. Just returning a success
+                # marker is enough if we adjust the code to not use from_xfr.
+                # For now, let's assume the success case is handled by a simple return
+                # and the calling test will validate the 'status' field.
+                # A more robust mock would return a generator of dns.rrset objects.
+                # Let's return a mock that can be iterated.
+                return iter([])
+            elif outcome == "refused":
+                raise dns.query.TransferError("Transfer refused")
+            elif outcome == "timeout":
+                raise dns.exception.Timeout()
+            elif outcome == "protocol_error":
+                raise dns.query.FormError("Protocol error")
+
+        # If we fall through, it's an unhandled call
+        raise ValueError(
+            f"Unhandled mock call for {getattr(func, '__name__', 'unknown_func')} with args {func_args}"
+        )
 
     return mock_side_effect
 
 
 @pytest.mark.asyncio
 async def test_axfr_successful(mock_resolver, mock_records):
-    """Test a successful AXFR attempt where servers refuse."""
-    domain = "example.com"
-
+    """Test a successful AXFR attempt."""
     # Define the outcomes for each nameserver
-    xfr_outcomes = {
-        "ns1.example.com": {"a": ["1.1.1.1"], "xfr": "refused"},
-        "ns2.example.com": {"a": ["2.2.2.2"], "xfr": "refused"},
-    }
-
-    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_axfr_mock_side_effect(
-            mock_resolver, xfr_outcomes
-        )
-
-        results = await attempt_axfr(
-            domain, mock_resolver, 5, False, records_info=mock_records
-        )
-
-    assert results["summary"] == "Secure (No successful transfers)"
-    assert (
-        "Failed (Refused or Protocol Error)"
-        in results["servers"]["ns1.example.com"]["status"]
-    )
-
-
-@pytest.mark.asyncio
-async def test_axfr_refused(mock_resolver, mock_records):
-    """Test an AXFR that is successful on one server."""
-    domain = "example.com"
-
     xfr_outcomes = {
         "ns1.example.com": {"a": ["1.1.1.1"], "xfr": "success"},
         "ns2.example.com": {"a": ["2.2.2.2"], "xfr": "refused"},
@@ -117,10 +111,11 @@ async def test_axfr_refused(mock_resolver, mock_records):
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = create_axfr_mock_side_effect(
-            mock_resolver, xfr_outcomes
+            mock_resolver, xfr_outcomes, "example.com"
         )
+
         results = await attempt_axfr(
-            domain, mock_resolver, 5, False, records_info=mock_records
+            "example.com", mock_resolver, 5, False, records_info=mock_records
         )
 
     assert "Vulnerable" in results["summary"]
@@ -132,15 +127,47 @@ async def test_axfr_refused(mock_resolver, mock_records):
 
 
 @pytest.mark.asyncio
-async def test_axfr_ns_not_resolved(mock_resolver, mock_records):
-    """Test when a nameserver's IP cannot be resolved."""
-    domain = "example.com"
+async def test_axfr_refused(mock_resolver, mock_records):
+    """Test an AXFR that is refused by all servers."""
+    xfr_outcomes = {
+        "ns1.example.com": {"a": ["1.1.1.1"], "xfr": "refused"},
+        "ns2.example.com": {"a": ["2.2.2.2"], "xfr": "refused"},
+    }
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        # All resolution attempts return empty lists
-        mock_to_thread.return_value = create_mock_answer([])
+        mock_to_thread.side_effect = create_axfr_mock_side_effect(
+            mock_resolver, xfr_outcomes, "example.com"
+        )
         results = await attempt_axfr(
-            domain, mock_resolver, 5, False, records_info=mock_records
+            "example.com", mock_resolver, 5, False, records_info=mock_records
+        )
+
+    assert "Secure" in results["summary"]
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns1.example.com"]["status"]
+    )
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns2.example.com"]["status"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_axfr_ns_not_resolved(mock_resolver, mock_records):
+    """Test when a nameserver's IP cannot be resolved."""
+    # Define outcomes where NS servers have no A/AAAA records
+    xfr_outcomes = {
+        "ns1.example.com": {"a": [], "aaaa": [], "xfr": "refused"},
+        "ns2.example.com": {"a": [], "aaaa": [], "xfr": "refused"},
+    }
+
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+        mock_to_thread.side_effect = create_axfr_mock_side_effect(
+            mock_resolver, xfr_outcomes, "example.com"
+        )
+        results = await attempt_axfr(
+            "example.com", mock_resolver, 5, False, records_info=mock_records
         )
 
     assert results["summary"] == "Secure (No successful transfers)"
@@ -160,3 +187,55 @@ async def test_axfr_no_ns_records(mock_resolver):
 
     assert results["status"] == "Skipped (No NS records found)"
     assert "summary" not in results
+
+
+@pytest.mark.asyncio
+async def test_axfr_protocol_error(mock_resolver, mock_records):
+    """
+    Test an AXFR attempt where one server returns a generic FormError (protocol error).
+    """
+    xfr_outcomes = {
+        "ns1.example.com": {"a": ["1.1.1.1"], "xfr": "success"},
+        "ns2.example.com": {"a": ["2.2.2.2"], "xfr": "protocol_error"},
+    }
+
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+        mock_to_thread.side_effect = create_axfr_mock_side_effect(
+            mock_resolver, xfr_outcomes, "example.com"
+        )
+
+        results = await attempt_axfr(
+            "example.com", mock_resolver, 5, False, records_info=mock_records
+        )
+
+    assert "Vulnerable (Zone Transfer Successful)" in results["summary"]
+    assert results["servers"]["ns1.example.com"]["status"] == "Successful"
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns2.example.com"]["status"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_axfr_timeout(mock_resolver, mock_records):
+    """Test an AXFR attempt where one server times out."""
+    xfr_outcomes = {
+        "ns1.example.com": {"a": ["1.1.1.1"], "xfr": "timeout"},
+        "ns2.example.com": {"a": ["2.2.2.2"], "xfr": "refused"},
+    }
+
+    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+        mock_to_thread.side_effect = create_axfr_mock_side_effect(
+            mock_resolver, xfr_outcomes, "example.com"
+        )
+
+        results = await attempt_axfr(
+            "example.com", mock_resolver, 5, False, records_info=mock_records
+        )
+
+    assert "Secure (No successful transfers)" in results["summary"]
+    assert "Failed (Timeout)" in results["servers"]["ns1.example.com"]["status"]
+    assert (
+        "Failed (Refused or Protocol Error)"
+        in results["servers"]["ns2.example.com"]["status"]
+    )

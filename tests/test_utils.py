@@ -30,6 +30,7 @@ from modules.utils import (
         ("a" * 64 + ".com", False),  # Exceeds max label length
         ("xn--bcher-kva.com", True),  # Punycode (IDN)
         (123, False),  # Not a string
+        ("example.123", False),  # All-numeric TLD is invalid
     ],
 )
 def test_is_valid_domain(domain, expected):

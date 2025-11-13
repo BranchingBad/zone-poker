@@ -77,14 +77,41 @@ def _format_rdata(
                 "port": rdata.port,
             }
         )
-    # --- THIS BLOCK IS NEW ---
     elif rtype == "SOA":
-        # Create a descriptive string for SOA records for better reporting
         record_info.update(
             {
                 "value": str(rdata.mname),
                 "rname": str(rdata.rname),
                 "serial": rdata.serial,
+            }
+        )
+    elif rtype == "DS":
+        record_info.update(
+            {
+                "value": rdata.digest.hex().upper(),
+                "key_tag": rdata.key_tag,
+                "algorithm": rdata.algorithm,
+                "digest_type": rdata.digest_type,
+            }
+        )
+    elif rtype == "DNSKEY":
+        record_info.update(
+            {
+                "value": rdata.key,
+                "flags": rdata.flags,
+                "protocol": rdata.protocol,
+                "algorithm": rdata.algorithm,
+            }
+        )
+    elif rtype == "NAPTR":
+        record_info.update(
+            {
+                "value": str(rdata.replacement),
+                "order": rdata.order,
+                "preference": rdata.preference,
+                "flags": rdata.flags.decode("utf-8", "ignore"),
+                "service": rdata.service.decode("utf-8", "ignore"),
+                "regexp": rdata.regexp.decode("utf-8", "ignore"),
             }
         )
     elif rtype == "CAA":
@@ -100,7 +127,6 @@ def _format_rdata(
                 "flags": rdata.flags,
             }
         )
-    # --- END NEW BLOCK ---
     elif rtype == "TXT":
         record_info["value"] = join_txt_chunks(
             [t.decode("utf-8", "ignore") for t in rdata.strings]
@@ -168,6 +194,10 @@ def is_valid_domain(domain: str) -> bool:
     # A valid domain must have a domain part and a known TLD/suffix.
     # It must not be a private/internal TLD.
     if not extracted.domain or not extracted.suffix or extracted.is_private:
+        return False
+
+    # A valid public TLD cannot be all-numeric.
+    if extracted.suffix.isdigit():
         return False
 
     # Check each part (label) of the domain

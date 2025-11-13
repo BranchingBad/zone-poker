@@ -63,25 +63,18 @@ async def attempt_axfr(
                 }
             return
 
+        failure_status = {}  # Initialize failure status for the nameserver
         for ns_ip in ns_ips:
             try:
                 # The dns.query.xfr function is blocking and returns a generator.
                 # Both the query and the consumption of the generator by dns.zone.from_xfr
                 # must occur within the same thread to work correctly with asyncio.
-                def _do_xfr():
-                    try:
-                        xfr_generator = dns.query.xfr(ns_ip, domain, timeout=timeout)
-                        return dns.zone.from_xfr(xfr_generator)
-                    except dns.exception.FormError:
-                        # A FormError during from_xfr often indicates a "Refused" response.
-                        return None
+                def _do_xfr_blocking(ns_ip_addr):
+                    xfr_generator = dns.query.xfr(ns_ip_addr, domain, timeout=timeout)
+                    return dns.zone.from_xfr(xfr_generator)
 
-                zone = await asyncio.to_thread(_do_xfr)
-
-                # If the zone transfer was refused or failed at the protocol level,
-                # _do_xfr returns None, which we can use to raise a specific exception.
-                if zone is None:
-                    raise dns.exception.FormError("Zone is None, likely refused.")
+                # Run the blocking operation in a separate thread
+                zone = await asyncio.to_thread(_do_xfr_blocking, ns_ip)
 
                 nodes = zone.nodes.keys()  # type: ignore
                 async with lock:  # noqa
@@ -93,32 +86,46 @@ async def attempt_axfr(
                     }
                 return  # Success, no need to check other IPs for this NS
             except dns.exception.FormError as e:
-                # A FormError (e.g., "Refused") is a definitive failure for this IP.
-                # We record it but continue to try other IPs for the same NS.
-                failure_status = {
-                    "status": "Failed (Refused or Protocol Error)",
-                    "ip_tried": ns_ip,
-                }
+                # A "Refused" error is definitive for this IP. Stop trying other IPs for this NS.
+                status_msg = (
+                    "Failed (Refused)"
+                    if "refused" in str(e).lower()
+                    else "Failed (Protocol Error)"
+                )
+                failure_status = {"status": status_msg, "ip_tried": ns_ip}
                 if verbose:
                     logger.debug(f"AXFR FormError for {ns} at {ns_ip}: {e}")
-            except (dns.exception.Timeout, asyncio.TimeoutError):
-                failure_status = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
+                break  # A refusal is definitive, no need to check other IPs.
+            except dns.exception.Timeout:  # Removed redundant asyncio.TimeoutError
+                # Only update if we don't already have a more specific error.
+                if not failure_status:
+                    failure_status = {"status": "Failed (Timeout)", "ip_tried": ns_ip}
+                if verbose:
+                    logger.debug(f"AXFR timeout for {ns} at {ns_ip}")
             except Exception as e:
-                failure_status = {
-                    "status": "Failed (ValueError)",
-                    "ip_tried": ns_ip,
-                }
+                # Only record a generic exception if no other failure has been recorded yet.
+                # This prevents overwriting a more specific error like a Timeout.
+                if not failure_status or "Failed (" not in failure_status.get(
+                    "status", ""
+                ):
+                    failure_status = {
+                        "status": f"Failed ({type(e).__name__})",
+                        "ip_tried": ns_ip,
+                    }
                 if verbose:
                     logger.debug(f"AXFR error for {ns} at {ns_ip}: {e}")
 
-            # If the loop completes without returning on success, it means all IPs failed.
-            # We record the last known failure for this nameserver.
+        # After trying all IPs for the nameserver, if a failure occurred, record it.
+        if failure_status:
             async with lock:
                 axfr_results["servers"][ns] = failure_status
 
     tasks = [try_axfr(ns) for ns in nameservers]
+
+    # Wait for all tasks to complete.
     await asyncio.gather(*tasks)
 
+    # After all tasks are done, check the results.
     if any(s.get("status") == "Successful" for s in axfr_results["servers"].values()):
         axfr_results["summary"] = "Vulnerable (Zone Transfer Successful)"
     else:
