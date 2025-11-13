@@ -120,7 +120,9 @@ jobs:
           python -m venv venv_test
           source venv_test/bin/activate
           pip install --upgrade pip
-          pip install "dist/*.whl[dev]"
+          # List contents for debugging, then install.
+          ls -R dist
+          pip install dist/*.whl[dev]
           pytest
 
   build-and-push-docker:
