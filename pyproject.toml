@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zone-poker"
-version = "1.0.8"
+version = "1.0.8" # Ensure this matches your tag
 authors = [
   { name="BranchingBad" },
 ]
@@ -39,7 +39,6 @@ dependencies = [
 Homepage = "https://github.com/BranchingBad/zone-poker"
 Issues = "https://github.com/BranchingBad/zone-poker/issues"
 
-# This creates the executable script
 [project.scripts]
 zone-poker = "zone_poker:main_wrapper"
 
@@ -54,14 +53,17 @@ dev = [
     "bandit~=1.7",
     "pip-audit~=2.9",
     "respx~=0.21",
-    "pip-tools~=7.4" # For dependency locking
+    "pip-tools~=7.4"
 ]
 
+# --- FIX STARTS HERE ---
 [tool.setuptools]
+# Explicitly include the top-level script module
+py-modules = ["zone_poker"]
+
 [tool.setuptools.packages.find]
-where = ["."] # Look for packages in the project root
-
-
+where = ["."]
+# --- FIX ENDS HERE ---
 
 [tool.setuptools.package-data]
 "modules.analysis" = ["*.json"]
