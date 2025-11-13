@@ -34,7 +34,7 @@ async def check_subdomain_takeover(
     Checks for potential subdomain takeovers by matching CNAME records against a list
     of vulnerable services and their fingerprints.
     """
-    cname_records = records_info.get("CNAME", [])
+    cname_records = records_info.get("CNAME", []) or []
     takeover_fingerprints = _load_fingerprints()
 
     if (

@@ -76,6 +76,7 @@ def _format_rdata(
         )
     # --- THIS BLOCK IS NEW ---
     elif rtype == "SOA":
+        # Create a descriptive string for SOA records for better reporting
         record_info.update(
             {
                 "value": str(rdata.mname),
@@ -84,10 +85,16 @@ def _format_rdata(
             }
         )
     elif rtype == "CAA":
+        tag = rdata.tag.decode("utf-8", "ignore")
+        value = rdata.value.decode("utf-8", "ignore")
+        if tag == "contactemail":
+            tag = "iodef"
+            value = f"mailto:{value}"
         record_info.update(
             {
-                "value": rdata.value.decode("utf-8", "ignore"),
-                "tag": rdata.tag.decode("utf-8", "ignore"),
+                "value": value,
+                "tag": tag,
+                "flags": rdata.flags,
             }
         )
     # --- END NEW BLOCK ---
@@ -115,6 +122,21 @@ def _parse_spf_record(spf_record: str) -> Dict[str, Any]:
                 analysis["mechanisms"].setdefault(key, []).append(value)
             elif part in ("-all", "~all", "+all", "?all"):
                 analysis["all_policy"] = part  # type: ignore
+    return analysis
+
+
+def _parse_dmarc_record(dmarc_record: str) -> Dict[str, Any]:
+    """Helper to parse a DMARC record string."""
+    analysis = {"raw": dmarc_record}
+    if "v=DMARC1" not in dmarc_record:
+        analysis["error"] = "Not a valid DMARC record."
+        return analysis
+
+    for part in dmarc_record.split(";"):
+        part = part.strip()
+        if "=" in part:
+            key, _, value = part.partition("=")
+            analysis[key.strip()] = value.strip()
     return analysis
 
 

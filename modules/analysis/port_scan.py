@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Zone-Poker - Open Port Scanning Module
+Zone-Poker - Port Scan Module
 """
 import asyncio
 import logging
-from typing import Dict, List, Set, Any
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-# A list of common ports to check
+# A list of common TCP ports to check. This list is a balance between
+# being comprehensive and keeping scan times reasonable.
 COMMON_PORTS = [
     21,
     22,
-    23,
     25,
     53,
     80,
@@ -23,66 +23,71 @@ COMMON_PORTS = [
     587,
     993,
     995,
+    2078,
+    2082,
+    2083,
+    2086,
+    2087,
+    2095,
+    2096,
     3306,
-    3389,
-    5900,
+    5432,
     8080,
     8443,
 ]
 
 
 async def scan_ports(
-    records_info: Dict[str, List[Dict[str, Any]]], **kwargs
+    all_data: Dict[str, Any], timeout: int, verbose: bool, **kwargs
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Scans for common open TCP ports on discovered IP addresses.
     """
-    results: Dict[str, List[Dict[str, Any]]] = {"open_ports_by_ip": []}
-    ips_to_check: Set[str] = {
-        rec["value"]
-        for rec_type in ["A", "AAAA"]
-        for rec in records_info.get(rec_type, [])
-        if rec.get("value")
-    }
+    records_info = all_data.get("records_info", {}) or {}
+    headers_info = all_data.get("headers_info", {})
+    scan_results: List[Dict[str, Any]] = []
 
-    if not ips_to_check:
-        return {}
+    ips_to_check: List[str] = []
+    for r_type in ("A", "AAAA"):
+        for record in records_info.get(r_type, []):
+            if record.get("value"):
+                ips_to_check.append(record["value"])
 
-    logger.debug(
-        f"Scanning {len(COMMON_PORTS)} common ports on {len(ips_to_check)} unique IP addresses."
-    )
+    # Also check the IP from the final URL in http_headers if available
+    if headers_info and headers_info.get("ip_address"):
+        ips_to_check.append(headers_info["ip_address"])
 
-    # Use a semaphore to limit concurrent connections to a reasonable number (e.g., 100)
-    sem = asyncio.Semaphore(100)
+    # Remove duplicates
+    ips_to_check = sorted(list(set(ips_to_check)))
 
-    async def check_port(ip: str, port: int) -> tuple[str, int] | None:
-        async with sem:
-            try:
-                # Set a short timeout for the connection attempt
-                reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection(ip, port), timeout=2.0
-                )
-                writer.close()
-                await writer.wait_closed()
-                return ip, port
-            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
-                return None  # Port is closed or unreachable
-            except Exception as e:
-                logger.debug(f"Error scanning port {port} on {ip}: {e}")
-                return None
+    async def _scan_ip(ip: str):
+        """Scans a single IP for open ports."""
+        open_ports = []
+        tasks = [_check_port(ip, port, timeout) for port in COMMON_PORTS]
+        results = await asyncio.gather(*tasks)
+        for port, is_open in results:
+            if is_open:
+                open_ports.append(port)
 
-    tasks = [check_port(ip, port) for ip in ips_to_check for port in COMMON_PORTS]  # type: ignore
-    scan_results = await asyncio.gather(*tasks)
+        if open_ports:
+            scan_results.append({"ip": ip, "ports": sorted(open_ports)})
 
-    # Use a temporary dictionary to group ports by IP
-    ports_by_ip: Dict[str, List[int]] = {}
-    for result in filter(None, scan_results):
-        ip, port = result
-        ports_by_ip.setdefault(ip, []).append(port)
+    async def _check_port(ip: str, port: int, conn_timeout: int):
+        """Checks if a single port is open."""
+        try:
+            fut = asyncio.open_connection(ip, port)
+            reader, writer = await asyncio.wait_for(fut, timeout=conn_timeout)
+            writer.close()
+            await writer.wait_closed()
+            return port, True
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+            return port, False
+        except Exception as e:
+            if verbose:
+                logger.warning(f"Port scan error on {ip}:{port}: {e}")
+            return port, False
 
-    # Convert to the final list-of-dictionaries format
-    for ip, ports in ports_by_ip.items():
-        ports.sort()
-        results["open_ports_by_ip"].append({"ip": ip, "ports": ports})
+    scan_tasks = [_scan_ip(ip) for ip in ips_to_check]
+    await asyncio.gather(*scan_tasks)
 
-    return results
+    return {"scan_results": scan_results}

@@ -1,144 +1,259 @@
 #!/usr/bin/env python3
 """
-Zone-poker - Display Module
-
-Contains all functions for rendering rich output to the console
-and formatting text for reports.
+Zone-Poker - Display Module
+Handles all console output formatting using the 'rich' library.
 """
-import datetime
+from typing import Dict, Any, List, Optional
 from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 from rich import box
-from rich.text import Text
-from typing import Dict, Any, List, Callable, Optional
-
-# Import shared config and utilities
-import logging
-
-logger = logging.getLogger(__name__)
+import datetime
 
 
-def _get_record_extra_info(rtype: str, record: Dict[str, Any]) -> str:
-    """Helper to format the 'Extra' column for the DNS records table."""
-    if rtype == "MX" and "priority" in record:
-        return f"Priority: {record['priority']}"
-    if rtype == "SRV":
-        return (
-            f"P:{record.get('priority')} W:{record.get('weight')} "
-            f"Port:{record.get('port')}"
+# --- Generic Table Helper ---
+
+
+def _create_generic_table(
+    data_list: List[Dict[str, Any]],
+    title: str,
+    columns: Dict[str, Dict[str, Any]],
+    caption_noun: str = "items",
+    empty_message: str = "No data to display.",
+) -> Table:
+    """
+    Creates a rich Table from a list of dictionaries in a data-driven way.
+
+    Args:
+        data_list: The list of data dictionaries to display.
+        title: The title of the table.
+        columns: A dictionary defining the columns. Keys are the keys in the data dict,
+                 and values are dicts for Rich table.add_column arguments.
+        caption_noun: The noun to use in the table caption (e.g., "records").
+        empty_message: The message to display if data_list is empty.
+
+    Returns:
+        A rich Table object.
+    """
+    table = Table(title=title, show_header=True, header_style="bold magenta")
+    for col_config in columns.values():
+        table.add_column(**col_config)
+
+    if not data_list:
+        table.add_row(empty_message)
+        table.caption = f"Total: 0 {caption_noun} found"
+        return table
+
+    for item in data_list:
+        row = [str(item.get(key, "")) for key in columns.keys()]
+        table.add_row(*row)
+
+    plural = "s" if len(data_list) != 1 else ""
+    table.caption = f"Total: {len(data_list)} {caption_noun}{plural} found"
+    return table
+
+
+# --- Display Functions ---
+
+
+def display_dns_records_table(
+    records_info: Dict[str, Any], quiet: bool, **kwargs
+) -> Optional[Table]:
+    """Displays all found DNS records in a single, consolidated table."""
+    if quiet:
+        return None
+
+    all_records: List[Dict[str, Any]] = []
+    for r_type, records in records_info.items():
+        for record in records:
+            record["record_type"] = r_type
+            all_records.append(record)
+
+    columns = {
+        "record_type": {"header": "Type", "style": "cyan", "no_wrap": True},
+        "name": {"header": "Name", "style": "magenta"},
+        "value": {"header": "Value", "style": "green"},
+        "ttl": {"header": "TTL", "style": "yellow"},
+        "priority": {"header": "Priority", "style": "blue"},
+    }
+
+    return _create_generic_table(
+        all_records,
+        "DNS Records Discovery",
+        columns,
+        caption_noun="record",
+        empty_message="No DNS records found.",
+    )
+
+
+def display_ptr_lookups(
+    ptr_info: Dict[str, Any], quiet: bool, **kwargs
+) -> Optional[Table]:
+    """Displays PTR lookup results using the generic table builder."""
+    if quiet or not ptr_info.get("ptr_records"):
+        return None
+
+    columns = {
+        "ip": {"header": "IP Address", "style": "cyan"},
+        "hostname": {"header": "Hostname", "style": "green"},
+    }
+    return _create_generic_table(
+        ptr_info["ptr_records"],
+        "Reverse DNS (PTR) Lookups",
+        columns,
+        caption_noun="lookup",
+    )
+
+
+def display_security_audit(
+    security_info: Dict[str, Any], quiet: bool, **kwargs
+) -> Optional[Panel]:
+    """Displays security audit findings in a Tree structure."""
+    if quiet:
+        return None
+
+    findings = security_info.get("findings", [])
+    if not findings:
+        return Panel(
+            "[bold green]✓ All security checks passed.[/bold green]",
+            title="[bold]Security Audit[/bold]",
+            border_style="green",
         )
-    if rtype == "SOA":
-        return f"Serial: {record.get('serial')}"
-    if rtype == "CAA":
-        return f"Tag: {record.get('tag')}"
-    return ""
 
+    tree = Tree("Findings", guide_style="bold bright_blue")
+    severity_map = {
+        "Critical": "[bold red]",
+        "High": "[red]",
+        "Medium": "[yellow]",
+        "Low": "[cyan]",
+    }
 
-def console_display_handler(title: str):
-    """
-    A decorator to handle common boilerplate for console display functions.
-    - Checks for `quiet` mode or empty data.
-    - Handles and displays a standardized error panel if `data['error']` exists.
-    - Prints a newline after the content is displayed.
-    """
-
-    def decorator(func: Callable):
-        def wrapper(data: dict, quiet: bool, *args, **kwargs) -> Optional[Panel]:
-            if quiet or not data or not isinstance(data, dict):
-                return None
-
-            if error := data.get("error"):
-                return Panel(
-                    f"[dim]{error}[/dim]",
-                    title=f"{title} - Error",
-                    box=box.ROUNDED,
-                    border_style="dim",
+    for severity_name, style in severity_map.items():
+        severity_findings = [f for f in findings if f["severity"] == severity_name]
+        if severity_findings:
+            branch = tree.add(f"{style}{severity_name} Severity Findings")
+            for finding in severity_findings:
+                finding_branch = branch.add(f"[bold]{finding['finding']}[/bold]")
+                finding_branch.add(
+                    f"[dim]Recommendation:[/dim] {finding['recommendation']}"
                 )
 
-            renderable = func(data, quiet, *args, **kwargs)
-            return renderable
-
-        return wrapper
-
-    return decorator
+    return Panel(tree, title="[bold]Security Audit[/bold]", border_style="red")
 
 
-@console_display_handler("DNS Records Discovery")
-def display_dns_records_table(records: Dict[str, List[Any]], quiet: bool = False):
-    """Creates a rich Table of DNS records."""
-    table = Table(
-        title="DNS Records Discovery",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
-    )
+def display_subdomain_takeover(
+    takeover_info: Dict[str, Any], quiet: bool, **kwargs
+) -> Optional[Panel]:
+    """Displays subdomain takeover results."""
+    if quiet:
+        return None
 
-    table.add_column("Type", width=10)
-    table.add_column("Value", max_width=50)
-    table.add_column("TTL", width=8)
-    table.add_column("Extra", width=20)
-
-    total_records = 0
-    # This loop is data-driven (from a previous fix)
-    for rtype in records.keys():
-        record_list = records.get(rtype, [])
-        if record_list:
-            for idx, record in enumerate(record_list):
-                total_records += 1
-                value = record.get("value", "")
-                ttl = str(record.get("ttl", "N/A"))
-
-                extra = _get_record_extra_info(rtype, record)
-                type_display = rtype if idx == 0 else ""
-
-                if len(value) > 50:
-                    value = value[:47] + "..."
-
-                table.add_row(type_display, value, ttl, extra)
-
-    if total_records == 0:
-        table.add_row("No records found", "", "", "")
-
-    table.caption = f"Total: {total_records} DNS records found"
-    return table
-
-
-@console_display_handler("Reverse DNS (PTR) Lookups")
-def display_ptr_lookups(data: Dict[str, Any], quiet: bool = False):
-    """Creates a rich Table of PTR records."""
-    table = Table(
-        title="Reverse DNS (PTR) Lookups",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
-    )
-    table.add_column("IP Address", style="bold", width=20)
-    table.add_column("Hostname", max_width=60)
-
-    if not data.get("ptr_records"):
+    vulnerable = takeover_info.get("vulnerable", [])
+    if not vulnerable:
         return Panel(
-            "[dim]No PTR records to display.[/dim]",
-            title="Reverse DNS (PTR) Lookups",
-            box=box.ROUNDED,
+            "[green]No potential subdomain takeovers found.[/green]",
+            title="[bold]Subdomain Takeover Scan[/bold]",
+            border_style="green",
         )
 
-    for record in data.get("ptr_records", []):
-        table.add_row(record.get("ip", "N/A"), record.get("hostname", "N/A"))
+    columns = {
+        "subdomain": {"header": "Subdomain", "style": "red"},
+        "service": {"header": "Service", "style": "yellow"},
+        "cname_target": {"header": "CNAME Target", "style": "cyan"},
+    }
+    table = _create_generic_table(
+        vulnerable,
+        "",
+        columns,
+        caption_noun="potential takeover",
+    )
 
-    table.caption = f"Total: {len(data.get('ptr_records', []))} PTR lookups performed"
+    return Panel(
+        table,
+        title="[bold red]Subdomain Takeover Scan[/bold red]",
+        border_style="red",
+    )
+
+
+def display_summary(all_data: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Table]:
+    """Displays a summary table of key findings."""
+    if quiet:
+        return None
+
+    table = Table(title="[bold]Scan Summary[/bold]", show_header=False)
+    table.add_column("Check", style="cyan", no_wrap=True)
+    table.add_column("Result", style="white")
+
+    # Data-driven summary checks
+    SUMMARY_CHECKS = [
+        {
+            "label": "Zone Transfer",
+            "data_key": "zone_info",
+            "value_path": "summary",
+            "styles": {"Vulnerable": "[bold red]"},
+        },
+        {
+            "label": "DNSSEC",
+            "data_key": "nsinfo_info",
+            "value_path": "dnssec",
+            "styles": {"Not Enabled": "[yellow]"},
+        },
+        {
+            "label": "Email Security",
+            "func": lambda d: (
+                "Secure"
+                if d.get("mail_info", {}).get("dmarc", {}).get("p")
+                in ("reject", "quarantine")
+                and d.get("mail_info", {}).get("spf", {}).get("all_policy")
+                in ("-all", "~all")
+                else "Misconfigured"
+            ),
+            "styles": {"Misconfigured": "[yellow]"},
+        },
+        {
+            "label": "Security Audit",
+            "func": lambda d: (
+                f"Found {len(d.get('security_info', {}).get('findings', []))} issues"
+                if d.get("security_info", {}).get("findings")
+                else "[green]✓ Passed[/green]"
+            ),
+            "styles": {"Found": "[red]"},
+        },
+    ]
+
+    for check in SUMMARY_CHECKS:
+        result_text = "Not Scanned"
+        if "func" in check:
+            result_text = check["func"](all_data)
+        elif (data := all_data.get(check["data_key"])) and (
+            val := data.get(check["value_path"])
+        ):
+            result_text = str(val)
+
+        # Apply styling
+        for keyword, style in check.get("styles", {}).items():
+            if keyword in result_text:
+                result_text = f"{style}{result_text}[/]"
+                break
+        table.add_row(check["label"], result_text)
+
     return table
 
 
-@console_display_handler("Zone Transfer (AXFR)")
-def display_axfr_results(data: dict, quiet: bool = False):
-    """Creates a rich Tree of Zone Transfer (AXFR) results."""
+def display_axfr_results(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays Zone Transfer (AXFR) results in a tree."""
+    if quiet:
+        return None
+
     summary = data.get("summary", data.get("status", "No data."))
     style = "bold red" if "Vulnerable" in summary else "bold green"
 
     tree = Tree(f"[bold]Zone Transfer (AXFR): [/bold][{style}]{summary}[/{style}]")
 
     servers = data.get("servers", {})
+    if not servers:
+        tree.add("[dim]No nameservers were checked.[/dim]")
+
     for server, info in servers.items():
         status = info.get("status", "Unknown")
         if status == "Successful":
@@ -150,17 +265,16 @@ def display_axfr_results(data: dict, quiet: bool = False):
         else:
             tree.add(f"✗ [dim]{server}: {status}[/dim]")
 
-    return tree
+    return Panel(tree, title="[bold]Zone Transfer (AXFR)[/bold]")
 
 
-@console_display_handler("Email Security Analysis")
-def display_email_security(data: dict, quiet: bool = False):
+def display_email_security(data: dict, quiet: bool, **kwargs) -> Optional[Table]:
     """Displays Email Security results in a table."""
+    if quiet:
+        return None
+
     table = Table(
-        title="Email Security Analysis",
-        box=box.ROUNDED,
-        show_header=False,
-        header_style=None,
+        title="[bold]Email Security Analysis[/bold]", show_header=False, box=None
     )
     table.add_column("Check", style="bold cyan", width=10)
     table.add_column("Result")
@@ -195,52 +309,43 @@ def display_email_security(data: dict, quiet: bool = False):
     return table
 
 
-@console_display_handler("WHOIS Information")
-def display_whois_info(data: dict, quiet: bool = False):  # noqa: E501
-    """Creates a rich Panel with WHOIS data."""
+def display_whois_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays WHOIS data in a rich panel."""
+    if quiet or not isinstance(data, dict):
+        return None
+
     table = Table(box=None, show_header=False, pad_edge=False)
     table.add_column("Key", style="bold cyan", no_wrap=True, width=18)
     table.add_column("Value")
 
-    # --- THIS SECTION IS REFACTORED ---
-    # Iterate over all data items instead of a hardcoded list.
-    # Exclude keys that are not helpful in the display.
     EXCLUDE_KEYS = {"error"}
-
     for key, value in data.items():
         if key in EXCLUDE_KEYS or not value:
             continue
 
-        # --- THIS IS THE FIX for duplicate WHOIS data ---
-        # If the value is a list, take the first element to deduplicate.
-        if isinstance(value, list):
-            if not value:
-                continue
-            value = value[0]
-
-        elif "date" in key and isinstance(value, str):
+        value_str = str(value)
+        if "date" in key and isinstance(value, str):
             try:
                 dt = datetime.datetime.fromisoformat(value)
                 value_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                value_str = str(value)
-        else:
-            value_str = str(value)
+            except (ValueError, TypeError):
+                pass
 
         table.add_row(f"{key.replace('_', ' ').title()}:", value_str)
-    # --- END REFACTOR ---
 
-    return Panel(table, title="WHOIS Information", box=box.ROUNDED, expand=False)
+    return Panel(table, title="[bold]WHOIS Information[/bold]", expand=False)
 
 
-@console_display_handler("Nameserver Analysis")
-def display_nameserver_analysis(data: dict, quiet: bool = False):
-    """Creates a rich Table for Nameserver Analysis."""
+def display_nameserver_analysis(data: dict, quiet: bool, **kwargs) -> Optional[Table]:
+    """Displays Nameserver Analysis in a table."""
+    if quiet:
+        return None
+
     dnssec_status = data.get("dnssec", "Unknown")
     color = "green" if "Enabled" in dnssec_status else "red"
     title = f"Nameserver Analysis (DNSSEC: [{color}]{dnssec_status}[/{color}])"
 
-    table = Table(title=title, box=box.ROUNDED, show_header=True, header_style=None)
+    table = Table(title=title)
     table.add_column("Nameserver", style="bold")
     table.add_column("IP Address(es)")
     table.add_column("ASN Description")
@@ -249,643 +354,552 @@ def display_nameserver_analysis(data: dict, quiet: bool = False):
         if ns == "dnssec":
             continue
 
-        # --- THIS BLOCK IS FIXED ---
-        # Check if info is a dictionary before trying to access it.
-        # This handles the case where the 'records' module fails and
-        # 'nameserver_analysis' returns {"error": "..."}
-        if isinstance(info, dict) and "error" in info:
-            table.add_row(ns, f"[red]{info['error']}[/red]", "")
-        elif isinstance(info, dict):
-            ip_list = info.get("ips", [])
-            ip_str = "\n".join(ip_list) if ip_list else "N/A"
-            table.add_row(ns, ip_str, info.get("asn_description", "N/A"))
+        if isinstance(info, dict):
+            if "error" in info:
+                table.add_row(ns, f"[red]{info['error']}[/red]", "")
+            else:
+                ip_list = info.get("ips", [])
+                ip_str = "\n".join(ip_list) if ip_list else "N/A"
+                table.add_row(ns, ip_str, info.get("asn_description", "N/A"))
 
     return table
 
 
-@console_display_handler("DNS Propagation Check")
-def display_propagation(data: dict, quiet: bool = False, **kwargs):
-    """Displays DNS Propagation check results in a table."""
-    table = Table(
-        title="DNS Propagation Check",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
-        caption_justify="right",
-    )
-    table.add_column("Resolver", style="bold")
-    table.add_column("IP Address(es)")
+def display_propagation(data: dict, quiet: bool, **kwargs) -> Optional[Table]:
+    """Displays DNS propagation check results in a table."""
+    if quiet:
+        return None
 
-    all_ips = set()
-    for result in data.values():
-        if result.get("ips"):
-            all_ips.update(result["ips"])
+    table = Table(title="[bold]DNS Propagation Check[/bold]")
+    table.add_column("Resolver", style="cyan")
+    table.add_column("IP Address(es)", style="green")
 
-    # A list of distinct, named colors that are safe for most terminals.
-    # We'll cycle through these colors for different IPs.
-    safe_colors = [
-        "cyan",
-        "magenta",
-        "yellow",
-        "green",
-        "blue",
-        "bright_cyan",
-        "bright_magenta",
-        "bright_yellow",
-        "bright_green",
-        "bright_blue",
-    ]
+    all_ip_sets = []
+    for resolver, result in data.items():
+        if isinstance(result, dict):
+            ips = result.get("ips")
+            error = result.get("error")
 
-    # Sort all unique IPs to ensure stable color assignment
-    color_map = {
-        ip: safe_colors[i % len(safe_colors)]
-        for i, ip in enumerate(sorted(list(all_ips)))
-    }
+            if error:
+                ip_str = f"[red]({error})[/red]"
+            elif ips:
+                ip_str = ", ".join(ips)
+                all_ip_sets.append(frozenset(ips))
+            else:
+                ip_str = "[dim]No IPs returned[/dim]"
 
-    for server, result in data.items():
-        if error := result.get("error"):
-            table.add_row(server, f"[red]{error}[/red]")
-        else:
-            ip_text = Text()
-            # Sort the IPs for each resolver to ensure consistent display order.
-            # The `append` method with a `style` argument is the correct way to add styled text.
-            for ip in sorted(result.get("ips", [])):
-                color = color_map.get(ip, "white")
-                ip_text.append(f"{ip}\n", style=color)
-            table.add_row(server, ip_text)
+            table.add_row(resolver, ip_str)
 
-    table.caption = f"Checked across {len(data)} resolvers."
+    # Determine if propagation is consistent
+    if not all_ip_sets:
+        table.caption = (
+            "[yellow]Domain did not resolve on any public resolver.[/yellow]"
+        )
+    elif len(set(all_ip_sets)) > 1:
+        table.caption = (
+            "[bold red]Propagation is inconsistent across resolvers.[/bold red]"
+        )
+    else:
+        table.caption = "[green]Propagation appears consistent.[/green]"
+
     return table
 
 
-# A mapping of status to color and icon for visual clarity in the security audit
-SEVERITY_STYLE_MAP = {
-    "Critical": {"color": "bold red", "icon": "🚨"},
-    "High": {"color": "red", "icon": "✗"},
-    "Medium": {"color": "yellow", "icon": "!"},
-    "Low": {"color": "cyan", "icon": "•"},
-    "Unknown": {"color": "dim", "icon": "?"},
-}
+def display_critical_findings(
+    all_data: Dict[str, Any], quiet: bool, **kwargs
+) -> Optional[Panel]:
+    """
+    Displays a summary of critical and high-severity findings.
+    """
+    if quiet:
+        return None
 
-
-@console_display_handler("Security Audit")
-def display_security_audit(data: dict, quiet: bool = False):
-    """Creates a rich Table of Security Audit results."""
-    findings = data.get("findings", [])
+    # The 'critical_findings' module aggregates these from the main security audit
+    critical_info = all_data.get("critical_findings_info", {})
+    findings = critical_info.get("critical_findings", [])
 
     if not findings:
+        return None  # Don't display anything if there are no critical findings
+
+    tree = Tree(
+        f"[bold red]✗ Found {len(findings)} Critical/High Severity Issues[/bold red]"
+    )
+    for finding in findings:
+        tree.add(f"[yellow]• {finding}[/yellow]")
+
+    return Panel(tree, title="[bold]Critical Findings[/bold]", border_style="red")
+
+
+def display_technology_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays detected web technologies in a panel."""
+    if quiet:
+        return None
+
+    table = Table(box=None, show_header=False, pad_edge=False)
+    table.add_column("Key", style="bold cyan", no_wrap=True, width=15)
+    table.add_column("Value")
+
+    if server := data.get("server"):
+        table.add_row("Server:", server)
+
+    if techs := data.get("technologies"):
+        table.add_row("Technologies:", ", ".join(techs))
+
+    if table.row_count == 0:
         return Panel(
-            "[green]✓ All security checks passed.[/green]",
-            title="Security Audit",
-            box=box.ROUNDED,
+            "[dim]No technology information found.[/dim]",
+            title="[bold]Technology Detection[/bold]",
         )
 
-    tree = Tree("[bold]Security Audit Findings[/bold]")
-
-    # The security_audit function already sorts findings by severity.
-    # We can iterate through them and create severity groups as we go.
-    current_severity = None
-    severity_node = None
-
-    for finding in findings:
-        severity = finding.get("severity", "Unknown")
-        if severity != current_severity:
-            current_severity = severity
-            style = SEVERITY_STYLE_MAP.get(severity, SEVERITY_STYLE_MAP["Unknown"])
-            severity_node = tree.add(
-                f"{style['icon']} [{style['color']}]{severity} Severity Findings[/{style['color']}]"
-            )
-
-        if severity_node:
-            finding_node = severity_node.add(
-                f"[bold]{finding.get('finding', 'N/A')}[/bold]"
-            )
-            finding_node.add(f"[dim]{finding.get('recommendation', 'N/A')}[/dim]")
-
-    return Panel(tree, title="Security Audit", box=box.ROUNDED)
+    return Panel(table, title="[bold]Technology Detection[/bold]")
 
 
-@console_display_handler("Technology Detection")
-def display_technology_info(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Technology Detection results."""
-    tree = Tree(f"[bold]Server:[/bold] {data.get('server', 'N/A')}")
-
-    tech = data.get("technologies")
-    if tech:
-        tech_str = ", ".join(tech)
-        tree.add(f"[bold]Technologies:[/bold] {tech_str}")
-
-    headers_data = data.get("headers")
-    if isinstance(headers_data, dict):
-        sec_headers = [
-            "strict-transport-security",
-            "content-security-policy",
-            "x-content-type-options",
-            "x-frame-options",
-        ]
-        header_tree = tree.add("[bold]Security Headers:[/bold]")
-        for h in sec_headers:
-            if h in headers_data:
-                header_tree.add(f"[green]✓ {h}[/green]: {headers_data[h]}")
-            else:
-                header_tree.add(f"[red]✗ {h}[/red]: Not Found")
-
-    return Panel(tree, title="Technology Detection", box=box.ROUNDED)
-
-
-@console_display_handler("OSINT Enrichment")
-def display_osint_results(data: dict, quiet: bool = False):
-    """Creates a rich Tree of OSINT results."""
-    tree = Tree("[bold]OSINT Enrichment[/bold]")
+def display_osint_results(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays OSINT enrichment results in a tree."""
+    if quiet:
+        return None
 
     subdomains = data.get("subdomains", [])
-    if subdomains:
-        sub_tree = tree.add(f"Passive Subdomains ({len(subdomains)} found)")
-        for s in subdomains:
-            sub_tree.add(f"[green]{s}[/green]")
-    else:
-        tree.add("[dim]No passive subdomains found.[/dim]")
-
     passive_dns = data.get("passive_dns", [])
+
+    if not subdomains and not passive_dns:
+        return Panel(
+            "[dim]No OSINT data found from external sources.[/dim]",
+            title="[bold]OSINT Enrichment[/bold]",
+        )
+
+    tree = Tree("OSINT Findings")
+
+    if subdomains:
+        sub_branch = tree.add(f"Found {len(subdomains)} subdomains")
+        for sub in subdomains:
+            sub_branch.add(f"[green]{sub}[/green]")
+
     if passive_dns:
-        pdns_tree = tree.add(f"Passive DNS Records ({len(passive_dns)} found)")
-        for r in passive_dns:
-            pdns_tree.add(
-                f"{r.get('hostname')} -> {r.get('ip')} [dim](Last: {r.get('last_seen')})[/dim]"
+        dns_branch = tree.add(f"Found {len(passive_dns)} passive DNS records")
+        for record in passive_dns:
+            dns_branch.add(
+                f"[cyan]{record.get('hostname')}[/cyan] -> [yellow]{record.get('ip')}[/yellow] (Last seen: {record.get('last_seen')})"
             )
-    else:
-        tree.add("[dim]No passive DNS records found.[/dim]")
 
-    return tree
+    return Panel(tree, title="[bold]OSINT Enrichment[/bold]")
 
 
-@console_display_handler("SSL/TLS Certificate Analysis")
-def display_ssl_info(data: dict, quiet: bool = False):
-    """Creates a rich Panel of SSL/TLS Certificate analysis."""
-    tree = Tree(f"[bold]Subject:[/bold] {data.get('subject', 'N/A')}")
-    tree.add(f"[bold]Issuer:[/bold] {data.get('issuer', 'N/A')}")
+def display_ssl_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays SSL/TLS certificate analysis."""
+    if quiet:
+        return None
 
-    # Validity
-    valid_from_ts = data.get("valid_from")
-    valid_until_ts = data.get("valid_until")
-    now = datetime.datetime.now().timestamp()
-
-    if valid_from_ts and valid_until_ts:
-        valid_from_dt = datetime.datetime.fromtimestamp(valid_from_ts).strftime(
-            "%Y-%m-%d"
-        )
-        valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime(
-            "%Y-%m-%d"
+    if error := data.get("error"):
+        return Panel(
+            f"[dim]{error}[/dim]",
+            title="[bold]SSL/TLS Analysis[/bold]",
+            border_style="red",
         )
 
-        if now > valid_until_ts:
-            validity_str = f"[red]Expired on {valid_until_dt}[/red]"
-        elif now < valid_from_ts:
-            validity_str = f"[yellow]Not yet valid (starts {valid_from_dt})[/yellow]"
-        else:
-            validity_str = (
-                f"[green]Valid from {valid_from_dt} to {valid_until_dt}[/green]"
-            )
-        tree.add(f"[bold]Validity:[/bold] {validity_str}")
+    table = Table(box=None, show_header=False, pad_edge=False)
+    table.add_column("Key", style="bold cyan", no_wrap=True, width=15)
+    table.add_column("Value")
 
-    # SANs
-    sans = data.get("sans", [])
-    if sans:
-        sans_tree = tree.add(f"Subject Alternative Names ({len(sans)} found)")
-        for s in sans:
-            sans_tree.add(f"[green]{s}[/green]")
+    table.add_row("Subject:", data.get("subject", "N/A"))
+    table.add_row("Issuer:", data.get("issuer", "N/A"))
 
-    # Connection Info
-    tree.add(f"[bold]TLS Version:[/bold] {data.get('tls_version', 'N/A')}")
+    if valid_from := data.get("valid_from"):
+        from_date = datetime.datetime.fromtimestamp(valid_from).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        table.add_row("Valid From:", from_date)
 
-    return Panel(tree, title="SSL/TLS Certificate Analysis", box=box.ROUNDED)
+    if valid_until := data.get("valid_until"):
+        until_date = datetime.datetime.fromtimestamp(valid_until).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        table.add_row("Valid Until:", until_date)
+
+    table.add_row("TLS Version:", data.get("tls_version", "N/A"))
+
+    if sans := data.get("sans"):
+        table.add_row("SANs:", ", ".join(sans[:5]) + ("..." if len(sans) > 5 else ""))
+
+    return Panel(table, title="[bold]SSL/TLS Certificate Analysis[/bold]")
 
 
-@console_display_handler("Mail Server (SMTP) Analysis")
-def display_smtp_info(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Mail Server (SMTP) analysis."""
-    tree = Tree("[bold]SMTP Server Analysis[/bold]")
+def display_smtp_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays SMTP server analysis results."""
+    if quiet:
+        return None
+
+    if not data:
+        return Panel(
+            "[dim]No SMTP servers were analyzed.[/dim]",
+            title="[bold]Mail Server (SMTP) Analysis[/bold]",
+        )
+
+    tree = Tree("SMTP Servers")
     for server, info in data.items():
         if isinstance(info, dict):
-            if info.get("error"):
-                tree.add(f"✗ [red]{server}[/red]: {info['error']}")
+            if error := info.get("error"):
+                tree.add(f"✗ [red]{server}: Error - {error}[/red]")
                 continue
+
             node = tree.add(f"✓ [green]{server}[/green]")
             node.add(f"Banner: [dim]{info.get('banner', 'N/A')}[/dim]")
 
-            starttls_status = info.get("starttls", "Unknown")
-            color = "green" if starttls_status == "Supported" else "yellow"
-            node.add(f"STARTTLS: [{color}]{starttls_status}[/{color}]")
+            starttls = info.get("starttls", "Unknown")
+            color = "green" if starttls == "Supported" else "red"
+            node.add(f"STARTTLS: [{color}]{starttls}[/{color}]")
 
-            cert_info = info.get("certificate")
-            if cert_info:
-                cert_tree = node.add("[bold]Certificate Info[/bold]")
-                cert_tree.add(f"Subject: {cert_info.get('subject', 'N/A')}")
-
-                valid_until_ts = cert_info.get("valid_until")
-                if valid_until_ts:
-                    now = datetime.datetime.now().timestamp()
-                    valid_until_dt = datetime.datetime.fromtimestamp(
-                        valid_until_ts
+            if cert_info := info.get("certificate"):
+                cert_node = node.add("Certificate")
+                cert_node.add(f"Subject: {cert_info.get('subject', 'N/A')}")
+                if valid_until := cert_info.get("valid_until"):
+                    valid_until_str = datetime.datetime.fromtimestamp(
+                        valid_until
                     ).strftime("%Y-%m-%d")
-                    if now > valid_until_ts:
-                        cert_tree.add(
-                            f"Validity: [red]Expired on {valid_until_dt}[/red]"
-                        )
-                    else:
-                        cert_tree.add(
-                            f"Validity: [green]Valid until {valid_until_dt}[/green]"
-                        )
-        else:
-            tree.add(f"✗ [red]{server}[/red]: Error - {str(info)}")
+                    cert_node.add(f"Valid Until: {valid_until_str}")
 
-    return Panel(tree, title="Mail Server (SMTP) Analysis", box=box.ROUNDED)
+    return Panel(tree, title="[bold]Mail Server (SMTP) Analysis[/bold]")
 
 
-@console_display_handler("IP Reputation Analysis (AbuseIPDB)")
-def display_reputation_info(data: dict, quiet: bool = False):
-    """Creates a rich Panel of IP Reputation analysis."""
-    tree = Tree("[bold]IP Reputation Analysis (AbuseIPDB)[/bold]")
+def display_reputation_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays IP reputation analysis from AbuseIPDB."""
+    if quiet or not data:
+        return None
+
+    tree = Tree("IP Reputation (AbuseIPDB)")
+
+    has_data = False
     for ip, info in data.items():
         if isinstance(info, dict):
-            if info.get("error"):
-                tree.add(f"✗ [red]{ip}[/red]: {info['error']}")
+            has_data = True
+            if error := info.get("error"):
+                tree.add(f"✗ [red]{ip}: Error - {error}[/red]")
                 continue
 
             score = info.get("abuseConfidenceScore", 0)
-            if score > 50:
-                color = "red"
-            elif score > 0:
+
+            color = "green"
+            if score > 75:
+                color = "bold red"
+            elif score > 25:
                 color = "yellow"
-            else:
-                color = "green"
 
-            node = tree.add(f"✓ [{color}]{ip}[/{color}]")
-            node.add(f"Abuse Score: [{color}]{score}[/{color}]")
+            node = tree.add(f"✓ [{color}]{ip}[/{color}] - Score: {score}")
             node.add(f"Total Reports: {info.get('totalReports', 0)}")
-
-            if info.get("lastReportedAt"):
-                last_reported = datetime.datetime.fromisoformat(
-                    info["lastReportedAt"].replace("Z", "+00:00")
+            if last_reported := info.get("lastReportedAt"):
+                last_reported_str = datetime.datetime.fromisoformat(
+                    last_reported.replace("Z", "+00:00")
                 ).strftime("%Y-%m-%d")
-                node.add(f"Last Reported: {last_reported}")
-        else:
-            # Handle case where info is not a dict (e.g., an error string)
-            tree.add(f"✗ [red]{ip}[/red]: Error - {str(info)}")
+                node.add(f"Last Reported: {last_reported_str}")
 
-    return Panel(tree, title="IP Reputation Analysis (AbuseIPDB)", box=box.ROUNDED)
+    if not has_data:
+        return Panel(
+            "[dim]No IP reputation data to display.[/dim]",
+            title="[bold]IP Reputation Analysis[/bold]",
+        )
+
+    return Panel(tree, title="[bold]IP Reputation Analysis[/bold]")
 
 
-@console_display_handler("Content & Favicon Hashes")
-def display_content_hash_info(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Favicon and Content Hash results."""
+def display_content_hash_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays content and favicon hash information."""
+    if quiet:
+        return None
+
+    if not data or not any(data.values()):
+        return Panel(
+            "[dim]No content hashes were generated.[/dim]",
+            title="[bold]Content & Favicon Hashes[/bold]",
+        )
+
     table = Table(box=None, show_header=False, pad_edge=False)
     table.add_column("Key", style="bold cyan", no_wrap=True, width=25)
     table.add_column("Value")
 
-    if data.get("favicon_murmur32_hash"):
-        table.add_row("Favicon Murmur32 Hash:", data["favicon_murmur32_hash"])
-    if data.get("page_sha256_hash"):
-        table.add_row("Page Content SHA256:", data["page_sha256_hash"])
+    if favicon_hash := data.get("favicon_murmur32_hash"):
+        table.add_row("Favicon Murmur32 Hash:", favicon_hash)
 
-    return Panel(table, title="Content & Favicon Hashes", box=box.ROUNDED, expand=False)
+    if page_hash := data.get("page_sha256_hash"):
+        table.add_row("Page Content SHA256:", page_hash)
+
+    return Panel(table, title="[bold]Content & Favicon Hashes[/bold]")
 
 
-@console_display_handler("Certificate Transparency Log Analysis")
-def display_ct_logs(data: dict, quiet: bool = False):
-    """Creates a rich Tree of Certificate Transparency Log results."""
+def display_ct_logs(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays Certificate Transparency log results."""
+    if quiet:
+        return None
+
     subdomains = data.get("subdomains", [])
-    tree = Tree(
-        f"[bold]Certificate Transparency Log Analysis ({len(subdomains)} found)[/bold]"
-    )
 
-    if subdomains:
-        for s in subdomains:
-            tree.add(f"[green]{s}[/green]")
-    else:
-        tree.add("[dim]No subdomains found in CT logs.[/dim]")
+    if not subdomains:
+        return Panel(
+            "[dim]No subdomains found in Certificate Transparency logs.[/dim]",
+            title="[bold]CT Log Search[/bold]",
+        )
 
-    return tree
+    tree = Tree(f"Found {len(subdomains)} subdomains in CT logs")
+    for sub in subdomains:
+        tree.add(f"[green]{sub}[/green]")
+
+    return Panel(tree, title="[bold]Certificate Transparency Log Search[/bold]")
 
 
-@console_display_handler("WAF Detection")
-def display_waf_detection(data: dict, quiet: bool = False):
-    """Creates a rich Panel of WAF Detection results."""
+def display_waf_detection(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays Web Application Firewall (WAF) detection results."""
+    if quiet:
+        return None
+
     detected_wafs = data.get("detected_wafs", [])
     details = data.get("details", {})
 
-    if detected_wafs:
-        color = "green"
-        waf_list_str = ", ".join([f"[bold]{waf}[/bold]" for waf in detected_wafs])
-        reasons = "; ".join(
-            [details.get(waf, "") for waf in detected_wafs if waf in details]
-        )
-        message = f"Identified: {waf_list_str}. [dim]({reasons})[/dim]"
-    else:
-        color = "dim"
-        message = "No WAF identified from response headers."
-    return Panel(
-        f"[{color}]{message}[/{color}]", title="WAF Detection", box=box.ROUNDED
-    )
-
-
-@console_display_handler("DANE/TLSA Record Analysis")
-def display_dane_analysis(data: dict, quiet: bool = False):
-    """Creates a rich Panel of DANE/TLSA analysis."""
-    status = data.get("status", "Not Found")
-    if status == "Present":
-        color = "green"
-        tree = Tree(
-            f"✓ [{color}]DANE/TLSA records found for _443._tcp (HTTPS)[/{color}]"
-        )
-        for record in data.get("records", []):
-            tree.add(f"[dim]{record}[/dim]")
-    else:
-        color = "dim"
-        tree = Tree(
-            f"[{color}]No DANE/TLSA records found for _443._tcp (HTTPS)[/{color}]"
-        )
-
-    return Panel(tree, title="DANE/TLSA Record Analysis", box=box.ROUNDED)
-
-
-@console_display_handler("Scan Summary")
-def display_summary(data: dict, quiet: bool = False):
-    """Creates a rich Table for the high-level summary of findings."""
-    # This data-driven structure centralizes the logic for creating the summary.
-    # Each entry defines how to get the value and how to determine its color.
-    SUMMARY_CHECKS = [
-        {
-            "label": "Zone Transfer",
-            "value_func": lambda d: d.get("zone_info", {}).get("summary", "N/A"),
-            "color_func": lambda v: "bold red" if "Vulnerable" in v else "green",
-        },
-        {
-            "label": "SPF Policy",
-            "value_func": lambda d: d.get("mail_info", {})
-            .get("spf", {})
-            .get("all_policy", "Not Found"),
-            "color_func": lambda v: (
-                "red"
-                if v in ["?all", "+all", "Not Found"]
-                else "yellow" if v == "~all" else "green"
-            ),
-        },
-        {
-            "label": "DMARC Policy",
-            "value_func": lambda d: d.get("mail_info", {})
-            .get("dmarc", {})
-            .get("p", "Not Found"),
-            "color_func": lambda v: "red" if v in ["none", "Not Found"] else "green",
-        },
-        {
-            "label": "Security Audit",
-            "value_func": lambda d: (
-                f"Found {len(d.get('security_info', {}).get('findings', []))} issues"
-                if d.get("security_info", {}).get("findings")
-                else "All checks passed"
-            ),
-            "color_func": lambda v: "red" if "Found" in v else "green",
-        },
-    ]
-
-    table = Table(title="Scan Summary", box=box.ROUNDED, show_header=False)
-    table.add_column("Module", style="bold cyan")
-    table.add_column("Finding")
-
-    for check in SUMMARY_CHECKS:
-        value = "Error"
-        color = "bold red"
-        try:
-            # Get the value using the check's function
-            value = check["value_func"](data)
-            # Determine the color based on the value
-            color = check["color_func"](value)
-        except (KeyError, TypeError):
-            # Gracefully handle cases where data is missing
-            value = "Data Missing"
-            color = "dim"
-
-        table.add_row(check["label"], f"[{color}]{value}[/{color}]")
-
-    return table
-
-
-@console_display_handler("🚨 Critical Findings")
-def display_critical_findings(data: dict, quiet: bool = False):
-    """
-    Creates a rich Panel for the most critical findings by using the
-    centralized `critical_findings_info`.
-    """
-    # This function now simply formats the pre-aggregated findings.
-    from .analysis.critical_findings import aggregate_critical_findings
-
-    # We call the aggregator here to ensure findings are fresh for display.
-    aggregated_data = aggregate_critical_findings(data)
-    critical_findings = aggregated_data.get("critical_findings", [])
-
-    if not critical_findings:
-        return None  # Return nothing if there are no findings
-
-    text = Text()
-    for finding in critical_findings:
-        text.append("• ", style="bold red")
-        text.append(f"{finding}\n")
-
-    return Panel(
-        text,
-        title="[bold red]🚨 Critical Findings[/bold red]",
-        box=box.ROUNDED,
-        border_style="red",
-    )
-
-
-@console_display_handler("HTTP Security Headers Analysis")
-def display_http_headers(data: dict, quiet: bool = False):
-    """Creates a rich Table of HTTP Security Headers analysis."""
-    final_url = data.get("final_url", "N/A")
-    title = f"HTTP Security Headers Analysis\n[dim]Final URL: {final_url}[/dim]"
-    table = Table(
-        title=title,
-        box=box.ROUNDED,
-        show_header=True,
-        header_style=None,
-    )
-    table.add_column("Header", style="bold", width=28)
-    table.add_column("Status", width=10)
-    table.add_column("Value / Details", max_width=60)
-
-    analysis = data.get("analysis", {})
-    for header, info in analysis.items():
-        status = info.get("status", "Unknown")
-        value = info.get("value", "")
-
-        if status in ("Strong", "Present"):
-            color = "green"
-        elif status in ("Weak", "Moderate"):
-            color = "yellow"
-        else:  # Missing, Invalid
-            color = "red"
-
-        table.add_row(header, f"[{color}]{status}[/{color}]", value)
-
-    recommendations = data.get("recommendations", [])
-    if recommendations:
-        rec_text = "\n".join([f"• {rec}" for rec in recommendations])
-        table.caption = Text(rec_text, style="yellow")
-
-    return table
-
-
-@console_display_handler("Open Port Scan")
-def display_port_scan(data: dict, quiet: bool = False):
-    """Creates a rich Table of Open Port Scan results."""
-    table = Table(
-        title="Open Port Scan", box=box.ROUNDED, show_header=True, header_style=None
-    )
-    table.add_column("IP Address", style="bold", width=20)
-    table.add_column("Open Ports")
-
-    if not data:
+    if not detected_wafs:
         return Panel(
-            "[dim]No port scan data to display.[/dim]",
-            title="Open Port Scan",
-            box=box.ROUNDED,
+            "[green]✓ No Web Application Firewall identified.[/green]",
+            title="[bold]WAF Detection[/bold]",
+            border_style="green",
         )
 
-    for ip, ports in data.items():
-        ports_str = ", ".join(map(str, ports))
-        table.add_row(ip, f"[green]{ports_str}[/green]")
-    return table
+    tree = Tree(f"[bold red]✗ Found {len(detected_wafs)} potential WAF(s)[/bold red]")
+    for waf in detected_wafs:
+        tree.add(f"[yellow]{waf}[/yellow]: {details.get(waf, 'No specific details.')}")
+
+    return Panel(tree, title="[bold]WAF Detection[/bold]", border_style="red")
 
 
-@console_display_handler("Subdomain Takeover")
-def display_subdomain_takeover(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Subdomain Takeover results."""
-    vulnerable = data.get("vulnerable", [])
+def display_dane_analysis(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays DANE/TLSA record analysis results."""
+    if quiet:
+        return None
 
-    if not vulnerable:
-        panel = Panel(
-            "[green]✓ No potential subdomain takeovers found.[/green]",
-            title="Subdomain Takeover",
-            box=box.ROUNDED,
-        )
-    else:
-        tree = Tree(
-            f"[bold red]✗ Found {len(vulnerable)} potential subdomain takeovers![/bold red]"
-        )
-        for item in vulnerable:
-            node = tree.add(f"[yellow]{item['subdomain']}[/yellow]")
-            node.add(f"Service: [bold]{item['service']}[/bold]")
-            node.add(f"CNAME Target: [dim]{item['cname_target']}[/dim]")
-        panel = Panel(
-            tree, title="Subdomain Takeover", box=box.ROUNDED, border_style="red"
-        )
+    status = data.get("status", "Not Found")
+    records = data.get("records", [])
 
-    return panel
+    color = "green" if "Found" in status else "dim"
+    if "Error" in status:
+        color = "red"
+
+    tree = Tree(f"Status for _443._tcp (HTTPS): [{color}]{status}[/{color}]")
+
+    if records:
+        record_branch = tree.add("Records")
+        for record in records:
+            record_branch.add(f"[cyan]{record}[/cyan]")
+    elif "Not Found" in status:
+        tree.add("[dim]No DANE records published for HTTPS.[/dim]")
+
+    return Panel(tree, title="[bold]DANE/TLSA Record Analysis[/bold]")
 
 
-@console_display_handler("Open Redirect Scan")
-def display_open_redirect(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Open Redirect scan results."""
-    vulnerable_urls = data.get("vulnerable_urls", [])
+def display_http_headers(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays HTTP security header analysis."""
+    if quiet:
+        return None
 
-    if not vulnerable_urls:
-        panel = Panel(
-            "[green]✓ No potential open redirects found.[/green]",
-            title="Open Redirect Scan",
-            box=box.ROUNDED,
-        )
-    else:
-        tree = Tree(
-            f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]"
-        )  # noqa: E124
-        for item in vulnerable_urls:
-            node = tree.add(f"URL: [yellow]{item['url']}[/yellow]")
-            node.add(f"Redirects To: [dim]{item['redirects_to']}[/dim]")
-        panel = Panel(
-            tree, title="Open Redirect Scan", box=box.ROUNDED, border_style="red"
-        )
-
-    return panel
-
-
-@console_display_handler("Cloud Service Enumeration")
-def display_cloud_enum(data: dict, quiet: bool = False):
-    """Creates a rich Panel of Cloud Enumeration results."""
-    s3_buckets = data.get("s3_buckets", [])
-    azure_blobs = data.get("azure_blobs", [])
-
-    if not s3_buckets and not azure_blobs:  # noqa: W503
-        panel = Panel(
-            "[dim]No public S3 buckets or Azure blobs found based on "
-            "common permutations.[/dim]",
-            title="Cloud Service Enumeration",
-            box=box.ROUNDED,
-        )
-    else:
-        tree = Tree("[bold]Cloud Service Enumeration[/bold]")
-        if s3_buckets:
-            s3_tree = tree.add(f"Discovered S3 Buckets ({len(s3_buckets)}):")
-            for bucket in s3_buckets:
-                status = bucket.get("status")
-                url = bucket.get("url")
-                if status == "public":
-                    symbol = "✅"
-                    color = "green"
-                elif status == "forbidden":
-                    symbol = "🔒"
-                    color = "yellow"
-                else:
-                    symbol = "❓"
-                    color = "dim"
-                s3_tree.add(f"{symbol} [{color}]{url}[/{color}]")
-
-        if azure_blobs:
-            azure_tree = tree.add(
-                f"Discovered Azure Blob Containers ({len(azure_blobs)}):"
-            )
-            for blob in azure_blobs:
-                status = blob.get("status")
-                url = blob.get("url")
-                if status == "public":
-                    symbol = "✅"
-                    color = "green"
-                elif status == "forbidden":
-                    symbol = "🔒"
-                    color = "yellow"
-                else:
-                    symbol = "❓"
-                    color = "dim"
-                azure_tree.add(f"{symbol} [{color}]{url}[/{color}]")
-        panel = Panel(tree, title="Cloud Service Enumeration", box=box.ROUNDED)
-
-    return panel
-
-
-@console_display_handler("DNS Blocklist (DNSBL) Check")
-def display_dnsbl_check(data: dict, quiet: bool = False):
-    """Creates a rich Panel of DNSBL check results."""
-    listed_ips = data.get("listed_ips", [])
-
-    if not listed_ips:
-        panel = Panel(
-            "[green]✓ No discovered IPs were found on common DNS blocklists.[/green]",  # noqa: E501
-            title="DNS Blocklist (DNSBL) Check",
-            box=box.ROUNDED,
-        )
-    else:
-        tree = Tree(
-            f"[bold red]✗ Found {len(listed_ips)} IP(s) on DNS blocklists![/bold red]"
-        )
-        for item in listed_ips:
-            node = tree.add(f"[yellow]{item['ip']}[/yellow]")
-            node.add(f"Listed on: [dim]{', '.join(item.get('listed_on', []))}[/dim]")
-        panel = Panel(
-            tree,
-            title="DNS Blocklist (DNSBL) Check",  # noqa: E124
-            box=box.ROUNDED,
+    if error := data.get("error"):
+        return Panel(
+            f"[dim]{error}[/dim]",
+            title="[bold]HTTP Security Headers Analysis[/bold]",
             border_style="red",
         )
 
-    return panel
+    analysis = data.get("analysis", {})
+    if not analysis:
+        return Panel(
+            "[dim]No header analysis data found.[/dim]",
+            title="[bold]HTTP Security Headers Analysis[/bold]",
+        )
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Header", style="cyan")
+    table.add_column("Status")
+    table.add_column("Value / Details")
+
+    status_colors = {
+        "Missing": "red",
+        "Weak": "yellow",
+        "Invalid": "red",
+        "Disabled": "dim",
+        "Present": "green",
+        "Strong": "bold green",
+    }
+
+    for header, details in analysis.items():
+        status = details.get("status", "Unknown")
+        color = status_colors.get(status, "white")
+        value = details.get("value", "")
+        table.add_row(header, f"[{color}]{status}[/{color}]", value)
+
+    if recommendations := data.get("recommendations"):
+        table.caption = "\n".join(f"• {rec}" for rec in recommendations)
+
+    return Panel(table, title="[bold]HTTP Security Headers Analysis[/bold]")
+
+
+def display_port_scan(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays open port scan results."""
+    if quiet:
+        return None
+
+    scan_results = data.get("scan_results", [])
+    if not scan_results:
+        return Panel(
+            "[dim]No open ports found among common ports.[/dim]",
+            title="[bold]Open Port Scan[/bold]",
+        )
+
+    # Pre-process data to format the list of ports as a string
+    processed_data = []
+    for item in scan_results:
+        new_item = item.copy()
+        new_item["ports"] = ", ".join(map(str, item.get("ports", [])))
+        processed_data.append(new_item)
+
+    columns = {
+        "ip": {"header": "IP Address", "style": "cyan"},
+        "ports": {"header": "Open Ports", "style": "green"},
+    }
+    table = _create_generic_table(processed_data, "", columns, "IP")
+
+    return Panel(table, title="[bold]Open Port Scan[/bold]")
+
+
+def display_cloud_enum(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays Cloud Enumeration results."""
+    if quiet or not isinstance(data, dict):
+        return None
+
+    s3_buckets = data.get("s3_buckets", [])
+    azure_blobs = data.get("azure_blobs", [])
+
+    if not s3_buckets and not azure_blobs:
+        return Panel(
+            "[dim]No public S3 or Azure Blob containers found.[/dim]",
+            title="[bold]Cloud Service Enumeration[/bold]",
+        )
+
+    tree = Tree("Cloud Service Findings")
+
+    if s3_buckets:
+        s3_branch = tree.add(f"Found {len(s3_buckets)} S3 Buckets 🪣")
+        for bucket in s3_buckets:
+            status = bucket.get("status", "unknown")
+            color = "green" if status == "public" else "yellow"
+            icon = "✓" if status == "public" else "✗"
+            s3_branch.add(
+                f"{icon} [{color}]{bucket.get('url')}[/{color}] (Status: {status})"
+            )
+
+    if azure_blobs:
+        azure_branch = tree.add(f"Found {len(azure_blobs)} Azure Blobs ☁️")
+        for blob in azure_blobs:
+            status = blob.get("status", "unknown")
+            color = "green" if status == "public" else "yellow"
+            icon = "✓" if status == "public" else "✗"
+            azure_branch.add(
+                f"{icon} [{color}]{blob.get('url')}[/{color}] (Status: {status})"
+            )
+
+    return Panel(tree, title="[bold]Cloud Service Enumeration[/bold]")
+
+
+def display_dnsbl_check(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays DNS Blocklist (DNSBL) check results."""
+    if quiet:
+        return None
+
+    listed_ips = data.get("listed_ips", [])
+
+    if not listed_ips:
+        return Panel(
+            "[green]✓ No discovered IPs were found on common DNS blocklists.[/green]",
+            title="[bold]DNS Blocklist (DNSBL) Check[/bold]",
+            border_style="green",
+        )
+
+    tree = Tree(
+        f"[bold red]✗ Found {len(listed_ips)} IP(s) on DNS blocklists![/bold red]"
+    )
+    for item in listed_ips:
+        node = tree.add(f"[yellow]{item.get('ip', 'N/A')}[/yellow]")
+        node.add(f"Listed on: [dim]{', '.join(item.get('listed_on', []))}[/dim]")
+
+    return Panel(
+        tree, title="[bold]DNS Blocklist (DNSBL) Check[/bold]", border_style="red"
+    )
+
+
+def display_open_redirect(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays Open Redirect scan results."""
+    if quiet:
+        return None
+
+    vulnerable_urls = data.get("vulnerable_urls", [])
+
+    if not vulnerable_urls:
+        return Panel(
+            "[green]✓ No potential open redirects found.[/green]",
+            title="[bold]Open Redirect Scan[/bold]",
+            border_style="green",
+        )
+
+    tree = Tree(
+        f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]"
+    )
+    for item in vulnerable_urls:
+        node = tree.add(f"URL: [yellow]{item.get('url', 'N/A')}[/yellow]")
+        node.add(f"Redirects To: [dim]{item.get('redirects_to', 'N/A')}[/dim]")
+
+    return Panel(tree, title="[bold]Open Redirect Scan[/bold]", border_style="red")
+
+
+def display_security_txt(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
+    """Displays security.txt analysis results in a panel."""
+    if quiet:
+        return None
+
+    if not data.get("found"):
+        return Panel(
+            "[dim]No security.txt file found at standard locations.[/dim]",
+            title="[bold]Security.txt Check[/bold]",
+            box=box.ROUNDED,
+            border_style="dim",
+        )
+
+    table = Table(box=None, show_header=False, pad_edge=False)
+    table.add_column("Directive", style="bold cyan", no_wrap=True, width=18)
+    table.add_column("Value")
+
+    parsed_content = data.get("parsed", {})
+    if not parsed_content:
+        table.add_row("[dim]File was empty or could not be parsed.[/dim]", "")
+    else:
+        for key, value in parsed_content.items():
+            # Handle directives that can appear multiple times
+            if isinstance(value, list):
+                value_str = "\n".join(value)
+            else:
+                value_str = str(value)
+            table.add_row(f"{key}:", value_str)
+
+    title = (
+        f"[bold]Security.txt Check[/bold] ([green]Found at {data.get('url')}[/green])"
+    )
+    return Panel(table, title=title, box=box.ROUNDED, expand=False)
+
+
+def display_ip_geolocation(data: dict, quiet: bool, **kwargs) -> Optional[Table]:
+    """Displays IP Geolocation results in a table."""
+    if quiet or not data:
+        return None
+
+    columns = {
+        "ip": {"header": "IP Address", "style": "cyan"},
+        "country": {"header": "Country", "style": "green"},
+        "city": {"header": "City", "style": "yellow"},
+        "isp": {"header": "ISP", "style": "blue"},
+    }
+    # The data is a dict of dicts, so we need to convert it to a list
+    data_list = [{**info, "ip": ip} for ip, info in data.items()]
+
+    return _create_generic_table(data_list, "IP Geolocation", columns, "IP")

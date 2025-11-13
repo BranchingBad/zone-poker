@@ -77,23 +77,24 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     -   **Display Module (`modules/display.py`)**: This module is responsible for all user-facing console output using the `rich` library.
         -   **Console Display**: Display functions (e.g., `display_dns_records_table`) should be decorated with `@console_display_handler`. They must **return** a `rich` renderable object (like a `Table` or `Panel`) instead of printing it. The orchestrator handles the printing.
     -   **Text Export Module (`modules/export_txt.py`)**: This module contains all the logic for formatting data for the plain text (`.txt`) report.
+    -   **Output Modules (`modules/output/`)**: These modules (`json.py`, `csv.py`, etc.) handle the final formatting for non-table console output and file exports.
 
 -   **Adding a New Analysis Module**: To add a new module, you'll typically need to:
     1.  **Analysis Function**: Create your analysis function in a new file under `modules/analysis/`. This function should perform the analysis and return a dictionary of results.
     2.  **Display Function**: In `modules/display.py`, create a corresponding display function (e.g., `display_my_module`). It must be decorated with `@console_display_handler` and **return** a `rich` renderable object (like a `Table` or `Panel`).
-    3.  **TXT Export Functions**: In `modules/export_txt.py`, create two functions for the plain text export:
+    3.  **TXT Export Functions**: In `modules/export_txt.py`, create functions for the plain text export:
         - A private formatter `_format_my_module_txt(data: dict) -> List[str]` that contains the formatting logic.
         - A public `export_txt_my_module(data: dict) -> str` function that calls the `_create_report_section` helper with your new formatter.
-    4.  **Dispatch Table Entry**: Add an entry to the `MODULE_DISPATCH_TABLE` in `modules/dispatch_table.py`. This entry connects your module to the orchestrator and should include:
+    4.  **Dispatch Table Entry**: In `modules/dispatch_table.py`, add an entry to the `MODULE_DISPATCH_TABLE`. This connects your module to the orchestrator and should include:
         - `data_key`: The key for storing results (e.g., `my_module_info`).
         - `analysis_func`: The analysis function you created.
         - `display_func`: The `rich` display function.
         - `export_func`: The text export function.
         - `description`: A short message shown to the user when the module runs.
         - `dependencies`: A list of other modules that must run first (if any).
-        - `arg_info`: A dictionary defining the command-line flag (e.g., `{'short': '-x', 'long': '--my-module', 'help': '...'}`).
-    5.  **Unit Tests**: Write unit tests for your new analysis function in the `tests/` directory.
-    6.  **Documentation**: Update the `README.md` to include the new module's command-line flag and description in the "Analysis Modules" table.
+    5.  **Command-Line Argument**: In `modules/dispatch_table.py`, add an `arg_info` dictionary to your module's entry. The argument parser will pick it up automatically.
+    6.  **Unit Tests**: Write unit tests for your new analysis function in the `tests/` directory.
+    7.  **Documentation**: Update the `README.md` to include the new module's command-line flag and description in the "Analysis Modules" table.
 
 ## Code of Conduct
 

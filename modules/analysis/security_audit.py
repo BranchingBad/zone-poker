@@ -4,6 +4,7 @@ Zone-Poker - Security Audit Module
 """
 from typing import Dict, Any, List
 import datetime
+from .http_headers import HEADER_CHECKS
 
 AUDIT_CHECKS = [
     # --- Mail Security ---
@@ -95,6 +96,22 @@ AUDIT_CHECKS = [
         "recommendation": "Renew the SSL/TLS certificate immediately to restore trust and encrypted communication.",
     },
     {
+        "data_key": "ssl_info",
+        "condition": lambda d: d.get("cipher")
+        and isinstance(d["cipher"], (list, tuple))
+        and d["cipher"]
+        and any(
+            keyword in d["cipher"][0]
+            for keyword in ["RC4", "3DES", "DES", "MD5", "NULL", "EXPORT"]
+        ),
+        "finding": "Weak SSL/TLS Cipher Suite",
+        "severity": "Medium",
+        "recommendation": (
+            "The server supports weak cipher suites. Reconfigure the server to use "
+            "modern ciphers (e.g., AES-GCM, ChaCha20-Poly1305) and disable legacy ones."
+        ),
+    },
+    {
         "data_key": "takeover_info",
         "condition": lambda d: d.get("vulnerable"),
         "finding": "Subdomain Takeover",
@@ -148,23 +165,16 @@ def security_audit(
     # Handle header checks separately as they can return multiple findings
     headers_info = all_data.get("headers_info", {})
     if isinstance(headers_info, dict) and "error" not in headers_info:
-        for header, details in headers_info.get("analysis", {}).items():
-            if details.get("status") in ("Missing", "Weak", "Invalid"):
-                # Determine severity based on header importance
-                if header in ("Strict-Transport-Security", "Content-Security-Policy"):
-                    severity = "High"
-                elif header in ("X-Frame-Options", "X-Content-Type-Options"):
-                    severity = "Medium"
-                else:
-                    severity = "Low"
-
+        analysis = headers_info.get("analysis", {})
+        for header_name, check_config in HEADER_CHECKS.items():
+            details = analysis.get(header_name, {})
+            if details.get("status") in ("Missing", "Weak", "Invalid", "Disabled"):
                 findings.append(
                     {
-                        "finding": f"Insecure Header: {header}",
-                        "severity": severity,
-                        "recommendation": details.get(
-                            "recommendation", "Strengthen header configuration."
-                        ),
+                        "finding": f"Insecure Header: {header_name}",
+                        "severity": check_config.get("severity", "Low"),
+                        "recommendation": details.get("recommendation")
+                        or check_config.get("recommendation"),
                     }
                 )
 

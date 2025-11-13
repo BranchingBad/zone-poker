@@ -4,14 +4,21 @@ Zone-Poker - JSON Output Module
 """
 import builtins
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
+from ..config import console
 from modules.dispatch_table import MODULE_DISPATCH_TABLE
 
 
-def output(all_data: Dict[str, Any]):
+def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     """
-    Generates and prints a clean JSON report to standard output.
+    Generates and prints a clean JSON report to standard output or a file.
+
+    It selectively includes data from modules that were run and produced results,
+    ensuring a clean and relevant output.
+    Args:
+        all_data: The dictionary containing all scan data.
+        output_path: If provided, the output is written to this file path.
     """
     export_data = {
         "domain": all_data.get("domain"),
@@ -25,5 +32,16 @@ def output(all_data: Dict[str, Any]):
         if data_key in all_data and all_data[data_key]:
             export_data[data_key] = all_data[data_key]
 
-    # Using builtins.print to send to stdout for redirection.
-    builtins.print(json.dumps(export_data, indent=2, default=str))
+    # Pretty print the JSON
+    json_string = json.dumps(export_data, indent=2, default=str)
+
+    if output_path:
+        try:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(json_string)
+        except IOError as e:
+            console.print(
+                f"[bold red]Error writing JSON file to {output_path}: {e}[/bold red]"
+            )
+    else:
+        builtins.print(json_string)

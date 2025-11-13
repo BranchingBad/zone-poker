@@ -11,6 +11,10 @@ RUN pip install --no-cache-dir build
 # This layer is only invalidated if pyproject.toml changes.
 COPY pyproject.toml .
 
+# --- THIS IS THE FIX ---
+# Copy the rest of the application source code.
+COPY . .
+
 # Build the wheel. This will install dependencies in an isolated environment.
 RUN python -m build --wheel --outdir /wheels
 

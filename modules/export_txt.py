@@ -117,7 +117,9 @@ def _format_records_txt(data: Dict[str, List[Any]]) -> List[str]:
                         f"Port: {record.get('port')})"
                     )
                 elif r_type == "SOA":
-                    extra = f" (Serial: {record.get('serial')})"
+                    rname = record.get("rname", "N/A")
+                    serial = record.get("serial", "N/A")
+                    extra = f" (RNAME: {rname}, Serial: {serial})"
                 report.append(f"  - {value}{extra}")
     return report if report else ["No DNS records found."]
 
@@ -128,8 +130,12 @@ def export_txt_records(data: Dict[str, List[Any]]) -> str:
 
 
 def _format_ptr_txt(data: Dict[str, str]) -> List[str]:
-    return [f"  - {ip:<18} -> {hostname}" for ip, hostname in data.items()] or [
-        "No PTR records found."
+    ptr_records = data.get("ptr_records", [])
+    if not ptr_records:
+        return ["No PTR records found."]
+    return [
+        f"  - {rec.get('ip', 'N/A'):<18} -> {rec.get('hostname', 'N/A')}"
+        for rec in ptr_records
     ]
 
 
@@ -172,9 +178,18 @@ def export_txt_mail(data: Dict[str, Any]) -> str:
 def _format_whois_txt(data: Dict[str, Any]) -> List[str]:
     report = []
     for key, value in data.items():
-        if value and key != "error":
-            value_str = str(value[0]) if isinstance(value, list) else str(value)
-            report.append(f"  {key.replace('_', ' ').title():<20}: {value_str}")
+        if not value or key == "error":
+            continue
+
+        value_str = str(value[0]) if isinstance(value, list) and value else str(value)
+
+        if "date" in key and isinstance(value_str, str):
+            try:
+                dt = datetime.datetime.fromisoformat(value_str.replace(" ", "T"))
+                value_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                pass  # Keep original string if parsing fails
+        report.append(f"  {key.replace('_', ' ').title():<20}: {value_str}")
     return report
 
 
@@ -247,11 +262,11 @@ def export_txt_security(data: Dict[str, Any]) -> str:
 
 def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
     report = []
-    if data.get("technologies"):
-        report.append(f"  {'Technologies:':<20}: {', '.join(data['technologies'])}")
-    if data.get("server"):
-        report.append(f"  {'Server:':<20}: {data['server']}")
-    return report
+    if technologies := data.get("technologies"):
+        report.append(f"  {'Technologies:':<20}: {', '.join(technologies)}")
+    if server := data.get("server"):
+        report.append(f"  {'Server:':<20}: {server}")
+    return report or ["No technology information found."]
 
 
 def export_txt_tech(data: Dict[str, Any]) -> str:
@@ -272,7 +287,7 @@ def _format_osint_txt(data: Dict[str, Any]) -> List[str]:
                 f"  - {item.get('hostname')} -> {item.get('ip')} "
                 f"(Last: {item.get('last_seen')})"
             )
-    return report
+    return report or ["No OSINT data found."]
 
 
 def export_txt_osint(data: Dict[str, Any]) -> str:
@@ -297,7 +312,7 @@ def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
         )
     if sans := data.get("sans"):  # noqa: W504
         report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in sans])
-    return report
+    return report or ["No SSL/TLS data found."]
 
 
 def export_txt_ssl(data: Dict[str, Any]) -> str:
@@ -472,9 +487,13 @@ def export_txt_http_headers(data: Dict[str, Any]) -> str:
 
 
 def _format_port_scan_txt(data: Dict[str, Any]) -> List[str]:
-    if not data:
+    scan_results = data.get("scan_results", [])
+    if not scan_results:
         return ["No open ports found among common ports."]
-    return [f"  - {ip}: {', '.join(map(str, ports))}" for ip, ports in data.items()]
+    return [
+        f"  - {res['ip']}: {', '.join(map(str, res.get('ports', [])))}"
+        for res in scan_results
+    ]
 
 
 def export_txt_port_scan(data: Dict[str, Any]) -> str:
@@ -573,3 +592,27 @@ def _format_open_redirect_txt(data: Dict[str, Any]) -> List[str]:
 def export_txt_open_redirect(data: Dict[str, Any]) -> str:
     """Formats Open Redirect scan results for the text report."""
     return _create_report_section("Open Redirect Scan", data, _format_open_redirect_txt)
+
+
+def _format_security_txt_txt(data: Dict[str, Any]) -> List[str]:
+    """Formats security.txt results for the text report."""
+    if not data.get("found"):
+        return ["No security.txt file found at standard locations."]
+
+    report = [f"Found at: {data.get('url', 'N/A')}\n"]
+    parsed_content = data.get("parsed", {})
+    if not parsed_content:
+        return report + ["File was empty or could not be parsed."]
+
+    for key, value in parsed_content.items():
+        if isinstance(value, list):
+            for v in value:
+                report.append(f"  {key:<20}: {v}")
+        else:
+            report.append(f"  {key:<20}: {value}")
+    return report
+
+
+def export_txt_security_txt(data: Dict[str, Any]) -> str:
+    """Formats security.txt analysis for the text report."""
+    return _create_report_section("Security.txt Check", data, _format_security_txt_txt)

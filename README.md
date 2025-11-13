@@ -19,6 +19,7 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **DNSSEC Validation**: Checks if DNSSEC is enabled for the domain.
 - **DNS Propagation**: Checks DNS resolution consistency across multiple public resolvers.
 - **DANE/TLSA Records**: Looks for records related to DNS-Based Authentication of Named Entities.
+- **Critical Findings Summary**: Automatically flags and summarizes the most critical issues at the top of the report, such as zone transfer vulnerabilities, expired certificates, and potential subdomain takeovers.
 
 ### Security & Vulnerability Analysis
 - **Email Security**: Analyzes SPF, DMARC, and DKIM configurations.
@@ -29,8 +30,9 @@ Zone-Poker combines numerous reconnaissance techniques into a single, fast, and 
 - **IP Reputation**: Checks IP addresses against the AbuseIPDB blocklist (requires API key).
 - **DNS Blocklist (DNSBL)**: Checks discovered IPs against common real-time spam blocklists.
 - **Open Port Scan**: Scans for common open TCP ports on discovered IP addresses.
-- **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use.
+- **WAF Detection**: Attempts to identify any Web Application Firewall (WAF) in use based on response headers and behavior.
 - **Comprehensive Security Audit**: Performs a detailed audit for dozens of security misconfigurations, including permissive SPF policies, weak DMARC, zone transfer vulnerabilities, expired SSL certificates, insecure HTTP headers, and potential subdomain takeovers. Findings are categorized by severity (Critical, High, Medium, Low).
+- **Open Redirect**: Checks for common open redirect vulnerabilities on the domain's root.
 
 ### OSINT & Enumeration
 - **WHOIS Lookup**: Retrieves detailed registration information for the domain.
@@ -141,6 +143,7 @@ zone-poker -f domains.txt --all --output html > report.html
 | `--takeover` | Check for potential subdomain takeovers. |
 | `--cloud` | Enumerate common cloud services (e.g., S3 buckets). |
 | `--dnsbl` | Check discovered IPs against common DNS blocklists. |
+| `--security-txt` | Check for a `security.txt` file and parse its contents. |
 | `--redirect` | Check for common open redirect vulnerabilities. |
 
 ---
@@ -148,8 +151,11 @@ zone-poker -f domains.txt --all --output html > report.html
 ## Output Formats
 
 Zone-Poker supports multiple output formats for both console display and file exports.
-- **JSON, CSV, XML, HTML**: Machine-readable formats that can be selected with the `--output` flag. By default, these are printed to standard output, but the HTML report can be saved directly to a file using the `--html-file` argument.
-
+- **Console Output**: Use the `--output` flag to print results to the console in `table` (default), `json`, `csv`, or `xml` format.
+- **File Exports**:
+  - Use the `--export` flag to save `json` and `txt` reports to your Desktop or a directory specified with `-O`.
+  - Use the `--html-file` argument to save a comprehensive, self-contained HTML report to a specific file path.
+  - The `csv` and `xml` formats can be redirected to a file (e.g., `zone-poker example.com --all --output csv > report.csv`).
 
 ## Configuration File
 

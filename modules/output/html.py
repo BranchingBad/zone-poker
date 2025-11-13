@@ -4,6 +4,7 @@ Zone-Poker - HTML Output Module
 """
 import builtins
 from typing import Dict, Any, Optional
+from ..config import console
 
 from rich.console import Console
 from rich.panel import Panel
@@ -24,9 +25,13 @@ def _render_to_html(renderable: Optional[Panel]) -> str:
     return console.export_html(inline_styles=True, code_format="<pre>{code}</pre>")
 
 
-def output(all_data: Dict[str, Any]):
+def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     """
-    Generates and prints a self-contained HTML report to standard output.
+    Generates and prints a self-contained HTML report to standard output or a file.
+
+    Args:
+        all_data: The dictionary containing all scan data.
+        output_path: If provided, the output is written to this file path.
     """
     domain = all_data.get("domain", "N/A")
     timestamp = all_data.get("scan_timestamp", "")
@@ -112,6 +117,14 @@ def output(all_data: Dict[str, Any]):
 </html>
 """
 
-    # Using builtins.print to avoid collision with rich.console.print
-    # and to ensure it goes to stdout for redirection.
-    builtins.print(html_template.strip())
+    html_content = html_template.strip()
+    if output_path:
+        try:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+        except IOError as e:
+            console.print(
+                f"[bold red]Error writing HTML file to {output_path}: {e}[/bold red]"
+            )
+    else:
+        builtins.print(html_content)

@@ -49,6 +49,41 @@ def _evaluate_hsts(value: str) -> Dict[str, Any]:
         }
 
 
+def _evaluate_csp(value: str) -> Dict[str, Any]:
+    """Performs a basic evaluation of the Content-Security-Policy header."""
+    recommendations = []
+    status = "Present"  # Start with Present, downgrade if issues found
+
+    # Lowercase for easier parsing
+    csp = value.lower()
+
+    if "'unsafe-inline'" in csp:
+        recommendations.append(
+            "CSP contains 'unsafe-inline', which allows inline scripts/styles, increasing XSS risk."
+        )
+        status = "Weak"
+    if "'unsafe-eval'" in csp:
+        recommendations.append(
+            "CSP contains 'unsafe-eval', which allows string evaluation APIs like eval(), increasing XSS risk."
+        )
+        status = "Weak"
+    if "script-src * " in csp or "object-src *" in csp:
+        recommendations.append(
+            "CSP uses a wildcard '*' for script-src or object-src, which is overly permissive."
+        )
+        status = "Weak"
+
+    # If no major issues were found, we can consider it strong for this basic check.
+    if status == "Present":
+        status = "Strong"
+
+    return {
+        "status": status,
+        "value": value,
+        "recommendation": " ".join(recommendations),
+    }
+
+
 def _evaluate_xcto(value: str) -> Dict[str, Any]:
     """Evaluates the X-Content-Type-Options header."""
     if value.lower() == "nosniff":
@@ -103,10 +138,12 @@ def _evaluate_generic(value: str) -> Dict[str, Any]:
 HEADER_CHECKS = {
     "Strict-Transport-Security": {
         "eval_func": _evaluate_hsts,
+        "severity": "High",
         "recommendation": "Implement HSTS to enforce HTTPS.",
     },
     "Content-Security-Policy": {
-        "eval_func": _evaluate_generic,
+        "eval_func": _evaluate_csp,
+        "severity": "High",
         "recommendation": (
             "Implement a Content-Security-Policy (CSP) to mitigate XSS and other "
             "injection attacks."
@@ -114,6 +151,7 @@ HEADER_CHECKS = {
     },
     "X-Frame-Options": {
         "eval_func": _evaluate_xfo,
+        "severity": "Medium",
         "recommendation": (
             "Implement X-Frame-Options or CSP 'frame-ancestors' to prevent "
             "clickjacking."
@@ -121,14 +159,17 @@ HEADER_CHECKS = {
     },
     "X-Content-Type-Options": {
         "eval_func": _evaluate_xcto,
+        "severity": "Medium",
         "recommendation": "Set X-Content-Type-Options to 'nosniff' to prevent MIME-sniffing.",
     },
     "Referrer-Policy": {
         "eval_func": _evaluate_generic,
+        "severity": "Low",
         "recommendation": "Set a Referrer-Policy to control info leakage in the Referer header.",
     },
     "Permissions-Policy": {
         "eval_func": _evaluate_generic,
+        "severity": "Low",
         "recommendation": (
             "Implement a Permissions-Policy (formerly Feature-Policy) to control "
             "browser feature access."
@@ -136,6 +177,7 @@ HEADER_CHECKS = {
     },
     "X-XSS-Protection": {
         "eval_func": _evaluate_xxss,
+        "severity": "Low",
         "recommendation": "",  # Recommendations are handled in the eval function
     },
 }
@@ -160,11 +202,10 @@ async def analyze_http_headers(domain: str, **kwargs) -> Dict[str, Any]:
                 response = await client.get(url, timeout=10)
                 response.raise_for_status()
 
-                headers = {k.lower(): v for k, v in response.headers.items()}
                 results["final_url"] = str(response.url)
 
                 for header_name, check_config in HEADER_CHECKS.items():
-                    header_value = headers.get(header_name.lower())
+                    header_value = response.headers.get(header_name)
                     if header_value:
                         analysis_result = check_config["eval_func"](header_value)
                         results["analysis"][header_name] = analysis_result

@@ -30,6 +30,7 @@ from modules.analysis.subdomain_takeover import check_subdomain_takeover
 from modules.analysis.cloud_enum import enumerate_cloud_services
 from modules.analysis.dnsbl import check_dnsbl
 from modules.analysis.open_redirect import check_open_redirect
+from modules.analysis.security_txt import check_security_txt
 from modules.analysis.critical_findings import aggregate_critical_findings
 
 # Import all display and export functions
@@ -56,7 +57,9 @@ from modules.display import (  # Only display functions remain here
     display_subdomain_takeover,
     display_cloud_enum,
     display_dnsbl_check,
+    display_security_txt,
     display_open_redirect,
+    display_ip_geolocation,
 )
 from modules.export_txt import (  # All txt export functions are imported
     export_txt_records,
@@ -82,6 +85,7 @@ from modules.export_txt import (  # All txt export functions are imported
     export_txt_subdomain_takeover,
     export_txt_cloud_enum,
     export_txt_dnsbl_check,
+    export_txt_security_txt,
     export_txt_open_redirect,
 )
 
@@ -141,7 +145,7 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_email_security,
         "export_func": export_txt_mail,
         "description": "Analyzing email security (SPF, DMARC)...",
-        "dependencies": ["records"],
+        "dependencies": ["records", "http_headers"],
         "arg_info": {
             "short": "-m",
             "long": "--mail",
@@ -201,6 +205,7 @@ MODULE_DISPATCH_TABLE = {
             "takeover",
             "dnsbl",
             "port_scan",
+            "security_txt",
             "reputation",
             "redirect",
         ],
@@ -215,6 +220,7 @@ MODULE_DISPATCH_TABLE = {
         "analysis_func": detect_technologies,
         "display_func": display_technology_info,
         "export_func": export_txt_tech,
+        "dependencies": ["http_headers"],
         "description": "Detecting web technologies...",
         "arg_info": {
             "short": "-t",
@@ -239,6 +245,7 @@ MODULE_DISPATCH_TABLE = {
         "analysis_func": analyze_ssl_certificate,
         "display_func": display_ssl_info,
         "export_func": export_txt_ssl,
+        "dependencies": ["http_headers"],
         "description": "Analyzing SSL/TLS certificate...",
         "arg_info": {
             "short": None,
@@ -313,6 +320,7 @@ MODULE_DISPATCH_TABLE = {
         "analysis_func": analyze_dane_records,
         "display_func": display_dane_analysis,
         "export_func": export_txt_dane,
+        "dependencies": ["http_headers"],
         "description": "Checking for DANE (TLSA) records...",
         "arg_info": {
             "short": None,
@@ -323,10 +331,10 @@ MODULE_DISPATCH_TABLE = {
     "geolocation": {
         "data_key": "geo_info",
         "analysis_func": geolocate_ips,
-        "display_func": None,  # This function was removed, set to None
+        "display_func": display_ip_geolocation,
         "export_func": export_txt_geolocation,
         "description": "Geolocating IP addresses...",
-        "dependencies": ["records"],
+        "dependencies": ["records", "http_headers"],
         "arg_info": {
             "short": None,
             "long": "--geo",
@@ -351,7 +359,7 @@ MODULE_DISPATCH_TABLE = {
         "display_func": display_port_scan,
         "export_func": export_txt_port_scan,
         "description": "Scanning for open ports...",
-        "dependencies": ["records"],
+        "dependencies": ["records", "http_headers"],
         "arg_info": {
             "short": None,
             "long": "--ports",
@@ -407,6 +415,18 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--redirect",
             "help": "Check for common open redirect vulnerabilities.",
+        },
+    },
+    "security_txt": {
+        "data_key": "security_txt_info",
+        "analysis_func": check_security_txt,
+        "display_func": display_security_txt,
+        "export_func": export_txt_security_txt,
+        "description": "Checking for security.txt file...",
+        "arg_info": {
+            "short": None,
+            "long": "--security-txt",
+            "help": "Check for a security.txt file and parse its contents.",
         },
     },
     # This is a meta-module that doesn't have its own display/export functions

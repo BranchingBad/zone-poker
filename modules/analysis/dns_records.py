@@ -46,9 +46,9 @@ async def get_dns_records(
             if verbose:
                 logger.debug(f"Error querying {rtype} for {domain}: {e}")
 
-    # We use a sequential for loop here instead of asyncio.gather() to avoid potential
-    # rate-limiting issues from DNS servers when sending many concurrent requests.
-    for rtype in record_types or RECORD_TYPES:
-        await query_type(rtype)
+    # Create a list of tasks to run concurrently.
+    # This is generally safe for a limited number of record types.
+    tasks = [query_type(rtype) for rtype in record_types or RECORD_TYPES]
+    await asyncio.gather(*tasks)
 
     return records

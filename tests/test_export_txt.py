@@ -1,5 +1,6 @@
 import pytest
 from typing import Dict, Any, List
+import datetime
 
 # Import the private formatter functions we want to test
 from modules.export_txt import (
@@ -17,7 +18,13 @@ from modules.export_txt import (
     _format_reputation_txt,
     _format_port_scan_txt,
     _format_dnsbl_check_txt,
+    _format_propagation_txt,
+    _format_tech_txt,
+    _format_osint_txt,
+    _format_ssl_txt,
+    _format_open_redirect_txt,
 )
+from modules.export_txt import _format_security_txt_txt
 
 # --- Fixtures for Test Data ---
 
@@ -183,6 +190,75 @@ def dnsbl_data_listed() -> Dict[str, Any]:
     }
 
 
+@pytest.fixture
+def propagation_data() -> Dict[str, Any]:
+    """Provides sample propagation data."""
+    return {
+        "Google": {"ips": ["1.2.3.4"]},
+        "Cloudflare": {"ips": ["1.2.3.4", "1.2.3.5"]},
+        "OpenDNS": {"error": "Timeout"},
+    }
+
+
+@pytest.fixture
+def tech_data() -> Dict[str, Any]:
+    """Provides sample technology detection data."""
+    return {"technologies": ["Nginx", "React"], "server": "Nginx"}
+
+
+@pytest.fixture
+def osint_data() -> Dict[str, Any]:
+    """Provides sample OSINT data."""
+    return {
+        "subdomains": ["blog.example.com", "shop.example.com"],
+        "passive_dns": [
+            {"hostname": "example.com", "ip": "1.2.3.4", "last_seen": "2023-01-01"}
+        ],
+    }
+
+
+@pytest.fixture
+def ssl_data() -> Dict[str, Any]:
+    """Provides sample SSL data."""
+    return {
+        "subject": "CN=example.com",
+        "issuer": "C=US, O=Let's Encrypt, CN=R3",
+        "valid_from": datetime.datetime(2023, 1, 1).timestamp(),
+        "valid_until": datetime.datetime(2024, 1, 1).timestamp(),
+        "sans": ["example.com", "www.example.com"],
+    }
+
+
+@pytest.fixture
+def open_redirect_data() -> Dict[str, Any]:
+    """Provides sample open redirect data."""
+    return {
+        "vulnerable_urls": [{"url": "http://a.com", "redirects_to": "http://b.com"}]
+    }
+
+
+@pytest.fixture
+def security_txt_data_found() -> Dict[str, Any]:
+    """Provides sample security.txt data with multiple contacts."""
+    return {
+        "found": True,
+        "url": "https://example.com/security.txt",
+        "parsed": {
+            "Contact": [
+                "mailto:security@example.com",
+                "tel:+1-555-555-5555",
+            ],
+            "Expires": "2025-12-31T23:59:59Z",
+        },
+    }
+
+
+@pytest.fixture
+def security_txt_data_not_found() -> Dict[str, Any]:
+    """Provides sample security.txt data for a not-found case."""
+    return {"found": False}
+
+
 # --- Test Cases ---
 
 
@@ -344,3 +420,73 @@ def test_format_dnsbl_check_txt(dnsbl_data_listed):
     assert "Found 1 IP(s) on DNS blocklists" in result_str
     assert "IP Address: 1.2.3.4" in result_str
     assert "Listed on: spamhaus.org, proofpoint.com" in result_str
+
+
+def test_format_propagation_txt(propagation_data):
+    """Tests the propagation formatter."""
+    result = _format_propagation_txt(propagation_data)
+    result_str = "\n".join(result)
+    assert "Google              : 1.2.3.4" in result_str
+    assert "Cloudflare          : 1.2.3.4, 1.2.3.5" in result_str
+    assert "OpenDNS             : Timeout" in result_str
+
+
+def test_format_tech_txt(tech_data):
+    """Tests the technology detection formatter."""
+    result = _format_tech_txt(tech_data)
+    result_str = "\n".join(result)
+    assert "Technologies        : Nginx, React" in result_str
+    assert "Server              : Nginx" in result_str
+
+
+def test_format_osint_txt(osint_data):
+    """Tests the OSINT formatter."""
+    result = _format_osint_txt(osint_data)
+    result_str = "\n".join(result)
+    assert "Subdomains:" in result_str
+    assert "  - blog.example.com" in result_str
+    assert "Passive DNS:" in result_str
+    assert "example.com -> 1.2.3.4 (Last: 2023-01-01)" in result_str
+
+
+def test_format_ssl_txt(ssl_data):
+    """Tests the SSL/TLS formatter."""
+    result = _format_ssl_txt(ssl_data)
+    result_str = "\n".join(result)
+    assert "Subject: CN=example.com" in result_str
+    assert "Valid From: 2023-01-01 00:00:00" in result_str
+    assert "Subject Alternative Names:" in result_str
+
+
+def test_format_open_redirect_txt(open_redirect_data):
+    """Tests the open redirect formatter."""
+    result = _format_open_redirect_txt(open_redirect_data)
+    result_str = "\n".join(result)
+    assert "Found 1 potential open redirects:" in result_str
+    assert "Vulnerable URL: http://a.com" in result_str
+    assert "Redirects To:   http://b.com" in result_str
+
+
+def test_format_security_txt_found(security_txt_data_found):
+    """Tests the security.txt formatter with found data."""
+    result = _format_security_txt_txt(security_txt_data_found)
+    result_str = "\n".join(result)
+
+    assert "Found at: https://example.com/security.txt" in result_str
+    assert "Contact             : mailto:security@example.com" in result_str
+    assert "Contact             : tel:+1-555-555-5555" in result_str
+    assert "Expires             : 2025-12-31T23:59:59Z" in result_str
+
+
+def test_format_security_txt_not_found(security_txt_data_not_found):
+    """Tests the security.txt formatter when the file is not found."""
+    result = _format_security_txt_txt(security_txt_data_not_found)
+    assert result == ["No security.txt file found at standard locations."]
+
+
+def test_format_security_txt_found_empty():
+    """Tests the security.txt formatter when the file is found but empty."""
+    result = _format_security_txt_txt(
+        {"found": True, "url": "https://a.com", "parsed": {}}
+    )
+    assert "File was empty or could not be parsed" in "\n".join(result)

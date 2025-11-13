@@ -1,64 +1,79 @@
 #!/usr/bin/env python3
 """
-Zone-Poker - IP Geolocation Analysis Module
+Zone-Poker - IP Geolocation Module
 """
-import httpx
 import asyncio
+import httpx
+from typing import Any, Dict, List
 import logging
-from typing import Dict, Any, List, Set
 
 logger = logging.getLogger(__name__)
+IP_API_BATCH_ENDPOINT = "http://ip-api.com/batch"
 
 
 async def geolocate_ips(
-    records_info: Dict[str, List[Dict[str, Any]]], **kwargs
-) -> Dict[str, List[Dict[str, Any]]]:
+    all_data: Dict[str, Any], **kwargs
+) -> Dict[str, Dict[str, str]]:
     """
-    Performs IP geolocation for discovered A and AAAA records using ip-api.com.
+    Geolocates IP addresses from A/AAAA records and headers using the ip-api.com batch endpoint.
     """
-    results: Dict[str, List[Dict[str, Any]]] = {"locations": []}
-    ips_to_check: Set[str] = set()
+    records_info = all_data.get("records_info", {})
+    headers_info = all_data.get("headers_info", {})
+    geo_results: Dict[str, Dict[str, str]] = {}
 
-    # Flatten all A and AAAA records into a set of unique IPs
-    for r_type in ["A", "AAAA"]:
+    ips_to_check: List[str] = []
+    for r_type in ("A", "AAAA"):
         for record in records_info.get(r_type, []):
             if record.get("value"):
-                ips_to_check.add(record["value"])
+                ips_to_check.append(record["value"])
+
+    # Also check the IP from the final URL in http_headers if available
+    if headers_info and headers_info.get("ip_address"):
+        ips_to_check.append(headers_info["ip_address"])
+
+    # Remove duplicates
+    ips_to_check = sorted(list(set(ips_to_check)))
 
     if not ips_to_check:
         return {}
 
-    logger.debug(f"Geolocating {len(ips_to_check)} unique IP addresses.")
-    async with httpx.AsyncClient() as client:
-        tasks = {
-            ip: client.get(
-                f"http://ip-api.com/json/{ip}?fields=status,message,country,city,isp",
-                timeout=10,
-            )
-            for ip in ips_to_check
-        }
-        responses = await asyncio.gather(*tasks.values(), return_exceptions=True)
+    # ip-api.com batch endpoint supports up to 100 IPs per request
+    BATCH_SIZE = 100
+    ip_chunks = [
+        ips_to_check[i : i + BATCH_SIZE]
+        for i in range(0, len(ips_to_check), BATCH_SIZE)
+    ]
 
-        for (ip, _), response in zip(tasks.items(), responses):
-            if isinstance(response, Exception):
-                results["locations"].append(
-                    {"ip": ip, "error": f"Request failed: {type(response).__name__}"}
-                )
-                continue
+    async def _geolocate_batch(ip_chunk: List[str], client: httpx.AsyncClient):
+        """Inner function to geolocate a batch of IPs."""
+        # 'query' is needed to map results back to the IP
+        url = f"{IP_API_BATCH_ENDPOINT}?fields=status,message,country,city,isp,query"
+        try:
+            response = await client.post(url, json=ip_chunk, timeout=10)
+            response.raise_for_status()
+            batch_data = response.json()
 
-            try:
-                data = response.json()
+            for data in batch_data:
+                ip = data.get("query")
+                if not ip:
+                    continue
+
                 if data.get("status") == "success":
-                    location_data = {k: v for k, v in data.items() if k != "status"}
-                    location_data["ip"] = ip  # Add the IP to the dictionary
-                    results["locations"].append(location_data)
+                    geo_results[ip] = {
+                        "isp": data.get("isp", "N/A"),
+                        "country": data.get("country", "N/A"),
+                        "city": data.get("city", "N/A"),
+                    }
                 else:
-                    results["locations"].append(
-                        {"ip": ip, "error": data.get("message", "Failed to geolocate")}
-                    )
-            except Exception as e:
-                results["locations"].append(
-                    {"ip": ip, "error": f"Failed to parse response: {e}"}
-                )
+                    geo_results[ip] = {"error": data.get("message", "API error")}
+        except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            logger.warning(f"IP geolocation batch request failed: {e}")
+            # Mark all IPs in this failed chunk as errored
+            for ip in ip_chunk:
+                geo_results[ip] = {"error": f"Batch request failed: {type(e).__name__}"}
 
-    return results
+    async with httpx.AsyncClient() as client:
+        tasks = [_geolocate_batch(chunk, client) for chunk in ip_chunks]
+        await asyncio.gather(*tasks)
+
+    return geo_results

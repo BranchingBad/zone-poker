@@ -4,6 +4,7 @@ Zone-Poker - SMTP Analysis Module
 """
 import asyncio
 import ssl
+import smtplib
 import socket
 from typing import Dict, Any
 
@@ -27,68 +28,58 @@ async def analyze_smtp_servers(
 
     sorted_mx = sorted(mx_records, key=lambda r: r.get("priority", 99))
 
-    async def analyze_server(record: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
-        server = record.get("value")
-        if not server:
-            return "invalid_record", {"error": "MX record has no value."}
+    def run_sync_analysis(record: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+        """Synchronous function to be run in a thread."""
+        server_name = record.get("value")
+        if not server_name:
+            return "invalid_record", {"error": "MX record has no value"}
 
         server_results = {}
         try:
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, 25), timeout=timeout
-            )
-
-            banner = await asyncio.wait_for(reader.read(1024), timeout=timeout)
-            server_results["banner"] = banner.decode("utf-8", "ignore").strip()
-
-            writer.write(f"EHLO {domain}\r\n".encode())
-            await writer.drain()
-            ehlo_resp = await asyncio.wait_for(reader.read(4096), timeout=timeout)
-
-            if b"250-STARTTLS" in ehlo_resp:
-                server_results["starttls"] = "Supported"
-                writer.write(b"STARTTLS\r\n")
-                await writer.drain()
-                await asyncio.wait_for(reader.read(1024), timeout=timeout)
-
-                # Upgrade the connection
-                ssl_context = ssl.create_default_context()
-                # Create a new SSL-wrapped connection over the existing socket
-                new_reader, new_writer = await asyncio.open_connection(
-                    sock=writer.get_extra_info("socket"),
-                    ssl=ssl_context,
-                    server_hostname=server,
+            with smtplib.SMTP(server_name, port=25, timeout=timeout) as smtp:
+                # Send EHLO to discover server capabilities like STARTTLS
+                smtp.ehlo()
+                server_results["banner"] = (
+                    smtp.helo_resp.decode("utf-8", "ignore").strip()
+                    if smtp.helo_resp
+                    else "N/A"
                 )
-
-                # Get the certificate from the new secure writer
-                cert = new_writer.get_extra_info("ssl_object").getpeercert()
-                cert_info = {
-                    "subject": dict(x[0] for x in cert.get("subject", [])).get(
-                        "commonName", "N/A"
-                    ),
-                    "issuer": dict(x[0] for x in cert.get("issuer", [])).get(
-                        "commonName", "N/A"
-                    ),
-                    "valid_from": ssl.cert_time_to_seconds(cert.get("notBefore")),
-                    "valid_until": ssl.cert_time_to_seconds(cert.get("notAfter")),
-                }
-                server_results["certificate"] = cert_info
-                new_writer.close()
-                await new_writer.wait_closed()
-            else:
-                server_results["starttls"] = "Not Supported"
-                writer.close()
-                await writer.wait_closed()
-
-        except (asyncio.TimeoutError, socket.timeout):
+                if smtp.has_extn("starttls"):
+                    server_results["starttls"] = "Supported"
+                    smtp.starttls()
+                    # We must call ehlo() again after STARTTLS
+                    smtp.ehlo()
+                    cert = smtp.sock.getpeercert()
+                    if cert:
+                        cert_info = {
+                            "subject": dict(x[0] for x in cert.get("subject", [])).get(
+                                "commonName", "N/A"
+                            ),
+                            "issuer": dict(x[0] for x in cert.get("issuer", [])).get(
+                                "commonName", "N/A"
+                            ),
+                            "valid_from": ssl.cert_time_to_seconds(
+                                cert.get("notBefore")
+                            ),
+                            "valid_until": ssl.cert_time_to_seconds(
+                                cert.get("notAfter")
+                            ),
+                        }
+                        server_results["certificate"] = cert_info
+                else:
+                    server_results["starttls"] = "Not Supported"
+        except smtplib.SMTPHeloError as e:
+            server_results["error"] = f"Server didn't reply properly to EHLO: {e}"
+        except socket.timeout:
             server_results["error"] = f"Connection timed out after {timeout} seconds."
         except (ConnectionRefusedError, OSError) as e:
-            server_results["error"] = f"Could not connect to {server}:25: {e}"
+            server_results["error"] = f"Could not connect to {server_name}:25: {e}"
         except Exception as e:
             server_results["error"] = f"An unexpected error occurred: {e}"
 
-        return server, server_results
+        return server_name, server_results
 
-    tasks = [analyze_server(record) for record in sorted_mx]
+    # Wrap the synchronous function call in asyncio.to_thread
+    tasks = [asyncio.to_thread(run_sync_analysis, record) for record in sorted_mx]
     results = await asyncio.gather(*tasks)
     return {server: data for server, data in results if server}

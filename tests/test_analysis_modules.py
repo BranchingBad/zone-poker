@@ -7,7 +7,9 @@ import respx
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import RequestError
 from datetime import datetime, timedelta
-from modules.analysis.security_audit import security_audit
+
+from modules.analysis.http_headers import HEADER_CHECKS
+from modules.analysis.security_audit import security_audit, AUDIT_CHECKS
 from modules.analysis.tech import detect_technologies
 from modules.analysis.whois import whois_lookup
 
@@ -89,6 +91,31 @@ def mock_moderate_data(mock_secure_data):
     return mock_secure_data
 
 
+@pytest.fixture
+def mock_missing_data():
+    """Provides mock data for checks that look for completely missing data."""
+    return {
+        "mail_info": {
+            "spf": {"status": "Not Found"},
+            "dmarc": {"status": "Not Found"},
+        },
+        "headers_info": {
+            "analysis": {
+                "X-Frame-Options": {"status": "Missing", "recommendation": "..."}
+            }
+        },
+    }
+
+
+@pytest.fixture
+def mock_critical_data():
+    """Provides mock data for a critical SPF misconfiguration."""
+    return {
+        "mail_info": {"spf": {"all_policy": "+all"}},
+        "headers_info": {"analysis": {}},
+    }
+
+
 def test_security_audit_secure(mock_secure_data):
     """
     Tests the security_audit function with data that should result in all 'Secure' statuses.
@@ -116,7 +143,9 @@ def test_security_audit_weak(mock_weak_data):
     assert findings["Open Redirect"]["severity"] == "Medium"
     assert findings["Expired SSL/TLS Certificate"]["severity"] == "High"
     assert findings["High-Risk IP Reputation"]["severity"] == "High"
-    assert findings["Insecure Header: Content-Security-Policy"]["severity"] == "High"
+    assert (
+        findings.get("Insecure Header: Content-Security-Policy")["severity"] == "High"
+    )
 
 
 def test_security_audit_moderate(mock_moderate_data):
@@ -131,6 +160,59 @@ def test_security_audit_moderate(mock_moderate_data):
     )
     assert hsts_finding["severity"] == "High"
     assert "HSTS 'max-age' is less than one year" in hsts_finding["recommendation"]
+
+
+def test_security_audit_weak_cipher(mock_weak_cipher_data):
+    """
+    Tests that a weak cipher suite is correctly flagged.
+    """
+    result = security_audit(all_data=mock_weak_cipher_data)
+    weak_cipher_finding = next(
+        f for f in result["findings"] if f["finding"] == "Weak SSL/TLS Cipher Suite"
+    )
+    assert weak_cipher_finding["severity"] == "Medium"
+
+
+def test_all_security_checks_are_covered(
+    mock_weak_data,
+    mock_moderate_data,
+    mock_missing_data,
+    mock_weak_cipher_data,
+    mock_critical_data,
+):
+    """
+    Meta-test to ensure that every check in AUDIT_CHECKS and HEADER_CHECKS
+    is triggered by at least one of the mock data fixtures.
+    """
+    # 1. Get all defined finding names
+    all_check_names = {check["finding"] for check in AUDIT_CHECKS}
+    all_header_check_names = {
+        f"Insecure Header: {name}" for name in HEADER_CHECKS.keys()
+    }
+    all_defined_checks = all_check_names.union(all_header_check_names)
+
+    # 2. Run all mock data through the security audit to see what findings they produce
+    all_mock_data = [
+        mock_weak_data,
+        mock_moderate_data,
+        mock_missing_data,
+        mock_weak_cipher_data,
+        mock_critical_data,
+    ]
+    all_triggered_findings = set()
+
+    for data in all_mock_data:
+        result = security_audit(all_data=data)
+        for finding in result["findings"]:
+            all_triggered_findings.add(finding["finding"])
+
+    # 3. Find the difference
+    uncovered_checks = all_defined_checks - all_triggered_findings
+
+    assert not uncovered_checks, (
+        f"The following security checks are not covered by any tests: "
+        f"{sorted(list(uncovered_checks))}"
+    )
 
 
 @pytest.mark.asyncio

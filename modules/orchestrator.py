@@ -8,6 +8,7 @@ import logging
 import asyncio
 import traceback
 from rich.progress import Progress
+from pathlib import Path
 from collections import deque
 import dns.resolver
 from datetime import datetime
@@ -16,6 +17,7 @@ from typing import Dict, Any, List, Set, Coroutine
 # Import shared config for the console object # noqa
 from .config import console, PUBLIC_RESOLVERS
 from .export import handle_output
+from .utils import get_desktop_path
 
 # Import the central configuration and display functions
 from .utils import is_valid_domain
@@ -211,8 +213,37 @@ async def _scan_single_domain(
     if not args.quiet and args.output != "table":
         handle_output(all_data, args.output)
 
-    # Handle file exports (txt, json).
-    handle_output(all_data, "file")  # Use a dedicated identifier for file exports
+    # --- Handle all file exports ---
+    export_formats = []
+    if getattr(args, "export", False):
+        export_formats.extend(["json", "txt"])  # Default export types
+    if getattr(args, "html_file", None):
+        export_formats.append("html")
+
+    if export_formats:
+        # Determine the save directory
+        output_dir_str = getattr(args, "output_dir", None)
+        if output_dir_str and Path(output_dir_str).is_dir():
+            save_path = Path(output_dir_str)
+        else:
+            save_path = get_desktop_path()
+
+        # Generate a base filename from the template
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename_template = getattr(
+            args, "filename_template", "{domain}_dnsint_{timestamp}"
+        )
+        base_filename = filename_template.format(domain=domain, timestamp=timestamp)
+
+        for fmt in set(export_formats):
+            if fmt == "html" and getattr(args, "html_file", None):
+                # Use the exact path provided by the user for --html-file
+                filepath = Path(args.html_file)
+            else:
+                filepath = save_path / f"{base_filename}.{fmt}"
+
+            # Call the handler for each file format
+            handle_output(all_data, fmt, str(filepath))
 
     return all_data
 
