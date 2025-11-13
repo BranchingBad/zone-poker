@@ -337,6 +337,7 @@ async def test_check_open_redirect_vulnerable_found():
     respx.get(f"https://{domain}//example.com").respond(200)
     respx.get(f"https://{domain}//www.google.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
+    respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
 
     result = await check_open_redirect(domain=domain, timeout=5)
@@ -364,6 +365,7 @@ async def test_check_open_redirect_not_vulnerable():
     respx.get(f"https://{domain}//example.com").respond(200)
     respx.get(f"https://{domain}//www.google.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
+    respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
     # Mock a request that results in a network error
     respx.get(f"https://{domain}/login?redirect=https://example.com").mock(
         side_effect=RequestError("Connection failed")

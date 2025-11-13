@@ -1,5 +1,5 @@
 import pytest
-import dns.resolver
+import dns.resolver, dns.rdatatype
 import dns.zone
 import dns.exception
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -10,7 +10,15 @@ from modules.analysis.dns_zone import attempt_axfr
 @pytest.fixture
 def mock_resolver():
     """Fixture for a mock dns.resolver.Resolver."""
-    return MagicMock()
+    resolver = MagicMock(spec=dns.resolver.Resolver)
+    resolver.resolve = MagicMock()
+    return resolver
+
+def create_mock_answer(records):
+    """Helper to create a mock dnspython answer object."""
+    answer = MagicMock()
+    answer.__iter__.return_value = iter(records)
+    return answer
 
 
 @pytest.fixture
@@ -24,29 +32,21 @@ async def test_axfr_successful(mock_resolver, mock_records):
     """Test a successful AXFR."""
     domain = "example.com"
 
-    # Mock NS resolution
-    def resolve_side_effect(target, rtype):
-        if target == "ns1.example.com" and rtype == "A":
-            return create_mock_answer(["1.1.1.1"])
-        raise dns.resolver.NoAnswer
-
-    mock_resolver.resolve.side_effect = resolve_side_effect
+    def do_xfr_success(*args, **kwargs):
+        # Simulate a successful zone transfer
+        zone_text = f"""
+        {domain}. 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5
+        {domain}. 3600 IN NS ns1.{domain}.
+        """
+        return dns.zone.from_text(zone_text, origin=domain)
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        def do_xfr_success():
-            # Simulate a successful zone transfer
-            zone_text = f"""
-            {domain}. 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5
-            {domain}. 3600 IN NS ns1.{domain}.
-            """
-            return dns.zone.from_text(zone_text, origin=domain)
-
         mock_to_thread.side_effect = [
-            ["1.1.1.1"],  # A record for ns1
-            [],  # AAAA record for ns1
-            do_xfr_success,  # Successful AXFR for ns1
-            [],  # A record for ns2
-            [],  # AAAA record for ns2
+            create_mock_answer(["1.1.1.1"]),  # A record for ns1
+            create_mock_answer([]),  # AAAA record for ns1
+            do_xfr_success,  # AXFR for ns1
+            create_mock_answer([]),  # A record for ns2
+            create_mock_answer([]),  # AAAA record for ns2
         ]
 
         results = await attempt_axfr(
@@ -64,17 +64,17 @@ async def test_axfr_refused(mock_resolver, mock_records):
     """Test an AXFR that is refused by the server."""
     domain = "example.com"
 
-    def do_xfr_refused():
+    def do_xfr_refused(*args, **kwargs):
         # A FormError is raised by dnspython for a refused transfer
         raise dns.exception.FormError("Refused")
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = [
-            ["1.1.1.1"],
-            [],
+            create_mock_answer(["1.1.1.1"]),
+            create_mock_answer([]),
             do_xfr_refused,  # ns1 results
-            ["2.2.2.2"],
-            [],
+            create_mock_answer(["2.2.2.2"]),
+            create_mock_answer([]),
             do_xfr_refused,  # ns2 results
         ]
         results = await attempt_axfr(
@@ -97,16 +97,16 @@ async def test_axfr_timeout(mock_resolver, mock_records):
     """Test an AXFR that times out."""
     domain = "example.com"
 
-    def do_xfr_timeout():
+    def do_xfr_timeout(*args, **kwargs):
         raise dns.exception.Timeout()
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = [
-            ["1.1.1.1"],
-            [],
+            create_mock_answer(["1.1.1.1"]),
+            create_mock_answer([]),
             do_xfr_timeout,  # ns1 results
-            ["2.2.2.2"],
-            [],
+            create_mock_answer(["2.2.2.2"]),
+            create_mock_answer([]),
             do_xfr_timeout,  # ns2 results
         ]
         results = await attempt_axfr(
@@ -125,7 +125,7 @@ async def test_axfr_ns_not_resolved(mock_resolver, mock_records):
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         # All resolution attempts return empty lists
-        mock_to_thread.return_value = []
+        mock_to_thread.return_value = create_mock_answer([])
         results = await attempt_axfr(
             domain, mock_resolver, 5, False, records_info=mock_records
         )

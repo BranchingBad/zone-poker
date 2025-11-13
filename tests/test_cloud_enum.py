@@ -32,6 +32,7 @@ async def test_enumerate_cloud_services_found():
     respx.head("http://example-dev.s3.amazonaws.com").respond(404)
     respx.head("http://example-media.s3.amazonaws.com").respond(404)
     respx.head("http://example-www.s3.amazonaws.com").respond(404)
+    respx.head("http://example-backups.s3.amazonaws.com").respond(404)
 
     # --- Mock Azure Responses ---
     # Forbidden blob (valid account)
@@ -98,6 +99,7 @@ async def test_enumerate_cloud_services_none_found():
     respx.head("http://notfound.com.s3.amazonaws.com").respond(404)
     respx.head("http://notfoundcom.s3.amazonaws.com").respond(404)
     respx.head("http://notfound-www.s3.amazonaws.com").respond(404)
+    respx.head("http://notfound-backups.s3.amazonaws.com").respond(404)
 
     result = await enumerate_cloud_services(domain=domain)
 
@@ -121,6 +123,7 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     respx.head("http://ex-prod.s3.amazonaws.com").respond(404)
     respx.head("http://excom.s3.amazonaws.com").respond(404)
     respx.head("http://ex-www.s3.amazonaws.com").respond(404)
+    respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
     with respx.mock:
         result = await enumerate_cloud_services(domain=domain)
         assert not result["azure_blobs"]

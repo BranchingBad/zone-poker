@@ -17,13 +17,13 @@ from modules.utils import (
     [
         ("example.com", True),
         ("sub.example.co.uk", True),
-        ("a-b.c", False),
-        ("-example.com", False),  # Starts with hyphen
-        ("example.com-", True),  # TLD starts with hyphen (invalid label)
+        ("a-b.c", True),
+        ("-example.com", False),
+        ("example.com-", False),
         ("example..com", False),  # Double dot
         ("example", False),  # No TLD
         ("example.com.", True),  # FQDN with trailing dot
-        (".example.com", True),  # Leading dot
+        (".example.com", False),
         ("", False),  # Empty string
         (None, False),  # None value
         ("a" * 63 + ".com", True),  # Max label length
@@ -67,7 +67,7 @@ def test_format_rdata():
 
     # Test A record
     mock_rdata.to_text.return_value = "1.2.3.4"
-    assert _format_rdata("A", mock_rdata, ttl=300, name="a.com") == {
+    assert _format_rdata("A", mock_rdata.to_text(), ttl=300, name="a.com") == {
         "ttl": 300,
         "name": "a.com",
         "value": "1.2.3.4",

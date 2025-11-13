@@ -65,7 +65,7 @@ def test_display_security_txt_found_empty(security_txt_found_empty_data):
 
     assert isinstance(result, Panel)
     assert "Found at https://example.com/security.txt" in result.title
-    assert "File was empty or could not be parsed" in str(result.renderable)
+    assert "File was empty or could not be parsed" in result.renderable.caption
 
 
 def test_display_security_txt_quiet_mode(security_txt_found_data):
