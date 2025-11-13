@@ -35,7 +35,7 @@ async def test_axfr_successful(mock_resolver, mock_records):
     def do_xfr_success(*args, **kwargs):
         # Simulate a successful zone transfer
         zone_text = f"""
-        @ 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5
+        $ORIGIN {domain}.
         {domain}. 3600 IN NS ns1.{domain}.
         """
         return dns.zone.from_text(zone_text, origin=domain)

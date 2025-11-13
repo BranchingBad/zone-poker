@@ -46,7 +46,7 @@ def test_handle_output_txt(mock_all_data, capsys):
     a text-based report to the console.
     """
     # Call the handler with the 'txt' format. output_path is None for console output.
-    handle_output(mock_all_data, "console", output_path=None)
+    handle_output(mock_all_data, "txt", output_path=None)
 
     captured = capsys.readouterr()
     output = captured.out
