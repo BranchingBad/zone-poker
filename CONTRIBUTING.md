@@ -33,11 +33,15 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     python3 -m venv venv
     source venv/bin/activate
 
-    # Install the project in editable mode with development dependencies.
-    # The `[dev]` part installs extra tools for testing, linting, and formatting.
-    pip install -e .[dev]
-    ```
+    # This project uses pip-tools to lock dependencies for reproducible builds.
+    # First, install pip-tools.
+    pip install pip-tools
 
+    # Then, install the dependencies from the lock file and the project in editable mode.
+    pip install -r requirements.txt
+    pip install -e .
+    ```
+ 
 3.  **(Optional but Recommended) Set up pre-commit hooks.** This will automatically run linters and formatters on your code before you commit, ensuring it meets our style guidelines.
     ```bash
     pre-commit install
@@ -65,6 +69,20 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 9.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues.
 
 ## Development Guidelines
+
+### Managing Dependencies
+
+This project uses `pip-tools` to manage dependencies via a `requirements.txt` lock file. This ensures that every developer and the CI environment uses the exact same package versions.
+
+**To add or update a dependency:**
+
+1.  Edit `pyproject.toml` to add or change the desired package version range in the `dependencies` or `dev` section.
+2.  Regenerate the `requirements.txt` lock file by running:
+    ```bash
+    pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+    ```
+3.  Commit both the `pyproject.toml` and the updated `requirements.txt` files to your pull request.
+4.  Install the updated packages into your local environment: `pip install -r requirements.txt`
 
 ### Validating the Package Build
 Before submitting a pull request, especially if you've made changes to `pyproject.toml` or file structures, it's a good practice to verify that the package builds correctly and includes all necessary files. This process mimics the `validate-package` job in our CI pipeline.

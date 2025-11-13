@@ -63,18 +63,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install .[dev]
-
-      - name: Fail if dependencies are outdated
-        run: |
-          # Exclude build tools from the check to avoid noise.
-          # The check fails if any other package is outdated.
-          OUTDATED=$(pip list --outdated | tail -n +3 | grep -v -E '^(pip|setuptools|wheel)\s')
-          if [ -n "$OUTDATED" ]; then
-            echo "Failing build due to outdated packages:"
-            echo "$OUTDATED"
-            exit 1
-          fi
+          # Install pip-tools to generate the lockfile if it doesn't exist
+          pip install pip-tools
+          # Generate and install from lockfile for reproducible builds
+          pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+          pip install -r requirements.txt
+          pip install -e .
 
       - name: Run pre-commit checks
         run: |
