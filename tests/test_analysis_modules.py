@@ -334,8 +334,8 @@ async def test_check_open_redirect_vulnerable_found():
     )
 
     # Mock other payloads to return non-redirect responses
-    respx.get(f"https://{domain}//example.com").respond(200)
-    respx.get(f"https://{domain}//www.google.com").respond(200)
+    respx.get(f"https://{domain}/example.com").respond(200)  # httpx normalizes // to /
+    respx.get(f"https://{domain}/www.google.com").respond(200)  # httpx normalizes // to /
     respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
     respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
     respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)

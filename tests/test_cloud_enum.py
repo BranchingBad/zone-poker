@@ -71,11 +71,11 @@ async def test_enumerate_cloud_services_found():
     assert result["s3_buckets"][1]["url"] == "http://example.ca.s3.amazonaws.com"
     assert result["s3_buckets"][1]["status"] == "public"
 
-    assert result["s3_buckets"][2]["url"] == "http://exampleca.s3.amazonaws.com"
-    assert result["s3_buckets"][2]["status"] == "forbidden"
+    assert result["s3_buckets"][2]["url"] == "http://example.s3.amazonaws.com"
+    assert result["s3_buckets"][2]["status"] == "public"
 
-    assert result["s3_buckets"][3]["url"] == "http://example.s3.amazonaws.com"
-    assert result["s3_buckets"][3]["status"] == "public"
+    assert result["s3_buckets"][3]["url"] == "http://exampleca.s3.amazonaws.com"
+    assert result["s3_buckets"][3]["status"] == "forbidden"
     assert len(result["azure_blobs"]) == 2
     azure_urls = {b["url"] for b in result["azure_blobs"]}
     assert "https://example.blob.core.windows.net" in azure_urls
@@ -145,6 +145,7 @@ async def test_enumerate_cloud_services_invalid_azure_name():
     respx.head("http://ex-backups.s3.amazonaws.com").respond(404)
     respx.head("http://ex.com.s3.amazonaws.com/").respond(404)
     respx.head("https://exbackups.blob.core.windows.net/").respond(404)
+    respx.head("https://exprod.blob.core.windows.net/").respond(404)
     respx.head("https://exmedia.blob.core.windows.net/").respond(404)
     respx.head("https://excom.blob.core.windows.net/").respond(404)
     with respx.mock:

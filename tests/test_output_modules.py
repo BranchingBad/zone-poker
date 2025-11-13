@@ -98,10 +98,10 @@ def test_csv_output_generation(mock_print, sample_scan_data):
 
     # Check that sections with no data are handled gracefully
     assert "HTTP Security Headers Analysis" in csv_string
-    assert "No http headers information found." in csv_string
+    assert "No http_headers_info found." in csv_string
 
     assert "SSL/TLS Certificate Analysis" in csv_string
-    assert "No SSL/TLS certificate information found." in csv_string
+    assert "No ssl_info found." in csv_string
 
 
 @patch("builtins.print")

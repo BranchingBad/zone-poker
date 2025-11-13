@@ -67,7 +67,7 @@ def test_display_security_txt_found_empty(security_txt_found_empty_data):
     assert "Found at https://example.com/security.txt" in result.title
     # The renderable can be a string or a Table. Check both possibilities.
     renderable_str = str(result.renderable)
-    assert "File was empty or could not be parsed" in renderable_str
+    assert "File was empty or could not be parsed" in result.renderable.caption
 
 
 def test_display_security_txt_quiet_mode(security_txt_found_data):
