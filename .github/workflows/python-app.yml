@@ -122,8 +122,10 @@ jobs:
           source venv_test/bin/activate
           pip install --upgrade pip
           # List contents for debugging, then install.
-          ls -R dist
-          pip install dist/*.whl[dev]
+          # Find the wheel file and install it directly to avoid shell globbing issues.
+          WHEEL_FILE=$(find dist -name "*.whl" | head -n 1)
+          echo "Found wheel file: $WHEEL_FILE"
+          pip install "${WHEEL_FILE}[dev]"
           pytest
 
   build-and-push-docker:
@@ -175,7 +177,7 @@ jobs:
           # The image will be pushed in a later step if conditions are met.
           push: false
           load: true
-          # Tag the image with the final tags for pushing, plus a static tag for scanning.
+          # Tag the image with the final tags for pushing, plus a static tag for scanning. Use the lowercase image name from the meta step.
           tags: |
             ${{ steps.meta.outputs.tags }}
             ghcr.io/${{ github.repository }}:ci-scan
