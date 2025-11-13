@@ -184,10 +184,10 @@ jobs:
           # The image will be pushed in a later step if conditions are met.
           push: false
           load: true
-          # Tag the image with the final tags for pushing, plus a static tag for scanning. Use the lowercase image name from the meta step.
+          # Tag the image with the final tags for pushing, plus a static tag for scanning.
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}:ci-scan
+            ghcr.io/${{ toLower(github.repository_owner) }}/${{ github.event.repository.name }}:ci-scan
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
@@ -195,8 +195,8 @@ jobs:
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.20.0
         with:
-          # Scan the image using the static tag created in the build step.
-          image-ref: 'ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}:ci-scan'
+          # Scan the image using the static tag created in the build step
+          image-ref: 'ghcr.io/${{ toLower(github.repository_owner) }}/${{ github.event.repository.name }}:ci-scan'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -205,7 +205,7 @@ jobs:
 
       - name: Push image to GHCR
         if: github.event_name != 'pull_request'
-        run: docker push --all-tags ghcr.io/${{ github.repository_owner | lower }}/${{ github.event.repository.name }}
+        run: docker push --all-tags ghcr.io/${{ toLower(github.repository_owner) }}/${{ github.event.repository.name }}
 
   publish-to-pypi:
     name: Publish to PyPI
