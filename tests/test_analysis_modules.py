@@ -102,8 +102,12 @@ def mock_missing_data():
         },
         "headers_info": {
             "analysis": {
-                "X-Frame-Options": {"status": "Missing", "recommendation": "..."}
-            }
+                "X-Frame-Options": {"status": "Missing", "recommendation": "..."},
+                "X-Content-Type-Options": {"status": "Missing"},
+                "X-XSS-Protection": {"status": "Missing"},
+                "Referrer-Policy": {"status": "Missing"},
+                "Permissions-Policy": {"status": "Missing"},
+            },
         },
     }
 
