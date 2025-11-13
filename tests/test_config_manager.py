@@ -129,12 +129,12 @@ def test_malformed_config_file(parser, tmp_path, capsys):
     config_file.write_text(config_content)
 
     cli_input = ["-c", str(config_file), "example.com"]
-    with patch("sys.argv", ["zone-poker"] + cli_input):
+    with patch("sys.argv", ["zone-poker"] + cli_input), pytest.raises(SystemExit):
         args, domains = setup_configuration_and_domains(parser)
 
     captured = capsys.readouterr()
     # This error message comes from the underlying PyYAML/json library
-    assert "Could not decode config file" in captured.err
+    assert "Could not decode config file" in captured.out
 
 
 def test_domain_file_not_found(parser, capsys):

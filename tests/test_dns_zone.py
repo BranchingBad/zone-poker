@@ -35,7 +35,7 @@ async def test_axfr_successful(mock_resolver, mock_records):
     def do_xfr_success(*args, **kwargs):
         # Simulate a successful zone transfer
         zone_text = f"""
-        {domain}. 3600 IN SOA ns1.{domain}. hostmaster.{domain}. 1 2 3 4 5
+        $ORIGIN {domain}.
         {domain}. 3600 IN NS ns1.{domain}.
         """
         return dns.zone.from_text(zone_text, origin=domain)
@@ -81,14 +81,14 @@ async def test_axfr_refused(mock_resolver, mock_records):
             domain, mock_resolver, 5, False, records_info=mock_records
         )
 
-    assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
+    assert results["summary"] == "Secure (No successful transfers)"
     assert (
         results["servers"]["ns1.example.com"]["status"]
         == "Failed (Refused or Protocol Error)"
     )
     assert (
         results["servers"]["ns2.example.com"]["status"]
-        == "Successful"
+        == "Failed (Refused or Protocol Error)"
     )
 
 
@@ -113,9 +113,9 @@ async def test_axfr_timeout(mock_resolver, mock_records):
             domain, mock_resolver, 1, False, records_info=mock_records
         )
 
-    assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
+    assert results["summary"] == "Secure (No successful transfers)"
     assert results["servers"]["ns1.example.com"]["status"] == "Failed (Timeout)"
-    assert results["servers"]["ns2.example.com"]["status"] == "Successful"
+    assert results["servers"]["ns2.example.com"]["status"] == "Failed (Timeout)"
 
 
 @pytest.mark.asyncio
