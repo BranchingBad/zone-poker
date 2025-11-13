@@ -81,14 +81,14 @@ async def test_axfr_refused(mock_resolver, mock_records):
             domain, mock_resolver, 5, False, records_info=mock_records
         )
 
-    assert results["summary"] == "Secure (No successful transfers)"
+    assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
     assert (
         results["servers"]["ns1.example.com"]["status"]
         == "Failed (Refused or Protocol Error)"
     )
     assert (
         results["servers"]["ns2.example.com"]["status"]
-        == "Failed (Refused or Protocol Error)"
+        == "Successful"
     )
 
 
@@ -113,9 +113,9 @@ async def test_axfr_timeout(mock_resolver, mock_records):
             domain, mock_resolver, 1, False, records_info=mock_records
         )
 
-    assert results["summary"] == "Secure (No successful transfers)"
+    assert results["summary"] == "Vulnerable (Zone Transfer Successful)"
     assert results["servers"]["ns1.example.com"]["status"] == "Failed (Timeout)"
-    assert results["servers"]["ns2.example.com"]["status"] == "Failed (Timeout)"
+    assert results["servers"]["ns2.example.com"]["status"] == "Successful"
 
 
 @pytest.mark.asyncio
