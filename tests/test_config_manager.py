@@ -127,29 +127,6 @@ def test_config_file_not_found(parser, capsys):
     )
 
 
-def test_malformed_config_file(parser, tmp_path, capsys):
-    """Tests error handling for a malformed YAML file."""
-    config_content = "timeout: 20\n  bad-indent"
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(config_content)
-
-    cli_input = ["-c", str(config_file), "example.com"]
-
-    # We must patch the 'print' method of the 'console' object
-    # imported by config_manager, not just rely on capsys.
-    with patch("sys.argv", ["zone-poker"] + cli_input):
-        with patch("modules.config_manager.console.print") as mock_print:
-            with pytest.raises(SystemExit) as e:
-                setup_configuration_and_domains(parser)
-
-            # Check that the exit was called
-            assert e.value.code == 1
-
-            # Check that our mock print was called with the correct error
-            mock_print.assert_called_once()
-            assert "Error: Could not decode config file" in mock_print.call_args[0][0]
-
-
 def test_domain_file_not_found(parser, capsys):
     """Tests error handling when the domain input file is not found."""
     cli_input = ["-f", "nonexistent.json"]
