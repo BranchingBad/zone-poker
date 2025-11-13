@@ -115,15 +115,11 @@ jobs:
       - name: Build source and wheel distributions
         run: python -m build
 
-      - name: "Create and activate virtual environment"
+      - name: "Install and test package in a new virtual environment"
         run: |
           python -m venv venv_test
           source venv_test/bin/activate
           pip install --upgrade pip
-
-      - name: Install package from wheel and test dependencies
-        run: |
-          source venv_test/bin/activate
           pip install "dist/*.whl[dev]"
           pytest
 
