@@ -319,32 +319,28 @@ async def test_whois_lookup_pywhois_error():
 
 
 @pytest.mark.asyncio
-@respx.mock(assert_all_mocked=False)
+@respx.mock
 async def test_check_open_redirect_vulnerable_found():
     """
     Tests that check_open_redirect correctly identifies a vulnerable URL.
     """
     domain = "vulnerable-site.com"
     vulnerable_payload = "/?next=https://example.com"
-    vulnerable_url = f"https://{domain}{vulnerable_payload}"
 
-    # Mock the request to the vulnerable URL to return a 302 redirect
-    respx.get(vulnerable_url).respond(
-        302, headers={"Location": "https://example.com/malicious"}
-    )
-
-    # Mock other payloads to return non-redirect responses
-    respx.get(f"https://{domain}/example.com").respond(200)  # httpx normalizes // to /
-    respx.get(f"https://{domain}/www.google.com").respond(200)  # httpx normalizes // to /
-    respx.get(f"https://{domain}/%2F%2Fexample.com").respond(200)
-    respx.get(f"https://{domain}/%2F%2Fwww.google.com").respond(200)
-    respx.get(f"https://{domain}/login?redirect=https://example.com").respond(404)
+    # Define the outcome for the vulnerable payload
+    outcomes = {
+        vulnerable_payload: {
+            "status": 302,
+            "location": "https://example.com/malicious",
+        }
+    }
+    setup_open_redirect_mocks(domain, outcomes)
 
     result = await check_open_redirect(domain=domain, timeout=5)
 
     assert len(result["vulnerable_urls"]) == 1
     finding = result["vulnerable_urls"][0]
-    assert finding["url"] == vulnerable_url
+    assert finding["url"] == f"https://{domain}{vulnerable_payload}"
     assert finding["redirects_to"] == "https://example.com/malicious"
 
 
@@ -482,6 +478,36 @@ async def test_search_ct_logs_dual_query():
         "three.example.com",
         "two.example.com",
     ]
+
+
+def setup_open_redirect_mocks(domain: str, outcomes: dict):
+    """
+    Helper to set up respx mocks for open redirect tests in a declarative way.
+
+    Args:
+        domain: The domain under test.
+        outcomes: A dictionary mapping URL payloads to their mocked outcomes.
+                  The outcome can be a status code (int) or a dictionary
+                  for redirects, e.g., {"status": 302, "location": "/dashboard"}.
+    """
+    # Get the list of payloads from the module itself to keep tests in sync
+    from modules.analysis.open_redirect import PAYLOADS
+
+    for payload in PAYLOADS:
+        url = f"https://{domain}{payload}"
+        outcome = outcomes.get(payload)
+
+        if outcome is None:
+            # Default to a non-vulnerable response if not specified
+            respx.get(url).respond(200)
+        elif isinstance(outcome, int):
+            respx.get(url).respond(outcome)
+        elif isinstance(outcome, dict):
+            respx.get(url).respond(
+                outcome["status"], headers={"Location": outcome["location"]}
+            )
+        elif isinstance(outcome, Exception):
+            respx.get(url).mock(side_effect=outcome)
 
 
 @pytest.mark.asyncio

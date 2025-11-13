@@ -134,7 +134,7 @@ def test_malformed_config_file(parser, tmp_path, capsys):
 
     captured = capsys.readouterr()
     # This error message comes from the underlying PyYAML/json library
-    assert "Could not decode config file" in captured.out
+    assert "Could not decode config file" in captured.err
     assert args is None
 
 
