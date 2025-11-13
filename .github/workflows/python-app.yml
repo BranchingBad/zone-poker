@@ -25,8 +25,9 @@ jobs:
   lint-and-test:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    # Grant permissions for Codecov to post comments on PRs
+    # Grant permissions for Codecov to post comments and for OIDC
     permissions:
+      id-token: write # Required for OIDC authentication with Codecov
       pull-requests: write
 
 
@@ -84,11 +85,11 @@ jobs:
         run: pytest --cov=modules --cov=zone_poker --cov-report=xml
 
       - name: Upload coverage to Codecov
-        # Use a specific version for stability
-        uses: codecov/codecov-action@v4.0.1
+        # Use v5 for the latest features, including OIDC support
+        uses: codecov/codecov-action@v5
         with:
+          use_oidc: true # Use OIDC for more secure authentication
           fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   validate-package:
     name: Validate Package Build
