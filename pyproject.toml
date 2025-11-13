@@ -47,12 +47,12 @@ zone-poker = "zone_poker:main_wrapper"
 dev = [
     "pytest~=9.0",
     "flake8~=7.0",
-    "black~=24.10",
+    "black~=25.11",
     "pre-commit~=4.4",
     "pytest-cov==7.0.0",
     "pytest-asyncio~=1.3",
     "bandit~=1.7",
-    "pip-audit~=2.7",
+    "pip-audit~=4.0",
     "respx~=0.21"
 ]
 
