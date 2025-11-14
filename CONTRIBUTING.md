@@ -82,7 +82,7 @@ This project uses `pip-tools` to manage dependencies via a `requirements.txt` lo
 1.  Edit `pyproject.toml` to add or change the desired package version range in the `dependencies` or `dev` section.
 2.  Regenerate the `requirements.txt` lock file by running:
     ```bash
-    pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+    pip-compile --resolver=backtracking --output-file=requirements.txt pyproject.toml --extra=dev
     ```
 3.  Commit both the `pyproject.toml` and the updated `requirements.txt` files to your pull request.
 4.  Install the updated packages into your local environment: `pip install -r requirements.txt`

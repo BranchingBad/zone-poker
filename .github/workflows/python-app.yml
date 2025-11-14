@@ -90,37 +90,64 @@ jobs:
           use_oidc: true # Use OIDC for more secure authentication
           fail_ci_if_error: true
 
-  validate-package:
-    name: Validate Package Build
+  validate-lockfile:
+    name: Validate Requirements Lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Use the oldest supported Python version
+      - name: Install pip-tools
+        run: python -m pip install --upgrade pip-tools
+      - name: Check if requirements.txt is up to date
+        run: |
+          pip-compile --extra=dev --generate-hashes --output-file=requirements.txt pyproject.toml --check
+
+  build:
+    name: Build Package Distributions
     needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip build
+      - name: Build source and wheel distributions
+        run: python -m build
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  validate-package:
+    name: Validate Package Installation
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.10', '3.11']
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip build
-
-      - name: Build source and wheel distributions
-        run: python -m build
-
-      - name: Store the distribution packages
-        uses: actions/upload-artifact@v4
+      - name: Download distribution packages
+        uses: actions/download-artifact@v4
         with:
-          name: python-package-distributions-${{ matrix.python-version }}
+          name: python-package-distributions
           path: dist/
-
       - name: "Install and test package in a new virtual environment"
         run: |
           python -m venv venv_test
@@ -134,7 +161,7 @@ jobs:
           pytest
 
   build-and-push-docker:
-    needs: validate-package # Run after package validation to ensure the code builds correctly
+    needs: [validate-package, validate-lockfile] # Run after all validation jobs
     runs-on: ubuntu-latest
 
     # [IMPROVEMENT] Grant write permissions for packages (GHCR)
@@ -177,7 +204,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             # Create tag based on the git sha
             type=sha,prefix=
-            # Create a static tag for the security scan
+            # Create a static tag for the security scan to reference reliably
             type=raw,value=ci-scan
 
       - name: Set up Docker Buildx
@@ -201,8 +228,8 @@ jobs:
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          # Scan the image using the specific 'ci-scan' tag for predictability
-          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[1] }}
+          # FIX: Reliably reference the static 'ci-scan' tag
+          image-ref: ${{ steps.meta.outputs.images }}:ci-scan
           format: 'table'
           exit-code: '1' # Fail the build if CRITICAL or HIGH vulnerabilities are found
           ignore-unfixed: true
@@ -216,7 +243,7 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPI
-    needs: validate-package
+    needs: [build, validate-package] # Ensure package builds and validates before publishing
     runs-on: ubuntu-latest
     # Add an environment for protection rules (e.g., required reviewers)
     environment:
@@ -242,8 +269,7 @@ jobs:
       - name: Download the distribution packages
         uses: actions/download-artifact@v4
         with:
-          # Download all distribution artifacts from the validation job
-          pattern: python-package-distributions-*
+          name: python-package-distributions
           path: dist/
 
       - name: Publish package to PyPI
@@ -251,7 +277,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: validate-package
+    needs: [build, validate-package] # Ensure package builds and validates before creating a release
     runs-on: ubuntu-latest
     # This job should only run when a new tag is pushed
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
@@ -266,9 +292,8 @@ jobs:
       - name: Download all distribution packages
         uses: actions/download-artifact@v4
         with:
+          name: python-package-distributions
           path: dist/
-          pattern: python-package-distributions-*
-          merge-multiple: true # Merge artifacts from different python versions into one directory
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
