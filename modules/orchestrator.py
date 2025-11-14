@@ -20,6 +20,7 @@ from rich.progress import Progress
 from .config import PUBLIC_RESOLVERS, console
 from .display import display_critical_findings, display_summary
 from .export import handle_output
+
 # Import the central configuration and display functions
 from .utils import get_desktop_path, is_valid_domain
 

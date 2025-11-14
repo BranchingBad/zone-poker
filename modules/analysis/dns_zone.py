@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+
 # import dns.asyncquery # No longer needed
 import logging
 from typing import Any, Dict, List

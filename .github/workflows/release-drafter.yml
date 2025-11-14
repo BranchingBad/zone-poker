@@ -1,0 +1,23 @@
+# .github/workflows/release-drafter.yml
+name: Draft Release
+
+on:
+  push:
+    # branches to consider in the release drafting
+    branches:
+      - main
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to read and write releases
+      contents: write
+    steps:
+      # Drafts the next release by adding the last merged pull request to the draft
+      - uses: release-drafter/release-drafter@v6.0.0
+        with:
+          # Use the configuration file from the repository
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

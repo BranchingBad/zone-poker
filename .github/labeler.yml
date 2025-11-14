@@ -1,0 +1,29 @@
+# .github/labeler.yml
+
+# Add 'ci/cd' label to any PR that modifies files in the .github directory
+'ci/cd':
+  - .github/**
+
+# Add 'documentation' label to any PR that modifies documentation files
+'documentation':
+  - README.md
+  - LICENSE
+  - 'docs/**'
+
+# Add 'dependencies' label to any PR that modifies dependency files
+'dependencies':
+  - pyproject.toml
+  - requirements.txt
+
+# Add 'docker' label to any PR that modifies the Dockerfile
+'docker':
+  - Dockerfile
+
+# Add 'testing' label to any PR that modifies test files
+'testing':
+  - tests/**
+
+# Add 'core-logic' label to any PR that modifies the main application logic
+'core-logic':
+  - modules/**
+  - zone_poker.py

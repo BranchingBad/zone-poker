@@ -49,6 +49,8 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 
 4.  **Make your changes**. Please adhere to the existing code style (see Code Style section below).
 
+    - **Code Style**: This project uses `black` for code formatting, `isort` for import sorting, and `flake8` for linting. The pre-commit hooks will automatically enforce this style.
+
 5.  **Add or update tests**.
     - If you're adding a new feature (like an analysis module), please include unit tests in the `tests/` directory.
     - If you're fixing a bug, add a test that catches the bug to prevent regressions.
@@ -142,13 +144,17 @@ To add a new console or file output format (e.g., `yaml`):
 
 ---
 
-## Release Process
-
-The release process is automated via CI/CD and is documented for maintainers. For detailed instructions on how to create and publish a new release, please see the RELEASING.md file.
-
 ## Code of Conduct
 
-All contributors are expected to adhere to our Code of Conduct. Please be respectful and constructive in all interactions.
+All contributors are expected to follow our Code of Conduct. Please be respectful and constructive in all your interactions within the project.
+
+---
+
+## Release Process (For Maintainers)
+
+The release process is highly automated using GitHub Actions. When a new version tag (e.g., `v1.2.3`) is pushed, the CI/CD pipeline will automatically build the package, publish it to PyPI, and create a corresponding GitHub Release with generated release notes.
+
+For detailed instructions on the release strategy and how to trigger a release, maintainers should refer to the `RELEASING.md` file.
 
 ---
 *This document is actively maintained. If you find any instructions to be outdated, please open an issue or a pull request.*

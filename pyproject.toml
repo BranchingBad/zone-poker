@@ -1,18 +1,20 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+# setuptools-scm is used to dynamically set the version from git tags
+requires = ["setuptools>=61.0", "setuptools-scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "zone-poker"
-version = "1.0.10" # Ensure this matches your tag
+dynamic = ["version"] # The version is now managed by setuptools-scm
 authors = [
-  { name="BranchingBad" },
+  { name="BranchingBad", email="contact@branchingbad.com" },
 ]
 description = "A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis."
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.10"
 classifiers = [
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
@@ -22,6 +24,7 @@ classifiers = [
     "Topic :: Internet :: Name Service (DNS)",
     "Environment :: Console",
 ]
+keywords = ["dns", "osint", "reconnaissance", "security", "domain", "subdomain", "axfr"]
 # Project dependencies
 dependencies = [
     "dnspython~=2.6",
@@ -66,3 +69,17 @@ package-data = { "modules.analysis" = ["*.json"] }
 include = ["modules*"]
 # It's also good practice to explicitly exclude tests
 exclude = ["tests*"]
+
+[tool.setuptools_scm]
+# This configuration tells setuptools-scm to write the dynamic version
+# to a file, which makes it accessible at runtime.
+write_to = "modules/_version.py"
+
+[tool.black]
+# Enforce a consistent line length across all environments
+line-length = 88
+
+[tool.isort]
+# Use the "black" profile for compatibility with the black code formatter
+profile = "black"
+line_length = 88

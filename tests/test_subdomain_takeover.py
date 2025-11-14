@@ -6,8 +6,10 @@ import pytest
 import respx
 from httpx import RequestError
 
-from modules.analysis.subdomain_takeover import (_load_fingerprints,
-                                                 check_subdomain_takeover)
+from modules.analysis.subdomain_takeover import (
+    _load_fingerprints,
+    check_subdomain_takeover,
+)
 
 # Mock fingerprint data that reflects the new schema
 MOCK_FINGERPRINTS = {

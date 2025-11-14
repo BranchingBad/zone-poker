@@ -3,8 +3,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from modules.utils import (_format_rdata, _parse_spf_record, get_desktop_path,
-                           get_parent_zone, is_valid_domain, join_txt_chunks)
+from modules.utils import (
+    _format_rdata,
+    _parse_spf_record,
+    get_desktop_path,
+    get_parent_zone,
+    is_valid_domain,
+    join_txt_chunks,
+)
 
 
 @pytest.mark.parametrize(

@@ -9,6 +9,7 @@ import logging
 from modules.config import console
 from modules.config_manager import setup_configuration_and_domains
 from modules.logger_config import setup_logging
+
 # --- THESE IMPORTS ARE UPDATED ---
 from modules.orchestrator import run_scans
 from modules.parser_setup import setup_parser
