@@ -149,7 +149,7 @@ def _evaluate_xxss(value: str) -> Dict[str, Any]:
             "status": "Disabled",
             "value": value,
             "recommendation": (
-                "X-XSS-Protection is disabled. While modern browsers have built-in " "protection, ensure CSP is properly configured."
+                "X-XSS-Protection is disabled. While modern browsers have built-in protection, ensure CSP is properly configured."
             ),
         }
     if value.startswith("1"):
@@ -157,7 +157,7 @@ def _evaluate_xxss(value: str) -> Dict[str, Any]:
             "status": "Enabled",
             "value": value,
             "recommendation": (
-                "X-XSS-Protection is enabled. Note that this header is deprecated in " "favor of a strong Content-Security-Policy."
+                "X-XSS-Protection is enabled. Note that this header is deprecated in favor of a strong Content-Security-Policy."
             ),
         }
     return {"status": "Invalid", "value": value}
@@ -177,12 +177,12 @@ HEADER_CHECKS = {
     "Content-Security-Policy": {
         "eval_func": _evaluate_csp,
         "severity": "High",
-        "recommendation": ("Implement a Content-Security-Policy (CSP) to mitigate XSS and other " "injection attacks."),
+        "recommendation": ("Implement a Content-Security-Policy (CSP) to mitigate XSS and other injection attacks."),
     },
     "X-Frame-Options": {
         "eval_func": _evaluate_xfo,
         "severity": "Medium",
-        "recommendation": ("Implement X-Frame-Options or CSP 'frame-ancestors' to prevent " "clickjacking."),
+        "recommendation": ("Implement X-Frame-Options or CSP 'frame-ancestors' to prevent clickjacking."),
     },
     "X-Content-Type-Options": {
         "eval_func": _evaluate_xcto,
@@ -197,7 +197,7 @@ HEADER_CHECKS = {
     "Permissions-Policy": {
         "eval_func": _evaluate_generic,
         "severity": "Low",
-        "recommendation": ("Implement a Permissions-Policy (formerly Feature-Policy) to control " "browser feature access."),
+        "recommendation": ("Implement a Permissions-Policy (formerly Feature-Policy) to control browser feature access."),
     },
     "X-XSS-Protection": {
         "eval_func": _evaluate_xxss,

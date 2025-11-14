@@ -80,7 +80,7 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
 
     # 3. Check for cycles
     if len(sorted_order) != len(modules_to_run):
-        msg = "Circular dependency detected in modules. Please check the " "`dependencies` in `dispatch_table.py`."
+        msg = "Circular dependency detected in modules. Please check the `dependencies` in `dispatch_table.py`."
         raise ValueError(msg)
 
     return sorted_order
@@ -165,7 +165,7 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
                 # running in the thread.
                 result = await asyncio.to_thread(analysis_func, **func_kwargs)
         except Exception as e:
-            console.print(f"[bold red]Error in module '{module_name}': " f"{type(e).__name__} - {e}[/bold red]")
+            console.print(f"[bold red]Error in module '{module_name}': {type(e).__name__} - {e}[/bold red]")
 
             if args.verbose:
                 console.print_exception(show_locals=True)
@@ -245,13 +245,13 @@ async def run_scans(domains_to_scan: List[str], args: Any):
             await _scan_single_domain(domains_to_scan[0], args, modules_to_run)
         except dns.resolver.NXDOMAIN:
             logger.error(f"Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN).")
-            console.print(f"[bold red]Error: The domain '{domains_to_scan[0]}' " "does not exist (NXDOMAIN).[/bold red]")
+            console.print(f"[bold red]Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN).[/bold red]")
         except Exception as e:
             logger.error(
                 f"An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}",
                 exc_info=args.verbose,
             )
-            console.print(f"[bold red]An unexpected error occurred while scanning " f"'{domains_to_scan[0]}': {e}[/bold red]")
+            console.print(f"[bold red]An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}[/bold red]")
             if args.verbose:
                 console.print(f"\n[dim]{traceback.format_exc()}[/dim]")
         return
@@ -295,8 +295,8 @@ async def run_scans(domains_to_scan: List[str], args: Any):
                 if isinstance(result, Exception):
                     failed_this_round.append(domain_name)
                     if attempt == num_retries:  # Final attempt
-                        logger.error(f"Scan for '{domain_name}' failed permanently after " f"{num_retries + 1} attempts: {result}")
-                        console.print("[bold red]Scan for domain " f"'{domain_name}' failed permanently." "[/bold red]")
+                        logger.error(f"Scan for '{domain_name}' failed permanently after {num_retries + 1} attempts: {result}")
+                        console.print(f"[bold red]Scan for domain '{domain_name}' failed permanently.[/bold red]")
                 elif domain_name and domain_name not in successful_domains:
                     successful_domains.append(domain_name)
                     progress.advance(main_task_id)

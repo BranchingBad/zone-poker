@@ -43,7 +43,7 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
         re.sub(r"[^a-z0-9]", "", p.lower()) for p in permutations
     }
 
-    logger.debug(f"Checking {len(permutations)} potential S3 bucket names and " f"{len(sanitized_permutations)} Azure blob containers.")
+    logger.debug(f"Checking {len(permutations)} potential S3 bucket names and {len(sanitized_permutations)} Azure blob containers.")
 
     async def check_s3_bucket(bucket_name: str, client: httpx.AsyncClient):
         url = f"http://{bucket_name}.s3.amazonaws.com"

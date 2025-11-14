@@ -96,9 +96,13 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     </div>
 
     <!-- Critical Findings -->
-    {f'''<div class="module-container">
+    {
+        f'''<div class="module-container">
         {critical_html}
-    </div>''' if critical_html else ''}
+    </div>'''
+        if critical_html
+        else ""
+    }
 
     <!-- Summary -->
     <div class="module-container">
@@ -109,7 +113,7 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     <!-- Detailed Module Outputs -->
     <div class="module-container">
         <h2>Detailed Analysis</h2>
-        {''.join(module_html_parts)}
+        {"".join(module_html_parts)}
     </div>
 
 </body>

@@ -42,7 +42,7 @@ def load_data_file(file_path: str) -> Any:
             if data is None:  # Handle empty or malformed YAML that parses to None
                 raise ValueError("File is empty or malformed.")
         else:
-            raise ValueError(f"Unsupported config file extension: {ext}. " "Please use .json, .yaml, or .yml.")
+            raise ValueError(f"Unsupported config file extension: {ext}. Please use .json, .yaml, or .yml.")
     return data
 
 
@@ -130,7 +130,7 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
             # Validate domains from file
             for domain in domains_from_file:
                 if not is_valid_domain(domain):
-                    console.print(f"[bold red]Error: Invalid domain format '{domain}' in file " f"'{file_input}'.[/bold red]")
+                    console.print(f"[bold red]Error: Invalid domain format '{domain}' in file '{file_input}'.[/bold red]")
                     raise SystemExit(1)
                 domains_to_scan.append(domain)
 
@@ -138,7 +138,7 @@ def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Op
             console.print(f"[bold red]Error: The domain file '{file_input}' was not found.[/bold red]")
             raise SystemExit(1)
         except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
-            console.print(f"[bold red]Error: Could not decode domains from the file '{file_input}'. " f"{e}[/bold red]")
+            console.print(f"[bold red]Error: Could not decode domains from the file '{file_input}'. {e}[/bold red]")
             raise SystemExit(1)
     elif domain_input:
         if not is_valid_domain(domain_input):

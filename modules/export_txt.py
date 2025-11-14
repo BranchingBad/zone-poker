@@ -21,7 +21,7 @@ def _create_report_section(title: str, data: Dict[str, Any], formatter: Callable
     """
     report = ["=" * 15 + f" {title} " + "=" * 15]
     if not isinstance(data, dict):
-        report.append(f"  Error: Unexpected data format for {title}. " f"Expected dictionary, got {type(data).__name__}.")
+        report.append(f"  Error: Unexpected data format for {title}. Expected dictionary, got {type(data).__name__}.")
         if data:
             report.append(f"  Raw data: {data}")
         return "\n".join(report)
@@ -35,9 +35,9 @@ def _create_report_section(title: str, data: Dict[str, Any], formatter: Callable
         try:
             report.extend(formatter(data))
         except Exception as e:
-            error_msg = f"An unexpected error occurred in the formatter for the " f"'{title}' report section: {e}"
+            error_msg = f"An unexpected error occurred in the formatter for the '{title}' report section: {e}"
             logger.error(error_msg, exc_info=True)
-            report.append(f"  Error: Could not format data for this section due to an " f"unexpected error: {e}")
+            report.append(f"  Error: Could not format data for this section due to an unexpected error: {e}")
     return "\n".join(report)
 
 
@@ -96,7 +96,7 @@ def _format_records_txt(data: Dict[str, List[Any]]) -> List[str]:
                 if r_type == "MX" and "priority" in record:
                     extra = f" (Priority: {record['priority']})"
                 elif r_type == "SRV":
-                    extra = f" (P: {record.get('priority')} W: {record.get('weight')} " f"Port: {record.get('port')})"
+                    extra = f" (P: {record.get('priority')} W: {record.get('weight')} Port: {record.get('port')})"
                 elif r_type == "SOA":
                     rname = record.get("rname", "N/A")
                     serial = record.get("serial", "N/A")
@@ -262,7 +262,7 @@ def _format_osint_txt(data: Dict[str, Any]) -> List[str]:
     if passive_dns := data.get("passive_dns", []):
         report.append("\nPassive DNS:")
         for item in passive_dns:
-            report.append(f"  - {item.get('hostname')} -> {item.get('ip')} " f"(Last: {item.get('last_seen')})")
+            report.append(f"  - {item.get('hostname')} -> {item.get('ip')} (Last: {item.get('last_seen')})")
     return report or ["No OSINT data found."]
 
 
@@ -277,10 +277,10 @@ def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
         f"Issuer: {data.get('issuer', 'N/A')}",
     ]
     if valid_from := data.get("valid_from"):
-        report.append("Valid From: " f"{datetime.datetime.fromtimestamp(valid_from).strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append(f"Valid From: {datetime.datetime.fromtimestamp(valid_from).strftime('%Y-%m-%d %H:%M:%S')}")
     if valid_until := data.get("valid_until"):
-        report.append("Valid Until: " f"{datetime.datetime.fromtimestamp(valid_until).strftime('%Y-%m-%d %H:%M:%S')}")
-    if sans := data.get("sans"):  # noqa: W504
+        report.append(f"Valid Until: {datetime.datetime.fromtimestamp(valid_until).strftime('%Y-%m-%d %H:%M:%S')}")
+    if sans := data.get("sans"):
         report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in sans])
     return report or ["No SSL/TLS data found."]
 
@@ -407,7 +407,7 @@ def _format_geolocation_txt(data: Dict[str, Any]) -> List[str]:
             report.append(f"  - {ip}: Error - {error}")
 
         elif isinstance(info, dict):
-            report.append((f"  - {ip}: {info.get('city', 'N/A')}, " f"{info.get('country', 'N/A')} " f"(ISP: {info.get('isp', 'N/A')})"))
+            report.append((f"  - {ip}: {info.get('city', 'N/A')}, {info.get('country', 'N/A')} (ISP: {info.get('isp', 'N/A')})"))
     return report
 
 

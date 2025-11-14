@@ -39,7 +39,7 @@ async def test_analyze_reputation_success(mock_args):
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=1.1.1.1&maxAgeInDays=90").respond(
         200, json={"data": {"ipAddress": "1.1.1.1", "abuseConfidenceScore": 0}}
     )
-    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111" f"&maxAgeInDays=90").respond(
+    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111&maxAgeInDays=90").respond(
         200,
         json={"data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}},
     )

@@ -7,7 +7,7 @@ def setup_parser() -> argparse.ArgumentParser:
     """Creates and configures the argument parser."""
     parser = argparse.ArgumentParser(
         description=(
-            "Zone-Poker - A professional DNS reconnaissance and OSINT tool for " "comprehensive domain analysis.\nCreated by BranchingBad"
+            "Zone-Poker - A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis.\nCreated by BranchingBad"
         ),
         epilog="""
 Examples:
@@ -68,7 +68,7 @@ Examples:
     output_group.add_argument(
         "--filename-template",
         default="{domain}_dnsint_{timestamp}",
-        help="Template for report filenames. " "Default: '{domain}_dnsint_{timestamp}'.",
+        help="Template for report filenames. Default: '{domain}_dnsint_{timestamp}'.",
     )
     output_group.add_argument("--html-file", help="Export an HTML report to the specified file path.")
     output_group.add_argument("--log-file", help="Path to a file to save detailed, verbose logs.")

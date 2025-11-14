@@ -29,7 +29,7 @@ AUDIT_CHECKS = [
         "condition": lambda d: d.get("spf", {}).get("all_policy") == "+all",
         "finding": "Overly Permissive SPF Policy (+all)",
         "severity": "Critical",
-        "recommendation": ("Immediately change `+all` to `~all` or `-all`. `+all` allows " "anyone to send email on your behalf."),
+        "recommendation": ("Immediately change `+all` to `~all` or `-all`. `+all` allows anyone to send email on your behalf."),
     },
     {
         "data_key": "mail_info",
@@ -81,7 +81,7 @@ AUDIT_CHECKS = [
         "finding": "Open Redirect",
         "severity": "Medium",
         "recommendation": lambda d: (
-            f"Found {len(d['vulnerable_urls'])} potential open redirect(s). " "Validate and sanitize all user-supplied URLs in redirects."
+            f"Found {len(d['vulnerable_urls'])} potential open redirect(s). Validate and sanitize all user-supplied URLs in redirects."
         ),
     },
     {

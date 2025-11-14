@@ -235,4 +235,4 @@ def test_all_security_checks_are_covered(
     uncovered_checks = all_defined_checks - all_triggered_findings
 
     # This test will LIKELY STILL FAIL, but only for 'Sensitive Paths in robots.txt'
-    assert not uncovered_checks, f"The following security checks are not covered by any tests: " f"{sorted(list(uncovered_checks))}"
+    assert not uncovered_checks, f"The following security checks are not covered by any tests: {sorted(list(uncovered_checks))}"

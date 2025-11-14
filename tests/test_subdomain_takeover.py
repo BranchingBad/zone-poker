@@ -160,5 +160,5 @@ def test_fingerprints_file_is_packaged():
             assert "Heroku" in data
     except FileNotFoundError:
         pytest.fail(
-            "takeover_fingerprints.json was not found. " "Check that it is included in pyproject.toml's [tool.setuptools.package-data]."
+            "takeover_fingerprints.json was not found. Check that it is included in pyproject.toml's [tool.setuptools.package-data]."
         )
