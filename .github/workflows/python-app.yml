@@ -244,6 +244,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # [FIX] Regenerate the dependency lockfile to pick up security fixes.
+      # This ensures the Docker image is built with the latest non-vulnerable packages.
+      - name: Update dependency lockfile
+        run: |
+          pip install pip-tools
+          pip-compile --upgrade --output-file=requirements.txt pyproject.toml --extra=dev
+          echo "requirements.txt has been updated to include the latest security patches."
+
       - name: Build image for scanning and potential push
         id: docker_build
         uses: docker/build-push-action@v5
