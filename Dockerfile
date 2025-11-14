@@ -25,7 +25,7 @@ RUN pip-compile --output-file=requirements.txt pyproject.toml && \
 COPY . .
 
 # [FIX] Set the environment variable for setuptools-scm to use the provided version
-ENV SETUPTOOLS_SCM_PRETEND_VERSION=$APP_VERSION
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${APP_VERSION}
 
 # Build the wheel for the project itself and add it to the /wheels directory
 RUN python -m build --wheel --outdir /wheels
