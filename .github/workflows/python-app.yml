@@ -161,8 +161,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
-      # --- Caching for pip dependencies ---
+
       - name: Get pip cache dir
         id: pip-cache
         run: |
@@ -240,7 +239,7 @@ jobs:
           version: |
             type=semver,pattern={{version}}
 
-      # --- THIS IS THE FIX for InvalidVersion ---
+      # --- [FIX 1] This step creates a valid fallback version ---
       - name: Set Fallback Version
         id: fallback_version
         run: echo "version=0.0.0.dev1+g${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
@@ -258,7 +257,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
-          # --- THIS IS THE FIX for InvalidVersion ---
+          # --- [FIX 1] This build-arg uses the correct version ---
           build-args: |
             APP_VERSION=${{ steps.meta.outputs.version || steps.fallback_version.outputs.version }}
 
@@ -304,7 +303,7 @@ jobs:
           pattern: python-package-distributions-*
           path: dist/
 
-      # --- THIS IS THE FIX for InvalidDistribution ---
+      # --- [FIX 2] This step moves the packages to the correct directory ---
       - name: Move packages to top-level dist directory
         run: |
           # Move all wheel/tar.gz files from subdirectories up to the main dist/ folder
