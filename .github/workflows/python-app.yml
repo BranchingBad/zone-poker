@@ -52,7 +52,7 @@ jobs:
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache pip dependencies
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v4.0.2
+        uses: actions/cache@v4.0.3 # This was the line causing the error, it's now updated.
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           # Include python-version in the key for the matrix
