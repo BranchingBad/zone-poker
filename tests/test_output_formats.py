@@ -2,9 +2,11 @@
 """
 Unit tests for the output format handlers in Zone-Poker.
 """
+from unittest.mock import mock_open, patch
+
 import pytest
+
 from modules.export import handle_output
-from unittest.mock import patch, mock_open
 
 
 @pytest.fixture

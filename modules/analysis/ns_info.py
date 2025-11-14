@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
-import dns.resolver
-from typing import Dict, List, Any
-from ipwhois import IPWhois, exceptions
 import logging
+from typing import Any, Dict, List
+
+import dns.resolver
+from ipwhois import IPWhois, exceptions
 
 logger = logging.getLogger(__name__)
 

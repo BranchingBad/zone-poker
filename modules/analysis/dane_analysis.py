@@ -4,8 +4,9 @@ Zone-Poker - DANE (TLSA) Analysis Module
 """
 import asyncio
 import logging
-from dns.resolver import Resolver, NoAnswer, NXDOMAIN
-from typing import Dict, Any
+from typing import Any, Dict
+
+from dns.resolver import NXDOMAIN, NoAnswer, Resolver
 
 logger = logging.getLogger(__name__)
 

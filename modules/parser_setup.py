@@ -1,4 +1,5 @@
 import argparse
+
 from modules.dispatch_table import register_module_args
 
 

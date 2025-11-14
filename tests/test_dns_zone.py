@@ -1,10 +1,11 @@
-import pytest
-import dns.resolver
-import dns.rdatatype
-import dns.zone
-import dns.query
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import dns.exception
-from unittest.mock import MagicMock, AsyncMock, patch
+import dns.query
+import dns.rdatatype
+import dns.resolver
+import dns.zone
+import pytest
 
 from modules.analysis.dns_zone import attempt_axfr
 

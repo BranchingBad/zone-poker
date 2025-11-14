@@ -5,12 +5,12 @@ Handles the generation of a comprehensive CSV report for DNS records.
 """
 import builtins
 import csv
-import io
 import datetime
-from typing import Dict, Any, List, Set, Optional
+import io
+from typing import Any, Dict, List, Optional, Set
 
-from ..dispatch_table import MODULE_DISPATCH_TABLE
 from ..config import console
+from ..dispatch_table import MODULE_DISPATCH_TABLE
 
 
 def _write_dns_records_to_csv(

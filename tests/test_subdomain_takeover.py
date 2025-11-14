@@ -1,14 +1,13 @@
+import importlib.resources
+import json
+from unittest.mock import mock_open, patch
+
 import pytest
 import respx
-import json
 from httpx import RequestError
-from unittest.mock import patch, mock_open
-import importlib.resources
 
-from modules.analysis.subdomain_takeover import (
-    check_subdomain_takeover,
-    _load_fingerprints,
-)
+from modules.analysis.subdomain_takeover import (_load_fingerprints,
+                                                 check_subdomain_takeover)
 
 # Mock fingerprint data that reflects the new schema
 MOCK_FINGERPRINTS = {

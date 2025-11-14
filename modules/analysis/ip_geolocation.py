@@ -3,9 +3,10 @@
 Zone-Poker - IP Geolocation Module
 """
 import asyncio
-import httpx
-from typing import Any, Dict, List
 import logging
+from typing import Any, Dict, List
+
+import httpx
 
 logger = logging.getLogger(__name__)
 IP_API_BATCH_ENDPOINT = "http://ip-api.com/batch"

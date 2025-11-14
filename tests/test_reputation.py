@@ -1,9 +1,10 @@
+import argparse
+
 import pytest
 import respx
 from httpx import RequestError
-import argparse
 
-from modules.analysis.reputation import analyze_reputation, ABUSEIPDB_ENDPOINT
+from modules.analysis.reputation import ABUSEIPDB_ENDPOINT, analyze_reputation
 
 
 @pytest.fixture

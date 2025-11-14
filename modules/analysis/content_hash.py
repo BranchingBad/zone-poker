@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import httpx
-import hashlib
 import codecs
+import hashlib
+from typing import Any, Dict
+
+import httpx
 import mmh3
-from typing import Dict, Any
 
 
 async def get_content_hashes(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:

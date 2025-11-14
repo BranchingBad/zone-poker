@@ -3,9 +3,10 @@
 Zone-Poker - robots.txt Analysis Module
 This module checks for the presence and content of a robots.txt file.
 """
-import httpx
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

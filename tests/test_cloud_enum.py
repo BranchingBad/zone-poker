@@ -3,6 +3,7 @@
 Unit tests for the Cloud Enumeration module in Zone-Poker.
 """
 import re
+
 import pytest
 import respx
 from httpx import RequestError

@@ -3,10 +3,10 @@
 Zone-Poker - SMTP Analysis Module
 """
 import asyncio
-import ssl
 import smtplib
 import socket
-from typing import Dict, Any
+import ssl
+from typing import Any, Dict
 
 
 async def analyze_smtp_servers(

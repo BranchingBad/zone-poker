@@ -2,9 +2,10 @@
 """
 Zone-Poker - WAF Detection Module
 """
-from typing import Dict, Any
-import httpx
 import logging
+from typing import Any, Dict
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

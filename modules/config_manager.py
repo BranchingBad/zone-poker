@@ -7,8 +7,9 @@ import argparse
 import json
 import logging
 import os
+from typing import Any, Dict, List, Optional, Tuple
+
 import yaml
-from typing import Tuple, List, Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 

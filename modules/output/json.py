@@ -4,10 +4,11 @@ Zone-Poker - JSON Output Module
 """
 import builtins
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+from modules.dispatch_table import MODULE_DISPATCH_TABLE
 
 from ..config import console
-from modules.dispatch_table import MODULE_DISPATCH_TABLE
 
 
 def output(all_data: Dict[str, Any], output_path: Optional[str] = None):

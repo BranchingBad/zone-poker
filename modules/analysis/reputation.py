@@ -2,10 +2,10 @@
 """
 Zone-Poker - Domain & IP Reputation Analysis Module
 """
+import argparse
 import asyncio
 
 import httpx
-import argparse
 
 ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 

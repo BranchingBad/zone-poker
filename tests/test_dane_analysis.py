@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-import dns.resolver
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import dns.exception
+import dns.resolver
+import pytest
 
 from modules.analysis.dane_analysis import analyze_dane_records
 

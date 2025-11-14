@@ -2,13 +2,14 @@
 """
 Zone-Poker - Subdomain Takeover Detection Module
 """
-import httpx
-import json
 import asyncio
+import json
 import logging
-from pathlib import Path
 from functools import lru_cache
-from typing import Dict, List, Any
+from pathlib import Path
+from typing import Any, Dict, List
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

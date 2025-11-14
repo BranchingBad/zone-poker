@@ -1,31 +1,23 @@
-import pytest
-from typing import Dict, Any, List
 import datetime
+from typing import Any, Dict, List
+
+import pytest
 
 # Import the private formatter functions we want to test
-from modules.export_txt import (
-    _format_records_txt,
-    _format_security_audit_txt,
-    _format_smtp_txt,
-    _format_http_headers_txt,
-    _format_ptr_txt,
-    _format_zone_txt,
-    _format_whois_txt,
-    _format_subdomain_takeover_txt,
-    _format_cloud_enum_txt,
-    _format_mail_txt,
-    _format_nsinfo_txt,
-    _format_reputation_txt,
-    _format_port_scan_txt,
-    _format_dnsbl_check_txt,
-    _format_propagation_txt,
-    _format_tech_txt,
-    _format_osint_txt,
-    _format_ssl_txt,
-    _format_open_redirect_txt,
-)
-from modules.export_txt import _format_geolocation_txt
-from modules.export_txt import _format_security_txt_txt
+from modules.export_txt import (_format_cloud_enum_txt,
+                                _format_dnsbl_check_txt,
+                                _format_geolocation_txt,
+                                _format_http_headers_txt, _format_mail_txt,
+                                _format_nsinfo_txt, _format_open_redirect_txt,
+                                _format_osint_txt, _format_port_scan_txt,
+                                _format_propagation_txt, _format_ptr_txt,
+                                _format_records_txt, _format_reputation_txt,
+                                _format_security_audit_txt,
+                                _format_security_txt_txt, _format_smtp_txt,
+                                _format_ssl_txt,
+                                _format_subdomain_takeover_txt,
+                                _format_tech_txt, _format_whois_txt,
+                                _format_zone_txt)
 
 # --- Fixtures for Test Data ---
 

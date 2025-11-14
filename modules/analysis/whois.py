@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import asyncio
+from datetime import datetime
+from typing import Any, Dict, Union
+
 import whois as whois_lib
 from whois.exceptions import WhoisError
-from datetime import datetime
-from typing import Dict, Any, Union
+
 from ..config import console
 
 

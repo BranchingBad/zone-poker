@@ -8,11 +8,8 @@ from typing import Any, Dict
 import dns.exception
 import dns.resolver
 
-from modules.utils import (
-    _parse_dmarc_record,
-    _parse_spf_record,
-    join_txt_chunks,
-)
+from modules.utils import (_parse_dmarc_record, _parse_spf_record,
+                           join_txt_chunks)
 
 
 async def email_security_analysis(

@@ -2,7 +2,7 @@
 """
 Zone-Poker - Technology Detection Module
 """
-from typing import Dict, Any, Set
+from typing import Any, Dict, Set
 
 import httpx
 from bs4 import BeautifulSoup

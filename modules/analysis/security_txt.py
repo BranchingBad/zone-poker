@@ -3,8 +3,9 @@
 Zone-Poker - security.txt Analysis Module
 This module checks for the presence and content of a security.txt file.
 """
+from typing import Any, Dict, List
+
 import httpx
-from typing import Dict, Any, List
 
 
 async def check_security_txt(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:

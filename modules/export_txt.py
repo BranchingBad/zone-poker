@@ -5,7 +5,7 @@ Contains all functions for formatting analysis data into a plain text report.
 """
 import datetime
 import logging
-from typing import Dict, List, Any, Callable
+from typing import Any, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,9 @@
 """
 Zone-Poker - Security Audit Module
 """
-from typing import Dict, Any, List
 import datetime
+from typing import Any, Dict, List
+
 from .http_headers import HEADER_CHECKS
 
 AUDIT_CHECKS = [

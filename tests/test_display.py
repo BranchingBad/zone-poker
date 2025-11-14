@@ -1,8 +1,7 @@
 import pytest
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-
-from rich.console import Console
 
 # Assume display_security_txt is in modules.display, even if not in context
 from modules.display import display_security_txt

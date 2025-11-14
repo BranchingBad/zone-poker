@@ -3,9 +3,10 @@
 Zone-Poker - DNSBL (DNS-based Blocklist) Analysis Module
 """
 import asyncio
-import dns.resolver
 import logging
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+import dns.resolver
 
 logger = logging.getLogger(__name__)
 

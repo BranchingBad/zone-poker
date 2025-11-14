@@ -4,7 +4,7 @@ Zone-Poker - Output Handling Module
 """
 import importlib
 import inspect
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from .config import console
 

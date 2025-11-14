@@ -2,11 +2,12 @@
 """
 Unit tests for the Configuration Manager module in Zone-Poker.
 """
-import pytest
 from unittest.mock import patch
 
-from modules.parser_setup import setup_parser
+import pytest
+
 from modules.config_manager import setup_configuration_and_domains
+from modules.parser_setup import setup_parser
 
 
 @pytest.fixture

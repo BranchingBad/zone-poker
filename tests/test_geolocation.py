@@ -1,6 +1,6 @@
+import httpx
 import pytest
 import respx
-import httpx
 from httpx import RequestError
 
 from modules.analysis.ip_geolocation import geolocate_ips

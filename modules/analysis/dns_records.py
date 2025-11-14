@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
-import dns.resolver
-from typing import Dict, List, Any, Optional  # noqa
 import logging
+from typing import Any, Dict, List, Optional  # noqa
+
+import dns.resolver
+
 from ..config import RECORD_TYPES, console
 from ..utils import _format_rdata
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import asyncio
+from typing import Any, Dict, Tuple
+
 import dns.resolver
-from typing import Dict, Any, Tuple
+
 from ..config import PUBLIC_RESOLVERS
 
 

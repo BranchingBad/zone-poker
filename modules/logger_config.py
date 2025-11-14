@@ -3,9 +3,11 @@
 Zone-Poker - Logger Configuration
 Sets up the application-wide logger.
 """
-import logging
 import argparse
+import logging
+
 from rich.logging import RichHandler
+
 from .config import console
 
 

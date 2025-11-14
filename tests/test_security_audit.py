@@ -2,12 +2,13 @@
 """
 Unit tests for the security_audit analysis module in Zone-Poker.
 """
-import pytest
 import copy
 from datetime import datetime, timedelta
 
+import pytest
+
 from modules.analysis.http_headers import HEADER_CHECKS
-from modules.analysis.security_audit import security_audit, AUDIT_CHECKS
+from modules.analysis.security_audit import AUDIT_CHECKS, security_audit
 
 # --- Test Data Fixtures ---
 

@@ -1,12 +1,13 @@
-import pytest
 import json
 import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
-from modules.output import xml as xml_output
+import pytest
+
+from modules.output import csv as csv_output
 from modules.output import html as html_output
 from modules.output import json as json_output
-from modules.output import csv as csv_output
+from modules.output import xml as xml_output
 
 
 @pytest.fixture

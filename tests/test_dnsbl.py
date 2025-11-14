@@ -1,8 +1,9 @@
-import pytest
-import dns.resolver
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from modules.analysis.dnsbl import check_dnsbl, DNSBL_PROVIDERS
+import dns.resolver
+import pytest
+
+from modules.analysis.dnsbl import DNSBL_PROVIDERS, check_dnsbl
 
 
 @pytest.mark.asyncio

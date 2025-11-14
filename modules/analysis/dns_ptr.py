@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import asyncio
+from typing import Any, Dict, List
+
 import dns.resolver
 import dns.reversename
-from typing import Dict, List, Any
 
 
 async def reverse_ptr_lookups(

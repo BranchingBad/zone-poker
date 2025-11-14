@@ -3,14 +3,15 @@
 Zone-Poker - HTML Output Module
 """
 import builtins
-from typing import Dict, Any, Optional
-from ..config import console
+from typing import Any, Dict, Optional
 
 from rich.console import Console
 from rich.panel import Panel
 
 from modules.dispatch_table import MODULE_DISPATCH_TABLE
-from modules.display import display_summary, display_critical_findings
+from modules.display import display_critical_findings, display_summary
+
+from ..config import console
 
 
 def _render_to_html(renderable: Optional[Panel]) -> str:

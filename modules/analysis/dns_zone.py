@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import asyncio
-import dns.resolver
-import dns.query
-import dns.zone
-import dns.exception
-
 # import dns.asyncquery # No longer needed
 import logging
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+import dns.exception
+import dns.query
+import dns.resolver
+import dns.zone
 
 logger = logging.getLogger(__name__)
 

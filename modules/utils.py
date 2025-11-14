@@ -3,11 +3,12 @@
 Zone-Poker - Utilities Module
 Contains helper functions used across different modules.
 """
-import sys
 import os  # noqa: F401
+import sys
 from pathlib import Path
-import tldextract  # Import the tldextract library
 from typing import Any, Dict
+
+import tldextract  # Import the tldextract library
 
 
 def get_desktop_path() -> Path:

@@ -4,13 +4,10 @@ Zone-Poker - TXT Output Module
 """
 import builtins
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from modules.dispatch_table import MODULE_DISPATCH_TABLE
-from modules.export_txt import (
-    export_txt_summary,
-    export_txt_critical_findings,
-)
+from modules.export_txt import export_txt_critical_findings, export_txt_summary
 
 
 def output(all_data: Dict[str, Any], output_path: Optional[str] = None):

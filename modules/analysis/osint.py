@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import httpx
-from typing import Dict, Any
 import logging
+from typing import Any, Dict
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

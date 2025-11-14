@@ -3,11 +3,13 @@
 Zone-Poker - XML Output Module
 """
 import builtins
-from typing import Dict, Any, Optional
-from xml.etree.ElementTree import Element, SubElement, tostring
+from typing import Any, Dict, Optional
 from xml.dom import minidom
-from modules.dispatch_table import MODULE_DISPATCH_TABLE
+from xml.etree.ElementTree import Element, SubElement, tostring
+
 from rich.console import Console
+
+from modules.dispatch_table import MODULE_DISPATCH_TABLE
 
 console = Console()
 

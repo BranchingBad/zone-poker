@@ -3,8 +3,8 @@
 Zone-Poker - SSL/TLS Analysis Module
 """
 import asyncio
-import ssl
 import socket
+import ssl
 from urllib.parse import urlparse
 
 

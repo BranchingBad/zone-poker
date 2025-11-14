@@ -23,6 +23,12 @@ repos:
     hooks:
       - id: flake8
 
+  # Sorter for Python imports
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+
   # Hook to scan for secrets
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
@@ -30,14 +36,3 @@ repos:
       - id: detect-secrets
         # Exclude the baseline file from being scanned
         exclude: \.secrets\.baseline$
-
-  # Local hook to update requirements.txt when pyproject.toml changes
-  - repo: local
-    hooks:
-      - id: pip-compile
-        name: Update requirements.txt
-        language: python
-        additional_dependencies: ["pip-tools"]
-        entry: bash -c "pip-compile --python-version 3.10 --output-file=requirements.txt pyproject.toml --extra=dev --generate-hashes && git add requirements.txt"
-        files: ^pyproject\.toml$
-        stages: [pre-commit]

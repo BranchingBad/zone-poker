@@ -2,17 +2,18 @@
 """
 Unit tests for the analysis modules in Zone-Poker.
 """
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import respx
-from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import RequestError
-from datetime import datetime
 
-from modules.analysis.tech import detect_technologies
-from modules.analysis.whois import whois_lookup
 from modules.analysis.critical_findings import aggregate_critical_findings
 from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.open_redirect import check_open_redirect
+from modules.analysis.tech import detect_technologies
+from modules.analysis.whois import whois_lookup
 
 
 @pytest.fixture

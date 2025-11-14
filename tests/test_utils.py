@@ -1,15 +1,10 @@
-import pytest
-from unittest.mock import patch, MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from modules.utils import (
-    is_valid_domain,
-    get_parent_zone,
-    join_txt_chunks,
-    _format_rdata,
-    _parse_spf_record,
-    get_desktop_path,
-)
+import pytest
+
+from modules.utils import (_format_rdata, _parse_spf_record, get_desktop_path,
+                           get_parent_zone, is_valid_domain, join_txt_chunks)
 
 
 @pytest.mark.parametrize(

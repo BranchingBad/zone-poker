@@ -3,7 +3,7 @@
 Zone-Poker - Critical Findings Aggregator
 This module centralizes the logic for identifying high-impact security issues.
 """
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def aggregate_critical_findings(all_data: Dict[str, Any], **kwargs) -> Dict[str, Any]:

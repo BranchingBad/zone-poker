@@ -2,11 +2,12 @@
 """
 Zone-Poker - Cloud Service Enumeration Module
 """
-import httpx
 import asyncio
-import re
 import logging
-from typing import Dict, List, Any
+import re
+from typing import Any, Dict, List
+
+import httpx
 
 logger = logging.getLogger(__name__)
 

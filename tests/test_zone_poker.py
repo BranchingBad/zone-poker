@@ -1,5 +1,6 @@
-import unittest
 import argparse
+import unittest
+
 from zone_poker import setup_parser
 
 

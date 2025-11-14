@@ -1,6 +1,8 @@
-import pytest
 import argparse
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from modules.orchestrator import _scan_single_domain
 
 

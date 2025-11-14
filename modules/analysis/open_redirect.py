@@ -2,11 +2,12 @@
 """
 Zone-Poker - Open Redirect Vulnerability Scanner
 """
-import httpx
 import asyncio
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 from urllib.parse import urlparse
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
