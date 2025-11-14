@@ -303,12 +303,15 @@ jobs:
           pattern: python-package-distributions-*
           path: dist/
 
-      # --- [FIX 2] This step moves the packages to the correct directory ---
-      - name: Move packages to top-level dist directory
+      - name: Move packages and clean up
         run: |
-          # Move all wheel/tar.gz files from subdirectories up to the main dist/ folder
-          find dist/ -type f -name "zone_poker-*" -exec mv {} dist/ \;
-          echo "Files in dist/ after move:"
+          # Move all package files from subdirectories up to the main dist/ folder
+          find dist/ -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
+
+          # [FIX] Remove the empty subdirectories left by download-artifact
+          find dist/ -type d -name "python-package-distributions-*" -exec rm -rf {} +
+
+          echo "Files in dist/ after move and cleanup:"
           ls -lR dist/
 
       - name: Publish package to PyPI
