@@ -26,10 +26,12 @@ def _render_to_html(renderable: Optional[Panel]) -> str:
 
 
 def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
-    """Generates and prints a self-contained HTML report to standard output or a file.
+    """Generates and prints a self-contained HTML report to standard output or a file. # noqa
 
     Args:
-        all_data: The dictionary containing all scan data. output_path: If provided, the output is written to this file path."""
+        all_data: The dictionary containing all scan data.
+        output_path: If provided, the output is written to this file path.
+    """
     domain = all_data.get("domain", "N/A")
     timestamp = all_data.get("scan_timestamp", "")
 

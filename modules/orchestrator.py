@@ -90,8 +90,12 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
     """Scan a single domain."""
     from .dispatch_table import MODULE_DISPATCH_TABLE
 
-    # Orchestrates the scanning process for a single domain by executing the necessary analysis modules in the correct order based on their dependencies. This function runs the analysis modules and returns all collected data. It raises exceptions on failure, which are caught by the calling `run_scans` function.  # noqa
-
+    # Orchestrates the scanning process for a single domain.
+    #
+    # It executes the necessary analysis modules in the correct order based on their
+    # dependencies. This function runs the analysis modules and returns all collected
+    # data. It raises exceptions on failure, which are caught by the calling
+    # `run_scans` function.
     if not args.quiet and args.output == "table":
         console.print(f"Target: {domain}")
         scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -145,18 +149,19 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
         # Start with the base context.
         func_kwargs = (
             analysis_context.copy()
-        )  # Add results from dependencies. Keys (e.g., 'records_info') must match the argument names in the function signature.  # noqa
+        )  # Add results from dependencies. Keys (e.g., 'records_info') must match the argument names in the function signature.
 
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
             func_kwargs[dep_key] = all_data.get(dep_key, {})
 
         try:
-            # Unify async and sync function calls. `asyncio.to_thread` is used to run blocking sync functions without stalling the event loop.  # noqa
+            # Unify async and sync function calls. `asyncio.to_thread` is used
+            # to run blocking sync functions without stalling the event loop.
             if inspect.iscoroutinefunction(analysis_func):
                 result = await analysis_func(**func_kwargs)
             else:
-                # Pass the dynamically built kwargs to the function # noqa
+                # Pass the dynamically built kwargs to the function
                 # running in the thread.
                 result = await asyncio.to_thread(analysis_func, **func_kwargs)
         except Exception as e:

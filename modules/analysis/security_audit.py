@@ -129,7 +129,7 @@ AUDIT_CHECKS = [
 
 
 def security_audit(all_data: Dict[str, Any], **kwargs: Any) -> Dict[str, List[Dict[str, str]]]:
-    """Runs a basic audit for DNS and web security misconfigurations."""
+    """Runs a basic audit for DNS and web security misconfigurations."""  # noqa
     findings: List[Dict[str, str]] = []
 
     for check in AUDIT_CHECKS:

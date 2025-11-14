@@ -24,7 +24,7 @@ MOCK_FINGERPRINTS = {
 @pytest.mark.asyncio
 @respx.mock
 async def test_subdomain_takeover_found():
-    """Test that a potential subdomain takeover is correctly identified."""
+    """Test that a potential subdomain takeover is correctly identified."""  # noqa
     # This happens when both the CNAME and fingerprint match.
     records = {
         "CNAME": [
@@ -58,7 +58,7 @@ async def test_subdomain_takeover_found():
 @pytest.mark.asyncio
 @respx.mock
 async def test_subdomain_takeover_not_found():
-    """Test that no takeover is reported when CNAME matches but fingerprint does not."""
+    """Test that no takeover is reported when CNAME matches but fingerprint does not."""  # noqa
     records = {"CNAME": [{"name": "safe.example.com", "value": "user.github.io"}]}
     # Mock a response that does NOT contain the fingerprint
     respx.get(url__regex=r"https?://safe\.example\.com").respond(200, text="OK")
@@ -74,8 +74,8 @@ async def test_subdomain_takeover_not_found():
 
 
 @pytest.mark.asyncio
-async def test_subdomain_takeover_no_cnames():  # noqa E302
-    """Test that the function returns empty results when no CNAME records are provided."""
+async def test_subdomain_takeover_no_cnames():
+    """Test that the function returns empty results when no CNAME records are provided."""  # noqa
     records = {"A": [{"name": "example.com", "value": "1.2.3.4"}]}
     results = await check_subdomain_takeover(records)
     assert len(results["vulnerable"]) == 0
@@ -84,7 +84,7 @@ async def test_subdomain_takeover_no_cnames():  # noqa E302
 @pytest.mark.asyncio
 @respx.mock
 async def test_subdomain_takeover_network_error():
-    """Test that a network error during the HTTP check is handled gracefully."""
+    """Test that a network error during the HTTP check is handled gracefully."""  # noqa
     records = {"CNAME": [{"name": "error.example.com", "value": "user.github.io"}]}
 
     # Mock a network error for the target URL
@@ -99,7 +99,7 @@ async def test_subdomain_takeover_network_error():
 @pytest.mark.asyncio
 @respx.mock
 async def test_subdomain_takeover_missing_keys():
-    """Test that CNAME records missing 'name' or 'value' keys are handled gracefully."""
+    """Test that CNAME records missing 'name' or 'value' keys are handled gracefully."""  # noqa
     records = {
         "CNAME": [
             {"value": "some.service.com"},  # Missing 'name'
@@ -126,7 +126,7 @@ async def test_subdomain_takeover_missing_keys():
 
 @pytest.mark.asyncio
 async def test_fingerprint_caching():
-    """Test that the fingerprint JSON file is only read once due to lru_cache."""
+    """Test that the fingerprint JSON file is only read once due to lru_cache."""  # noqa
     mock_file_content = json.dumps(MOCK_FINGERPRINTS)
     m = mock_open(read_data=mock_file_content)
 
@@ -146,7 +146,7 @@ async def test_fingerprint_caching():
 
 
 def test_fingerprints_file_is_packaged():
-    """Tests that the takeover_fingerprints.json file is correctly included in the package data."""
+    """Tests that the takeover_fingerprints.json file is correctly included in the package data."""  # noqa
     # It tries to read it from the installed package resources.
     # This test is particularly useful when run against an installed wheel.
     try:

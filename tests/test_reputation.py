@@ -9,7 +9,7 @@ from modules.analysis.reputation import ABUSEIPDB_ENDPOINT, analyze_reputation
 
 @pytest.fixture
 def mock_args(request):
-    """Creates a mock argparse.Namespace object."""
+    """Creates a mock argparse.Namespace object."""  # noqa
     # Can be parameterized to include or exclude the API key.
     # e.g. @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_key"}}], indirect=True)
     args = argparse.Namespace()
@@ -23,7 +23,7 @@ def mock_args(request):
 @respx.mock
 @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_success(mock_args):
-    """Test successful reputation analysis for given IP addresses."""
+    """Test successful reputation analysis for given IP addresses."""  # noqa
     domain = "example.com"
     # Note: 8.8.8.8 is intentionally duplicated to test for uniqueness
     all_data = {
@@ -60,7 +60,7 @@ async def test_analyze_reputation_success(mock_args):
 
 @pytest.mark.asyncio
 async def test_analyze_reputation_no_api_key(mock_args):
-    """Test that the function returns an error if no API key is provided."""
+    """Test that the function returns an error if no API key is provided."""  # noqa
     domain = "example.com"
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
@@ -74,7 +74,7 @@ async def test_analyze_reputation_no_api_key(mock_args):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_no_ip_records(mock_args):
-    """Test that the function returns an error if no A or AAAA records are found."""
+    """Test that the function returns an error if no A or AAAA records are found."""  # noqa
     domain = "example.com"
     all_data = {"records_info": {"MX": [{"value": "mail.example.com"}]}}
 
@@ -88,7 +88,7 @@ async def test_analyze_reputation_no_ip_records(mock_args):
 @respx.mock
 @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_auth_error(mock_args):
-    """Test handling of an authentication error (401) from the API."""
+    """Test handling of an authentication error (401) from the API."""  # noqa
     domain = "example.com"
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
@@ -106,7 +106,7 @@ async def test_analyze_reputation_auth_error(mock_args):
 @respx.mock
 @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_network_error(mock_args):
-    """Test handling of a network request error."""
+    """Test handling of a network request error."""  # noqa
     domain = "example.com"
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
@@ -124,7 +124,7 @@ async def test_analyze_reputation_network_error(mock_args):
 @respx.mock
 @pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_rate_limit_error(mock_args):
-    """Test handling of a rate limit error (429) from the API."""
+    """Test handling of a rate limit error (429) from the API."""  # noqa
     domain = "example.com"
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 

@@ -66,7 +66,7 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
             response = await client.head(url, timeout=5, follow_redirects=False)
             if response.status_code != 404:
                 status = "public"
-                if response.status_code == 400:  # Azure returns 400 for valid accounts without a container # noqa
+                if response.status_code == 400:  # Azure returns 400 for valid accounts without a container
                     status = "valid_account"
                 elif response.status_code != 200:
                     status = "forbidden"
