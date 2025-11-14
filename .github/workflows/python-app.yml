@@ -52,7 +52,7 @@ jobs:
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache pip dependencies
-        uses: actions/cache@v4.0.4
+        uses: actions/cache@v4.2.4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           # Include python-version in the key for the matrix
