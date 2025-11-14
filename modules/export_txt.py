@@ -280,7 +280,7 @@ def _format_ssl_txt(data: Dict[str, Any]) -> List[str]:
         report.append("Valid From: " f"{datetime.datetime.fromtimestamp(valid_from).strftime('%Y-%m-%d %H:%M:%S')}")
     if valid_until := data.get("valid_until"):
         report.append("Valid Until: " f"{datetime.datetime.fromtimestamp(valid_until).strftime('%Y-%m-%d %H:%M:%S')}")
-    if sans := data.get("sans"):  # noqa: W504
+    if sans := data.get("sans"):
         report.extend(["\nSubject Alternative Names:"] + [f"  - {s}" for s in sans])
     return report or ["No SSL/TLS data found."]
 

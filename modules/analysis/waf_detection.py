@@ -79,10 +79,9 @@ def _check_fingerprints(response_headers: Dict[str, str], response_body: str) ->
 
 
 async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]:
-    """
-    Attempts to identify a Web Application Firewall by sending both benign and
-    malicious-like payloads and observing the server's response for fingerprints.
-    """
+    """Attempts to identify a Web Application Firewall.
+
+    It sends both benign and malicious-like payloads and observes the server's response for fingerprints."""
     waf_info: Dict[str, Any] = {"detected_waf": "None", "reason": "", "error": None}
     benign_url = f"https://{domain}"
     malicious_url = f"https://{domain}/?s=<script>alert('xss')</script>"
@@ -106,7 +105,7 @@ async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]
 
             # 3. Check for behavioral changes (status code and content)
             if malicious_response.status_code != base_response.status_code and malicious_response.status_code in (403, 406, 429, 418):
-                reason = f"Request blocked with status {malicious_response.status_code} " f"(baseline was {base_response.status_code})."
+                reason = f"Request blocked with status {malicious_response.status_code} (baseline was {base_response.status_code})."
                 all_evidence.append(("Generic WAF/IPS", 60, reason))
             # Add a check for content changes, which can indicate a "soft block"
             elif any(keyword in malicious_body for keyword in ["blocked", "forbidden", "denied"]) and "cloudflare" not in malicious_body:

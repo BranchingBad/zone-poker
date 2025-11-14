@@ -88,7 +88,7 @@ Examples:
         "--output",
         choices=["table", "json", "csv", "xml", "html", "txt", "yaml"],
         default="table",
-        help=("Console output format. 'table' for human-readable, others for " "machine-readable."),
+        help="Console output format. 'table' for human-readable, others for machine-readable.",
     )
 
     # --- Analysis Modules ---

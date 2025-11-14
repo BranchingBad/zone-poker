@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 def _display_welcome_banner(args):
-    """Displays a welcome banner if not in quiet or machine-readable output mode."""
-    if not args.quiet and args.output == "table":
+    """Displays a welcome banner if not in quiet or machine-readable output mode."""  # noqa
+    if not args.quiet and args.output == "table":  # noqa
         banner = """
 ██████╗ ██████╗ ███╗   ██╗███████╗    ██████╗  ██████╗ ██╗  ██╗███████╗██████╗
 ╚══███╔╝██╔═══██╗████╗  ██║██╔════╝    ██╔══██╗██╔═══██╗╚██╗██╔╝██╔════╝██╔══██╗
@@ -49,8 +49,8 @@ async def main():
     _display_welcome_banner(args)
 
     if not domains_to_scan:
-        error_msg = "Error: No target domain specified. Provide a domain, a file with " "'-f', or a config file."
-        logger.error(error_msg)  # noqa: F541
+        error_msg = "Error: No target domain specified. Provide a domain, a file with '-f', or a config file."
+        logger.error(error_msg)
         console.print(f"[bold red]{error_msg}[/bold red]")
         parser.print_help()
         return

@@ -21,9 +21,8 @@ def _evaluate_hsts(value: str) -> Dict[str, Any]:
     recommendations = []
     max_age = -1  # Use -1 to indicate not found
 
-    try:
-        # Find and parse max-age more robustly
-        for part in directives:
+    try:  # Find and parse max-age more robustly
+        for part in directives:  # noqa
             if part.startswith("max-age="):
                 max_age = int(part.split("=")[1])
                 break
@@ -209,11 +208,9 @@ HEADER_CHECKS = {
 
 
 async def analyze_http_headers(domain: str, verify_ssl: bool = True, **kwargs) -> Dict[str, Any]:
-    """
-    Performs a detailed analysis of HTTP security headers.
-    Args:
-        domain: The domain to analyze.
-        verify_ssl: Whether to verify SSL certificates. Defaults to True.
+    """Performs a detailed analysis of HTTP security headers. Args:
+    domain: The domain to analyze.
+    verify_ssl: Whether to verify SSL certificates. Defaults to True.
     """
     results: Dict[str, Any] = {
         "analysis": {},

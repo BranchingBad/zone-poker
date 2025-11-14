@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Recursively merges two dictionaries. 'new' values overwrite 'base' values.
-    If both values for a key are dictionaries, it merges them recursively.
-    """
+    """Recursively merges two dictionaries. 'new' values overwrite 'base' values."""
     merged = base.copy()
     for key, value in new.items():
         if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
@@ -57,17 +54,13 @@ def load_config_file(file_path: str) -> dict:
     return data
 
 
-def setup_configuration_and_domains(
-    parser: argparse.ArgumentParser,
-) -> Tuple[Optional[argparse.Namespace], List[str]]:
-    """
-    Parse CLI args, load config file, merge settings, and load domains.
+def setup_configuration_and_domains(parser: argparse.ArgumentParser) -> Tuple[Optional[argparse.Namespace], List[str]]:
+    """Parse CLI args, load config file, merge settings, and load domains.
 
     This is the single source of truth for all configuration. The priority is:
-    1.  Parser defaults
-    2.  Values from the JSON/YAML config file (if provided)
-    3.  Values from CLI arguments (highest priority)
-
+    1. Parser defaults
+    2. Values from the JSON/YAML config file (if provided)
+    3. Values from CLI arguments (highest priority)
     Args:
         parser: The ArgumentParser object.
 
@@ -94,9 +87,7 @@ def setup_configuration_and_domains(
             console.print(f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]")
             raise SystemExit(1)
         except (ValueError, yaml.YAMLError, json.JSONDecodeError) as e:
-            console.print(
-                f"[bold red]Error: Could not decode config file '{config_file_path}'. " f"Details: {e}[/bold red]",
-            )
+            console.print(f"[bold red]Error: Could not decode config file '{config_file_path}'. Details: {e}[/bold red]")
             raise SystemExit(1)
 
     # 3. Layer explicit CLI arguments over the top (highest priority)
@@ -125,13 +116,9 @@ def setup_configuration_and_domains(
             if not isinstance(domains_from_file, list):
                 # Check if it's a dict, which is a common mistake for config/domain file mix-up
                 if isinstance(domains_from_file, dict):
-                    msg = (
-                        f"[bold red]Error: The file '{file_input}' contains a dictionary "
-                        f"(key-value map), but a domain file must contain a list of strings "
-                        f'(e.g., ["example.com", "test.com"]).[/bold red]'
-                    )
+                    msg = f'[bold red]Error: The file \'{file_input}\' contains a dictionary (key-value map), but a domain file must contain a list of strings (e.g., ["example.com", "test.com"]).[/bold red]'  # noqa
                 else:
-                    msg = f"[bold red]Error: The file '{file_input}' must contain a list of " "domain strings.[/bold red]"
+                    msg = f"[bold red]Error: The file '{file_input}' must contain a list of domain strings.[/bold red]"
                 console.print(msg)
                 raise SystemExit(1)
 

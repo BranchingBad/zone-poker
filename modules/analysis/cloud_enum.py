@@ -50,11 +50,10 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
         try:
             # A HEAD request is a lightweight way to check for existence.
             response = await client.head(url, timeout=5, follow_redirects=False)
-            # A 404 status code means the bucket does not exist.
-            # Other status codes (like 200, 403) indicate the bucket name is taken.
+            # A 404 status code means the bucket does not exist. # noqa
+            # Other status codes (like 200, 403) indicate the bucket name is taken. # noqa
             if response.status_code != 404:
-                status = "public" if response.status_code == 200 else "forbidden"
-                results["s3_buckets"].append({"url": url, "status": status})
+                results["s3_buckets"].append({"url": url, "status": "public" if response.status_code == 200 else "forbidden"})
         except httpx.RequestError as e:
             logger.debug(f"S3 check for '{bucket_name}' failed: {e}")
 
@@ -66,11 +65,10 @@ async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict
         try:
             response = await client.head(url, timeout=5, follow_redirects=False)
             if response.status_code != 404:
-                if response.status_code == 200:
-                    status = "public"
-                elif response.status_code == 400:  # Azure returns 400 for valid accounts without a container
+                status = "public"
+                if response.status_code == 400:  # Azure returns 400 for valid accounts without a container # noqa
                     status = "valid_account"
-                else:
+                elif response.status_code != 200:
                     status = "forbidden"
                 results["azure_blobs"].append({"url": url, "status": status})
         except httpx.RequestError as e:

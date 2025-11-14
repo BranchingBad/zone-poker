@@ -143,9 +143,7 @@ def mock_robots_txt_data():
 
 
 def test_security_audit_secure(mock_secure_data):
-    """
-    Tests the security_audit function with data that should result in no findings.
-    """
+    """Tests the security_audit function with data that should result in no findings."""
     result = security_audit(all_data=mock_secure_data)
     assert not result["findings"]
 
@@ -169,9 +167,7 @@ def test_security_audit_weak(mock_weak_data):
 
 
 def test_security_audit_robots_txt(mock_secure_data, mock_robots_txt_data):
-    """
-    Tests that sensitive paths in robots.txt are correctly flagged.
-    """
+    """Tests that sensitive paths in robots.txt are correctly flagged."""
     # Start with a secure baseline and add the specific vulnerability
     test_data = copy.deepcopy(mock_secure_data)
     # Use .update() which is correct for replacing this top-level key
@@ -198,11 +194,8 @@ def test_all_security_checks_are_covered(
     mock_weak_cipher_data,
     mock_critical_data,
     mock_robots_txt_data,
-):
-    """
-    Meta-test to ensure that every check in AUDIT_CHECKS and HEADER_CHECKS
-    is triggered by at least one of the mock data fixtures.
-    """
+):  # noqa
+    """Meta-test to ensure that every check in AUDIT_CHECKS and HEADER_CHECKS is triggered by at least one of the mock data fixtures."""
     # 1. Get all defined finding names
     all_check_names = {check["finding"] for check in AUDIT_CHECKS}
     all_header_check_names = {f"Insecure Header: {name}" for name in HEADER_CHECKS.keys()}

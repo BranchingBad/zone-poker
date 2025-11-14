@@ -23,13 +23,13 @@ from .display import display_critical_findings, display_summary
 from .export import handle_output
 
 # Import the central configuration and display functions
-from .utils import get_desktop_path, is_valid_domain
+from .utils import get_desktop_path
 
 logger = logging.getLogger(__name__)
 
 
 def _create_execution_plan(initial_modules: List[str]) -> List[str]:
-    """Create an execution plan. # noqa
+    """Create an execution plan.
 
     Creates a complete and ordered execution plan by performing a topological sort.
 
@@ -38,9 +38,6 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
 
     Raises:
         ValueError: If a circular dependency is detected.
-
-    Returns:
-        A list of module names in the correct order of execution.
     """
     from .dispatch_table import MODULE_DISPATCH_TABLE
 
@@ -90,21 +87,10 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
 
 
 async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str]) -> Dict[str, Any]:
-    """Scan a single domain.
-
-    Orchestrates the scanning process for a single domain by executing the necessary
-    analysis modules in the correct order based on their dependencies.
-
-    This function runs the analysis modules and returns all collected data.
-    It raises exceptions on failure, which are caught by the calling `run_scans`
-    function.
-    """
-    domain = domain.strip().rstrip(".")
-    if not is_valid_domain(domain):
-        console.print(f"[bold red]Error: '{domain}' is not a valid domain.[/bold red]")
-        return {}
-
+    """Scan a single domain."""
     from .dispatch_table import MODULE_DISPATCH_TABLE
+
+    # Orchestrates the scanning process for a single domain by executing the necessary analysis modules in the correct order based on their dependencies. This function runs the analysis modules and returns all collected data. It raises exceptions on failure, which are caught by the calling `run_scans` function.  # noqa
 
     if not args.quiet and args.output == "table":
         console.print(f"Target: {domain}")
@@ -123,8 +109,7 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
     # We explicitly disable `want_dnssec` to prevent SERVFAIL errors from
     # public resolvers.
     resolver = dns.resolver.Resolver(configure=False)
-    # Disable DNSSEC for compatibility with public resolvers and unsigned domains.
-    resolver.want_dnssec = False  # Explicitly disable DNSSEC
+    resolver.want_dnssec = False  # Disable DNSSEC for compatibility with public resolvers and unsigned domains.
     resolver.timeout = float(args.timeout)
     resolver.lifetime = float(args.timeout)
 
@@ -146,7 +131,6 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
     # Determine the correct execution order for modules based on their dependencies.
     # This avoids recursive calls and simplifies the execution flow.
     execution_plan = _create_execution_plan(modules_to_run)
-    from .dispatch_table import MODULE_DISPATCH_TABLE  # noqa
 
     for module_name in execution_plan:
         module_info = MODULE_DISPATCH_TABLE[module_name]
@@ -159,18 +143,16 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
 
         # Build the keyword arguments for the analysis function.
         # Start with the base context.
-        func_kwargs = analysis_context.copy()
-        # Add results from dependencies. Keys (e.g., 'records_info') must # noqa
-        # match the argument names in the function signature.
+        func_kwargs = (
+            analysis_context.copy()
+        )  # Add results from dependencies. Keys (e.g., 'records_info') must match the argument names in the function signature.  # noqa
 
         for dep_name in module_info.get("dependencies", []):
             dep_key = MODULE_DISPATCH_TABLE[dep_name]["data_key"]
             func_kwargs[dep_key] = all_data.get(dep_key, {})
 
         try:
-            # Unify async and sync function calls.
-            # `asyncio.to_thread` is used to run blocking sync functions # noqa
-            # without stalling the event loop.
+            # Unify async and sync function calls. `asyncio.to_thread` is used to run blocking sync functions without stalling the event loop.  # noqa
             if inspect.iscoroutinefunction(analysis_func):
                 result = await analysis_func(**func_kwargs)
             else:
@@ -243,9 +225,7 @@ async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str])
 
 
 async def run_scans(domains_to_scan: List[str], args: Any):
-    """
-    Manages the scanning of one or more domains with a progress bar and retry mechanism.
-    """
+    """Manages the scanning of one or more domains with a progress bar and retry mechanism."""
     from .dispatch_table import MODULE_DISPATCH_TABLE
 
     # Determine which modules to run based on the final merged arguments
