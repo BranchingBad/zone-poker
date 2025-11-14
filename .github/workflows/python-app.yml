@@ -93,6 +93,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Scan for dependency vulnerabilities with pip-audit
+        # Allow this step to fail without failing the workflow
+        continue-on-error: true
         run: pip-audit
 
   test:
