@@ -197,3 +197,4 @@ wheel==0.45.1
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools
+pip-compile --resolver=backtracking --output-file=requirements.txt pyproject.toml --extra=dev
