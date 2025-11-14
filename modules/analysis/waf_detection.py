@@ -2,6 +2,7 @@
 """
 Zone-Poker - WAF Detection Module
 """
+
 import logging
 from typing import Any, Dict
 
@@ -17,9 +18,7 @@ WAF_FINGERPRINTS = {
     },
     "Akamai": {
         "headers": {"server": "AkamaiGHost", "any": ["x-akamai-transformed"]},
-        "body": [
-            "The requested URL was rejected. Please consult with your administrator."
-        ],
+        "body": ["The requested URL was rejected. Please consult with your administrator."],
     },
     "AWS WAF": {
         "headers": {"server": "awselb", "any": ["x-amz-cf-id"]},
@@ -54,9 +53,7 @@ async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]
     headers = {"User-Agent": "Zone-Poker WAF Detector/1.0"}
 
     try:
-        async with httpx.AsyncClient(
-            timeout=timeout, verify=False, headers=headers
-        ) as client:
+        async with httpx.AsyncClient(timeout=timeout, verify=False, headers=headers) as client:
             # 1. Send a benign request to get a baseline
             base_response = await client.get(benign_url, follow_redirects=True)
             base_headers = {k.lower(): v for k, v in base_response.headers.items()}
@@ -67,15 +64,11 @@ async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]
             for waf_name, fp in WAF_FINGERPRINTS.items():
                 if fp["headers"].get("server") in base_server:
                     waf_info["detected_waf"] = waf_name
-                    waf_info["reason"] = (
-                        f"Server header matched '{fp['headers']['server']}'."
-                    )
+                    waf_info["reason"] = f"Server header matched '{fp['headers']['server']}'."
                     return waf_info
                 if any(h in base_headers for h in fp["headers"].get("any", [])):
                     waf_info["detected_waf"] = waf_name
-                    waf_info["reason"] = (
-                        "Found a characteristic WAF header in the response."
-                    )
+                    waf_info["reason"] = "Found a characteristic WAF header in the response."
                     return waf_info
                 if any(b.lower() in base_body for b in fp.get("body", [])):
                     waf_info["detected_waf"] = waf_name
@@ -84,10 +77,7 @@ async def detect_waf(domain: str, timeout: int, **kwargs: Any) -> Dict[str, Any]
 
             # 3. Send a malicious request and check for behavioral changes
             malicious_response = await client.get(malicious_url, follow_redirects=True)
-            if (
-                malicious_response.status_code != base_response.status_code
-                and malicious_response.status_code in (403, 406, 429, 418)
-            ):
+            if malicious_response.status_code != base_response.status_code and malicious_response.status_code in (403, 406, 429, 418):
                 waf_info["detected_waf"] = "Generic WAF/IPS"
                 waf_info["reason"] = (
                     f"Request was blocked with status {malicious_response.status_code} "

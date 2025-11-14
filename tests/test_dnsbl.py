@@ -15,9 +15,7 @@ async def test_dnsbl_ip_listed():
     resolver = MagicMock()
 
     # Mock resolver to raise NXDOMAIN for all but one provider
-    side_effects = [dns.resolver.NXDOMAIN] * (len(DNSBL_PROVIDERS) - 1) + [
-        MagicMock()
-    ]  # Last one succeeds
+    side_effects = [dns.resolver.NXDOMAIN] * (len(DNSBL_PROVIDERS) - 1) + [MagicMock()]  # Last one succeeds
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
         mock_to_thread.side_effect = side_effects

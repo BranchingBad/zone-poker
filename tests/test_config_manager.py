@@ -2,6 +2,7 @@
 """
 Unit tests for the Configuration Manager module in Zone-Poker.
 """
+
 from unittest.mock import patch
 
 import pytest
@@ -123,9 +124,7 @@ def test_config_file_not_found(parser, capsys):
 
     # Check that our mock print was called with the correct error
     mock_print.assert_called_once()
-    assert (
-        "Error: Config file 'nonexistent.yaml' not found." in mock_print.call_args[0][0]
-    )
+    assert "Error: Config file 'nonexistent.yaml' not found." in mock_print.call_args[0][0]
 
 
 def test_domain_file_not_found(parser, capsys):
@@ -140,10 +139,7 @@ def test_domain_file_not_found(parser, capsys):
 
     # Check that our mock print was called with the correct error
     mock_print.assert_called_once()
-    assert (
-        "Error: The domain file 'nonexistent.json' was not found."
-        in mock_print.call_args[0][0]
-    )
+    assert "Error: The domain file 'nonexistent.json' was not found." in mock_print.call_args[0][0]
 
 
 def test_invalid_domain_from_cli(parser, capsys):
@@ -173,10 +169,7 @@ def test_invalid_domain_in_file(parser, tmp_path, capsys):
 
     # Check that our mock print was called with the correct error
     mock_print.assert_called_once()
-    assert (
-        "Error: Invalid domain format 'invalid..com' in file"
-        in mock_print.call_args[0][0]
-    )
+    assert "Error: Invalid domain format 'invalid..com' in file" in mock_print.call_args[0][0]
 
 
 def test_no_domain_provided(parser):

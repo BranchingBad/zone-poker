@@ -2,6 +2,7 @@
 """
 Zone-Poker - DANE (TLSA) Analysis Module
 """
+
 import asyncio
 import logging
 from typing import Any, Dict
@@ -11,9 +12,7 @@ from dns.resolver import NXDOMAIN, NoAnswer, Resolver
 logger = logging.getLogger(__name__)
 
 
-async def analyze_dane_records(
-    domain: str, resolver: Resolver, **kwargs
-) -> Dict[str, Any]:
+async def analyze_dane_records(domain: str, resolver: Resolver, **kwargs) -> Dict[str, Any]:
     """
     Checks for DANE/TLSA records to validate TLS certificates via DNS.
     """

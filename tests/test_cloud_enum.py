@@ -2,6 +2,7 @@
 """
 Unit tests for the Cloud Enumeration module in Zone-Poker.
 """
+
 import re
 
 import pytest
@@ -27,9 +28,7 @@ async def test_enumerate_cloud_services_found():
     respx.head("http://exampleca.s3.amazonaws.com").respond(403)
     respx.head("https://example.blob.core.windows.net").respond(400)
     respx.head("https://exampleca.blob.core.windows.net").respond(400)
-    respx.head("https://exampledev.blob.core.windows.net").mock(
-        side_effect=RequestError("Connection failed")
-    )
+    respx.head("https://exampledev.blob.core.windows.net").mock(side_effect=RequestError("Connection failed"))
 
     # Add a catch-all for any other S3 or Azure URLs to return 404.
     # This makes the test robust against changes in permutation logic.

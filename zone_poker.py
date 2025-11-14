@@ -3,6 +3,7 @@
 Zone poker
 A professional DNS reconnaissance and OSINT tool for comprehensive domain analysis
 """
+
 import asyncio
 import logging
 
@@ -29,9 +30,7 @@ def _display_welcome_banner(args):
 ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝    ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
         """
         console.print(f"[bold cyan]{banner}[/bold cyan]")
-        console.print(
-            "[bold]A professional DNS reconnaissance and OSINT tool.[/bold]\n"
-        )
+        console.print("[bold]A professional DNS reconnaissance and OSINT tool.[/bold]\n")
 
 
 async def main():
@@ -50,10 +49,7 @@ async def main():
     _display_welcome_banner(args)
 
     if not domains_to_scan:
-        error_msg = (
-            "Error: No target domain specified. Provide a domain, a file with "
-            "'-f', or a config file."
-        )
+        error_msg = "Error: No target domain specified. Provide a domain, a file with " "'-f', or a config file."
         logger.error(error_msg)  # noqa: F541
         console.print(f"[bold red]{error_msg}[/bold red]")
         parser.print_help()

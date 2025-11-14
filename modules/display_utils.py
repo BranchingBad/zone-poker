@@ -3,6 +3,7 @@
 Zone-Poker - Display Utilities
 Contains shared decorators and helper functions for console output.
 """
+
 from functools import wraps
 from typing import Callable, Optional
 

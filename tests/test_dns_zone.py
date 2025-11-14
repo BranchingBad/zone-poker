@@ -94,9 +94,7 @@ def create_axfr_mock_side_effect(resolver, xfr_outcomes, domain="example.com"):
                 raise dns.query.FormError("Protocol error")
 
         # If we fall through, it's an unhandled call
-        raise ValueError(
-            f"Unhandled mock call for {getattr(func, '__name__', 'unknown_func')} with args {func_args}"
-        )
+        raise ValueError(f"Unhandled mock call for {getattr(func, '__name__', 'unknown_func')} with args {func_args}")
 
     return mock_side_effect
 
@@ -111,27 +109,18 @@ async def test_axfr_ns_not_resolved(mock_resolver, mock_records):
     }
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_axfr_mock_side_effect(
-            mock_resolver, xfr_outcomes, "example.com"
-        )
-        results = await attempt_axfr(
-            "example.com", mock_resolver, 5, False, records_info=mock_records
-        )
+        mock_to_thread.side_effect = create_axfr_mock_side_effect(mock_resolver, xfr_outcomes, "example.com")
+        results = await attempt_axfr("example.com", mock_resolver, 5, False, records_info=mock_records)
 
     assert results["summary"] == "Secure (No successful transfers)"
-    assert (
-        results["servers"]["ns1.example.com"]["status"]
-        == "Failed (No A/AAAA record for NS)"
-    )
+    assert results["servers"]["ns1.example.com"]["status"] == "Failed (No A/AAAA record for NS)"
 
 
 @pytest.mark.asyncio
 async def test_axfr_no_ns_records(mock_resolver):
     """Test when the domain has no NS records to check."""
     domain = "example.com"
-    results = await attempt_axfr(
-        domain, mock_resolver, 5, False, records_info={"NS": []}
-    )
+    results = await attempt_axfr(domain, mock_resolver, 5, False, records_info={"NS": []})
 
     assert results["status"] == "Skipped (No NS records found)"
     assert "summary" not in results

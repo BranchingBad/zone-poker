@@ -3,6 +3,7 @@
 Zone-Poker - Configuration Manager Module
 Handles loading and merging of settings from command-line arguments and config files.
 """
+
 import argparse
 import json
 import logging
@@ -11,10 +12,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-logger = logging.getLogger(__name__)
-
 from modules.config import console
 from modules.utils import is_valid_domain
+
+logger = logging.getLogger(__name__)
 
 
 def deep_merge_dicts(base: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,10 +45,7 @@ def load_data_file(file_path: str) -> Any:
             if data is None:  # Handle empty or malformed YAML that parses to None
                 raise ValueError("File is empty or malformed.")
         else:
-            raise ValueError(
-                f"Unsupported config file extension: {ext}. "
-                "Please use .json, .yaml, or .yml."
-            )
+            raise ValueError(f"Unsupported config file extension: {ext}. " "Please use .json, .yaml, or .yml.")
     return data
 
 
@@ -91,18 +89,13 @@ def setup_configuration_and_domains(
         try:
             config_from_file_data = load_config_file(config_file_path)
             if not isinstance(config_from_file_data, dict):
-                raise ValueError(
-                    "Config file content must be a dictionary (key-value map)."
-                )
+                raise ValueError("Config file content must be a dictionary (key-value map).")
         except FileNotFoundError:
-            console.print(
-                f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]"
-            )
+            console.print(f"[bold red]Error: Config file '{config_file_path}' not found.[/bold red]")
             raise SystemExit(1)
         except (ValueError, yaml.YAMLError, json.JSONDecodeError) as e:
             console.print(
-                f"[bold red]Error: Could not decode config file '{config_file_path}'. "
-                f"Details: {e}[/bold red]",
+                f"[bold red]Error: Could not decode config file '{config_file_path}'. " f"Details: {e}[/bold red]",
             )
             raise SystemExit(1)
 
@@ -138,39 +131,26 @@ def setup_configuration_and_domains(
                         f'(e.g., ["example.com", "test.com"]).[/bold red]'
                     )
                 else:
-                    msg = (
-                        f"[bold red]Error: The file '{file_input}' must contain a list of "
-                        "domain strings.[/bold red]"
-                    )
+                    msg = f"[bold red]Error: The file '{file_input}' must contain a list of " "domain strings.[/bold red]"
                 console.print(msg)
                 raise SystemExit(1)
 
             # Validate domains from file
             for domain in domains_from_file:
                 if not is_valid_domain(domain):
-                    console.print(
-                        f"[bold red]Error: Invalid domain format '{domain}' in file "
-                        f"'{file_input}'.[/bold red]"
-                    )
+                    console.print(f"[bold red]Error: Invalid domain format '{domain}' in file " f"'{file_input}'.[/bold red]")
                     raise SystemExit(1)
                 domains_to_scan.append(domain)
 
         except FileNotFoundError:
-            console.print(
-                f"[bold red]Error: The domain file '{file_input}' was not found.[/bold red]"
-            )
+            console.print(f"[bold red]Error: The domain file '{file_input}' was not found.[/bold red]")
             raise SystemExit(1)
         except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
-            console.print(
-                f"[bold red]Error: Could not decode domains from the file '{file_input}'. "
-                f"{e}[/bold red]"
-            )
+            console.print(f"[bold red]Error: Could not decode domains from the file '{file_input}'. " f"{e}[/bold red]")
             raise SystemExit(1)
     elif domain_input:
         if not is_valid_domain(domain_input):
-            console.print(
-                f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]"
-            )
+            console.print(f"[bold red]Error: Invalid domain format '{domain_input}'.[/bold red]")
             raise SystemExit(1)
         domains_to_scan.append(domain_input)
 

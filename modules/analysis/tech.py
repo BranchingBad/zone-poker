@@ -2,6 +2,7 @@
 """
 Zone-Poker - Technology Detection Module
 """
+
 from typing import Any, Dict, Set
 
 import httpx
@@ -10,9 +11,7 @@ from bs4 import BeautifulSoup
 from modules.config import console
 
 
-async def detect_technologies(
-    domain: str, timeout: int, verbose: bool, **kwargs: Any
-) -> Dict[str, Any]:
+async def detect_technologies(domain: str, timeout: int, verbose: bool, **kwargs: Any) -> Dict[str, Any]:
     """
     Detects web technologies, CMS, and server software using async HTTP requests.
     """

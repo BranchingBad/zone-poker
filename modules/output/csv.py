@@ -3,6 +3,7 @@
 Zone-Poker - CSV Output Module
 Handles the generation of a comprehensive CSV report for DNS records.
 """
+
 import builtins
 import csv
 import datetime
@@ -13,9 +14,7 @@ from ..config import console
 from ..dispatch_table import MODULE_DISPATCH_TABLE
 
 
-def _write_dns_records_to_csv(
-    writer: csv.writer, domain: str, timestamp: str, records_info: Dict[str, Any]
-):
+def _write_dns_records_to_csv(writer: csv.writer, domain: str, timestamp: str, records_info: Dict[str, Any]):
     """
     Writes DNS records to the provided CSV writer.
     """
@@ -91,9 +90,7 @@ def _write_http_headers_to_csv(writer: csv.writer, headers_info: Dict[str, Any])
     writer.writerow(["header", "status", "value"])
     for header, details in headers_info.get("analysis", {}).items():
         if isinstance(details, dict):
-            writer.writerow(
-                [header, details.get("status", ""), details.get("value", "")]
-            )
+            writer.writerow([header, details.get("status", ""), details.get("value", "")])
     writer.writerow([])  # Blank line
 
     # Write recommendations
@@ -131,15 +128,11 @@ def _write_ssl_info_to_csv(writer: csv.writer, ssl_info: Dict[str, Any]):
     writer.writerow(["issuer", ssl_info.get("issuer", "N/A")])
 
     if valid_from_ts := ssl_info.get("valid_from"):
-        valid_from_dt = datetime.datetime.fromtimestamp(valid_from_ts).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        valid_from_dt = datetime.datetime.fromtimestamp(valid_from_ts).strftime("%Y-%m-%d %H:%M:%S")
         writer.writerow(["valid_from", valid_from_dt])
 
     if valid_until_ts := ssl_info.get("valid_until"):
-        valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        valid_until_dt = datetime.datetime.fromtimestamp(valid_until_ts).strftime("%Y-%m-%d %H:%M:%S")
         writer.writerow(["valid_until", valid_until_dt])
 
     writer.writerow(["tls_version", ssl_info.get("tls_version", "N/A")])
@@ -334,9 +327,7 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
         writer.writerow([csv_config["title"]])
 
         # Check if data is missing or has an error
-        if not module_data or (
-            isinstance(module_data, dict) and module_data.get("error")
-        ):
+        if not module_data or (isinstance(module_data, dict) and module_data.get("error")):
             writer.writerow([f"No {csv_config['title'].lower()} found."])
         else:
             # Call the specific writer function
@@ -360,8 +351,6 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
             with open(output_path, "w", encoding="utf-8", newline="") as f:
                 f.write(csv_content)
         except IOError as e:
-            console.print(
-                f"[bold red]Error writing CSV file to {output_path}: {e}[/bold red]"
-            )
+            console.print(f"[bold red]Error writing CSV file to {output_path}: {e}[/bold red]")
     else:
         builtins.print(csv_content)

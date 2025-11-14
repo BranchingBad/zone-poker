@@ -2,6 +2,7 @@
 """
 Zone-Poker - DNSBL (DNS-based Blocklist) Analysis Module
 """
+
 import asyncio
 import logging
 from typing import Any, Dict, List
@@ -34,16 +35,12 @@ async def check_dnsbl(
     # Collect all unique IP addresses from A and AAAA records
     a_records = records_info.get("A", [])
     aaaa_records = records_info.get("AAAA", [])
-    all_ips = list(
-        set([rec.get("value") for rec in a_records + aaaa_records if rec.get("value")])
-    )
+    all_ips = list(set([rec.get("value") for rec in a_records + aaaa_records if rec.get("value")]))
 
     if not all_ips:
         return results
 
-    logger.debug(
-        f"Checking {len(all_ips)} IP addresses against {len(DNSBL_PROVIDERS)} DNSBL providers."
-    )
+    logger.debug(f"Checking {len(all_ips)} IP addresses against {len(DNSBL_PROVIDERS)} DNSBL providers.")
 
     async def check_ip(ip: str) -> Dict[str, Any] | None:
         """Checks a single IP against all DNSBL providers."""

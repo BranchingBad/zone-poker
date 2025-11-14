@@ -2,6 +2,7 @@
 """
 Zone-Poker - XML Output Module
 """
+
 import builtins
 from typing import Any, Dict, Optional
 from xml.dom import minidom
@@ -89,8 +90,6 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(pretty_xml)
         except IOError as e:
-            console.print(
-                f"[bold red]Error writing XML file to {output_path}: {e}[/bold red]"
-            )
+            console.print(f"[bold red]Error writing XML file to {output_path}: {e}[/bold red]")
     else:
         builtins.print(pretty_xml)

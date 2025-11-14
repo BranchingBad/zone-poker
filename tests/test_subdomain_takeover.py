@@ -38,9 +38,7 @@ async def test_subdomain_takeover_found():
     # Mock the vulnerable response for the first subdomain.
     # The new logic checks HTTP first, so we only need to mock that.
     fingerprint = MOCK_FINGERPRINTS["GitHub Pages"]["fingerprints"]  # type: ignore
-    respx.get("http://vuln.example.com").respond(
-        200, text=f"<html><body>{fingerprint}</body></html>"
-    )
+    respx.get("http://vuln.example.com").respond(200, text=f"<html><body>{fingerprint}</body></html>")
     respx.get("http://safe.example.com").respond(200, text="Everything is fine here.")
 
     # Use patch to inject our mock fingerprints and clear the cache
@@ -98,9 +96,7 @@ async def test_subdomain_takeover_network_error():
     records = {"CNAME": [{"name": "error.example.com", "value": "user.github.io"}]}
 
     # Mock a network error for the target URL
-    respx.get(url__regex=r"https?://error\.example\.com").mock(
-        side_effect=RequestError("Connection failed")
-    )
+    respx.get(url__regex=r"https?://error\.example\.com").mock(side_effect=RequestError("Connection failed"))
 
     results = await check_subdomain_takeover(records)
 
@@ -171,17 +167,12 @@ def test_fingerprints_file_is_packaged():
         # importlib.resources.files() is the modern way to access package data
         # and will correctly find the file in the installed package.
         # This will raise an exception if the file is not found.
-        with (
-            importlib.resources.files("modules.analysis")
-            .joinpath("takeover_fingerprints.json")
-            .open("r") as f
-        ):
+        with importlib.resources.files("modules.analysis").joinpath("takeover_fingerprints.json").open("r") as f:
             data = json.load(f)
             # A simple assertion to ensure the file content is as expected
             assert "GitHub Pages" in data
             assert "Heroku" in data
     except FileNotFoundError:
         pytest.fail(
-            "takeover_fingerprints.json was not found. "
-            "Check that it is included in pyproject.toml's [tool.setuptools.package-data]."
+            "takeover_fingerprints.json was not found. " "Check that it is included in pyproject.toml's [tool.setuptools.package-data]."
         )

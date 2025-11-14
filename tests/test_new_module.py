@@ -2,6 +2,7 @@
 """
 Unit tests for the new analysis module in Zone-Poker.
 """
+
 import pytest
 
 from modules.analysis.new_module import analyze_new_module

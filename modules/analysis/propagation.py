@@ -7,9 +7,7 @@ import dns.resolver
 from ..config import PUBLIC_RESOLVERS
 
 
-async def propagation_check(
-    domain: str, timeout: int, **kwargs
-) -> Dict[str, Dict[str, Any]]:
+async def propagation_check(domain: str, timeout: int, **kwargs) -> Dict[str, Dict[str, Any]]:
     """Checks domain 'A' record propagation against public resolvers."""
     results: Dict[str, Dict[str, Any]] = {}
 

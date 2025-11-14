@@ -2,6 +2,7 @@
 """
 Zone-Poker - SMTP Analysis Module
 """
+
 import asyncio
 import smtplib
 import socket
@@ -9,9 +10,7 @@ import ssl
 from typing import Any, Dict
 
 
-async def analyze_smtp_servers(
-    domain: str, timeout: int, records_info: dict, **kwargs
-) -> dict:
+async def analyze_smtp_servers(domain: str, timeout: int, records_info: dict, **kwargs) -> dict:
     """
     Asynchronously connects to mail servers from MX records to analyze their SMTP configuration.
     Args:
@@ -39,11 +38,7 @@ async def analyze_smtp_servers(
             with smtplib.SMTP(server_name, port=25, timeout=timeout) as smtp:
                 # Send EHLO to discover server capabilities like STARTTLS
                 smtp.ehlo()
-                server_results["banner"] = (
-                    smtp.helo_resp.decode("utf-8", "ignore").strip()
-                    if smtp.helo_resp
-                    else "N/A"
-                )
+                server_results["banner"] = smtp.helo_resp.decode("utf-8", "ignore").strip() if smtp.helo_resp else "N/A"
                 if smtp.has_extn("starttls"):
                     server_results["starttls"] = "Supported"
                     smtp.starttls()
@@ -52,18 +47,10 @@ async def analyze_smtp_servers(
                     cert = smtp.sock.getpeercert()
                     if cert:
                         cert_info = {
-                            "subject": dict(x[0] for x in cert.get("subject", [])).get(
-                                "commonName", "N/A"
-                            ),
-                            "issuer": dict(x[0] for x in cert.get("issuer", [])).get(
-                                "commonName", "N/A"
-                            ),
-                            "valid_from": ssl.cert_time_to_seconds(
-                                cert.get("notBefore")
-                            ),
-                            "valid_until": ssl.cert_time_to_seconds(
-                                cert.get("notAfter")
-                            ),
+                            "subject": dict(x[0] for x in cert.get("subject", [])).get("commonName", "N/A"),
+                            "issuer": dict(x[0] for x in cert.get("issuer", [])).get("commonName", "N/A"),
+                            "valid_from": ssl.cert_time_to_seconds(cert.get("notBefore")),
+                            "valid_until": ssl.cert_time_to_seconds(cert.get("notAfter")),
                         }
                         server_results["certificate"] = cert_info
                 else:

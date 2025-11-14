@@ -2,6 +2,7 @@
 """
 Zone-Poker - Domain & IP Reputation Analysis Module
 """
+
 import argparse
 import asyncio
 
@@ -10,9 +11,7 @@ import httpx
 ABUSEIPDB_ENDPOINT = "https://api.abuseipdb.com/api/v2/check"
 
 
-async def analyze_reputation(
-    domain: str, args: argparse.Namespace, all_data: dict, **kwargs
-) -> dict:
+async def analyze_reputation(domain: str, args: argparse.Namespace, all_data: dict, **kwargs) -> dict:
     """
     Checks the reputation of domain IPs against AbuseIPDB.
 
@@ -35,9 +34,7 @@ async def analyze_reputation(
     ip_addresses = []
     for record_type in ("A", "AAAA"):
         if record_list := records_info.get(record_type):
-            ip_addresses.extend(
-                rec.get("value") for rec in record_list if rec.get("value")
-            )
+            ip_addresses.extend(rec.get("value") for rec in record_list if rec.get("value"))
 
     if headers_info and headers_info.get("ip_address"):
         ip_addresses.append(headers_info["ip_address"])
@@ -52,9 +49,7 @@ async def analyze_reputation(
         """Inner function to check a single IP."""
         try:
             params = {"ipAddress": ip, "maxAgeInDays": "90"}
-            response = await client.get(
-                ABUSEIPDB_ENDPOINT, headers=headers, params=params
-            )
+            response = await client.get(ABUSEIPDB_ENDPOINT, headers=headers, params=params)
             response.raise_for_status()  # Raise an exception for 4xx/5xx responses
 
             data = response.json().get("data", {})
@@ -70,9 +65,7 @@ async def analyze_reputation(
             if e.response.status_code == 401:
                 results[ip] = {"error": "Authentication failed (invalid API key)."}
             else:
-                results[ip] = {
-                    "error": f"HTTP error {e.response.status_code}: {e.response.text}"
-                }
+                results[ip] = {"error": f"HTTP error {e.response.status_code}: {e.response.text}"}
         except httpx.RequestError as e:
             results[ip] = {"error": f"Connection error: {e}"}
 

@@ -7,8 +7,7 @@ def setup_parser() -> argparse.ArgumentParser:
     """Creates and configures the argument parser."""
     parser = argparse.ArgumentParser(
         description=(
-            "Zone-Poker - A professional DNS reconnaissance and OSINT tool for "
-            "comprehensive domain analysis.\nCreated by BranchingBad"
+            "Zone-Poker - A professional DNS reconnaissance and OSINT tool for " "comprehensive domain analysis.\nCreated by BranchingBad"
         ),
         epilog="""
 Examples:
@@ -34,15 +33,11 @@ Examples:
         "--file",
         help="Path to a file (JSON or YAML) containing a list of domains to analyze.",
     )
-    input_group.add_argument(
-        "-c", "--config", help="Path to a JSON or YAML config file with scan options."
-    )
+    input_group.add_argument("-c", "--config", help="Path to a JSON or YAML config file with scan options.")
 
     # --- Scan Control ---
     scan_group = parser.add_argument_group("Scan Control")
-    scan_group.add_argument(
-        "-a", "--all", action="store_true", help="Run all analysis modules."
-    )
+    scan_group.add_argument("-a", "--all", action="store_true", help="Run all analysis modules.")
     scan_group.add_argument(
         "--timeout",
         type=int,
@@ -59,9 +54,7 @@ Examples:
         "--types",
         help="Comma-separated list of DNS record types to query (e.g., 'A,MX,TXT').",
     )
-    scan_group.add_argument(
-        "--resolvers", help="Comma-separated list of custom DNS resolvers to use."
-    )
+    scan_group.add_argument("--resolvers", help="Comma-separated list of custom DNS resolvers to use.")
 
     # --- Output Control ---
     output_group = parser.add_argument_group("Output Control")
@@ -71,21 +64,14 @@ Examples:
         action="store_true",
         help="Export default reports (.json, .txt).",
     )
-    output_group.add_argument(
-        "-O", "--output-dir", help="Directory to save reports (defaults to Desktop)."
-    )
+    output_group.add_argument("-O", "--output-dir", help="Directory to save reports (defaults to Desktop).")
     output_group.add_argument(
         "--filename-template",
         default="{domain}_dnsint_{timestamp}",
-        help="Template for report filenames. "
-        "Default: '{domain}_dnsint_{timestamp}'.",
+        help="Template for report filenames. " "Default: '{domain}_dnsint_{timestamp}'.",
     )
-    output_group.add_argument(
-        "--html-file", help="Export an HTML report to the specified file path."
-    )
-    output_group.add_argument(
-        "--log-file", help="Path to a file to save detailed, verbose logs."
-    )
+    output_group.add_argument("--html-file", help="Export an HTML report to the specified file path.")
+    output_group.add_argument("--log-file", help="Path to a file to save detailed, verbose logs.")
     output_group.add_argument(
         "-v",
         "--verbose",
@@ -102,16 +88,11 @@ Examples:
         "--output",
         choices=["table", "json", "csv", "xml", "html", "txt"],
         default="table",
-        help=(
-            "Console output format. 'table' for human-readable, others for "
-            "machine-readable."
-        ),
+        help=("Console output format. 'table' for human-readable, others for " "machine-readable."),
     )
 
     # --- Analysis Modules ---
-    module_group = parser.add_argument_group(
-        "Analysis Modules", "Run specific modules by adding their flags."
-    )
+    module_group = parser.add_argument_group("Analysis Modules", "Run specific modules by adding their flags.")
     # Let modules register their own command-line arguments
     register_module_args(module_group)
 

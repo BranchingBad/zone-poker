@@ -2,6 +2,7 @@
 """
 Unit tests for the analysis modules in Zone-Poker.
 """
+
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -287,9 +288,7 @@ def setup_open_redirect_mocks(domain: str, outcomes: dict):
         if isinstance(outcome, int):
             respx.get(url).respond(outcome)
         elif isinstance(outcome, dict):
-            respx.get(url).respond(
-                outcome["status"], headers={"Location": outcome["location"]}
-            )
+            respx.get(url).respond(outcome["status"], headers={"Location": outcome["location"]})
         elif isinstance(outcome, Exception):
             respx.get(url).mock(side_effect=outcome)
 

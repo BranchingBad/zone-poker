@@ -30,9 +30,7 @@ async def get_dns_records(
             answers = await asyncio.to_thread(resolver.resolve, domain, rtype)
             record_list = []
             for rdata in answers:
-                record_info = _format_rdata(
-                    rtype, rdata, ttl=answers.ttl, name=str(answers.qname)
-                )
+                record_info = _format_rdata(rtype, rdata, ttl=answers.ttl, name=str(answers.qname))
                 record_list.append(record_info)
             records[rtype] = record_list
         except (

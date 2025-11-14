@@ -4,6 +4,7 @@ Zone-Poker - New Analysis Module
 
 This is a placeholder for a new analysis module.
 """
+
 import logging
 from typing import Any, Dict
 

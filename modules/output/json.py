@@ -2,6 +2,7 @@
 """
 Zone-Poker - JSON Output Module
 """
+
 import builtins
 import json
 from typing import Any, Dict, Optional
@@ -41,8 +42,6 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(json_string)
         except IOError as e:
-            console.print(
-                f"[bold red]Error writing JSON file to {output_path}: {e}[/bold red]"
-            )
+            console.print(f"[bold red]Error writing JSON file to {output_path}: {e}[/bold red]")
     else:
         builtins.print(json_string)

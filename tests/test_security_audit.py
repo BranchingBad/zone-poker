@@ -2,6 +2,7 @@
 """
 Unit tests for the security_audit analysis module in Zone-Poker.
 """
+
 import copy
 from datetime import datetime, timedelta
 
@@ -164,9 +165,7 @@ def test_security_audit_weak(mock_weak_data):
     assert findings["Open Redirect"]["severity"] == "Medium"
     assert findings["Expired SSL/TLS Certificate"]["severity"] == "High"
     assert findings["High-Risk IP Reputation"]["severity"] == "High"
-    assert (
-        findings.get("Insecure Header: Content-Security-Policy")["severity"] == "High"
-    )
+    assert findings.get("Insecure Header: Content-Security-Policy")["severity"] == "High"
 
 
 def test_security_audit_robots_txt(mock_secure_data, mock_robots_txt_data):
@@ -188,10 +187,7 @@ def test_security_audit_robots_txt(mock_secure_data, mock_robots_txt_data):
     finding = result["findings"][0]
     assert finding["finding"] == "Sensitive Paths in robots.txt"
     assert finding["severity"] == "Low"
-    assert (
-        "disallows crawling of 2 potentially sensitive path(s)"
-        in finding["recommendation"]
-    )
+    assert "disallows crawling of 2 potentially sensitive path(s)" in finding["recommendation"]
 
 
 def test_all_security_checks_are_covered(
@@ -209,9 +205,7 @@ def test_all_security_checks_are_covered(
     """
     # 1. Get all defined finding names
     all_check_names = {check["finding"] for check in AUDIT_CHECKS}
-    all_header_check_names = {
-        f"Insecure Header: {name}" for name in HEADER_CHECKS.keys()
-    }
+    all_header_check_names = {f"Insecure Header: {name}" for name in HEADER_CHECKS.keys()}
     # Manually add the check that is not in the main lists
     all_check_names.add("Sensitive Paths in robots.txt")
     all_defined_checks = all_check_names.union(all_header_check_names)
@@ -233,11 +227,7 @@ def test_all_security_checks_are_covered(
 
         # FIX: Use a custom merge strategy instead of deep_merge or .update()
         for key, value in data.items():
-            if (
-                key == "headers_info"
-                and "analysis" in value
-                and isinstance(full_data.get(key), dict)
-            ):
+            if key == "headers_info" and "analysis" in value and isinstance(full_data.get(key), dict):
                 # Special case: merge the 'analysis' dict
                 full_data[key]["analysis"].update(value["analysis"])
             else:
@@ -252,7 +242,4 @@ def test_all_security_checks_are_covered(
     uncovered_checks = all_defined_checks - all_triggered_findings
 
     # This test will LIKELY STILL FAIL, but only for 'Sensitive Paths in robots.txt'
-    assert not uncovered_checks, (
-        f"The following security checks are not covered by any tests: "
-        f"{sorted(list(uncovered_checks))}"
-    )
+    assert not uncovered_checks, f"The following security checks are not covered by any tests: " f"{sorted(list(uncovered_checks))}"

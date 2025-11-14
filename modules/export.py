@@ -2,6 +2,7 @@
 """
 Zone-Poker - Output Handling Module
 """
+
 import importlib
 import inspect
 from typing import Any, Dict, Optional
@@ -9,9 +10,7 @@ from typing import Any, Dict, Optional
 from .config import console
 
 
-def handle_output(
-    all_data: Dict[str, Any], output_format: str, output_path: Optional[str] = None
-):
+def handle_output(all_data: Dict[str, Any], output_format: str, output_path: Optional[str] = None):
     """
     Handles dynamic output generation for console and file-based reports.
 
@@ -24,9 +23,7 @@ def handle_output(
     if output_format == "txt" and output_path:
         try:
             # Dynamically import all 'export_txt_*' functions from the module
-            txt_export_module = importlib.import_module(
-                ".export_txt", package="modules"
-            )
+            txt_export_module = importlib.import_module(".export_txt", package="modules")
             report_parts = []
             for name, func in inspect.getmembers(txt_export_module, inspect.isfunction):
                 if name.startswith("export_txt_"):
@@ -37,32 +34,20 @@ def handle_output(
             # Now, write the report to the file
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write("\n\n".join(report_parts))
-            console.print(
-                f"[green]✓ Report successfully saved to:[/] [bold cyan]{output_path}[/bold cyan]"
-            )
+            console.print(f"[green]✓ Report successfully saved to:[/] [bold cyan]{output_path}[/bold cyan]")
         except Exception as e:
-            console.print(
-                f"[bold red]An error occurred while generating the 'txt' report: {e}[/bold red]"
-            )
+            console.print(f"[bold red]An error occurred while generating the 'txt' report: {e}[/bold red]")
         return
 
     try:
         # Dynamically load the output module (e.g., modules.output.json)
-        output_module = importlib.import_module(
-            f".output.{output_format}", package="modules"
-        )
+        output_module = importlib.import_module(f".output.{output_format}", package="modules")
         # The output module's `output` function will handle writing to a file
         # if a path is provided, or printing to the console otherwise.
         output_module.output(all_data, output_path)
         if output_path:
-            console.print(
-                f"[green]✓ Report successfully saved to:[/] [bold cyan]{output_path}[/bold cyan]"
-            )
+            console.print(f"[green]✓ Report successfully saved to:[/] [bold cyan]{output_path}[/bold cyan]")
     except ImportError:
-        console.print(
-            f"[bold red]Error: Output format '{output_format}' is not supported.[/bold red]"
-        )
+        console.print(f"[bold red]Error: Output format '{output_format}' is not supported.[/bold red]")
     except Exception as e:
-        console.print(
-            f"[bold red]An error occurred while generating the '{output_format}' report: {e}[/bold red]"
-        )
+        console.print(f"[bold red]An error occurred while generating the '{output_format}' report: {e}[/bold red]")

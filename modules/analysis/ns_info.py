@@ -9,9 +9,7 @@ from ipwhois import IPWhois, exceptions
 logger = logging.getLogger(__name__)
 
 
-async def _resolve_ns_ips(
-    resolver: dns.resolver.Resolver, ns_name: str, rtype: str
-) -> List[str]:
+async def _resolve_ns_ips(resolver: dns.resolver.Resolver, ns_name: str, rtype: str) -> List[str]:
     """Helper to resolve A or AAAA records for a nameserver."""
     try:
         answers = await asyncio.to_thread(resolver.resolve, ns_name, rtype)
@@ -25,9 +23,7 @@ async def _resolve_ns_ips(
         return []
 
 
-async def _analyze_single_ns(
-    resolver: dns.resolver.Resolver, verbose: bool, ns_name: str
-) -> Dict[str, Any]:
+async def _analyze_single_ns(resolver: dns.resolver.Resolver, verbose: bool, ns_name: str) -> Dict[str, Any]:
     """Analyzes a single nameserver, returning its information."""
     info: Dict[str, Any] = {"ips": []}
 
@@ -78,10 +74,7 @@ async def nameserver_analysis(
         return {"error": "No NS records found."}
 
     # Create concurrent analysis tasks for all nameservers
-    tasks = {
-        ns["value"]: _analyze_single_ns(resolver, verbose, ns["value"])
-        for ns in ns_records
-    }
+    tasks = {ns["value"]: _analyze_single_ns(resolver, verbose, ns["value"]) for ns in ns_records}
     analysis_results = await asyncio.gather(*tasks.values())
 
     for ns_name, result_data in zip(tasks.keys(), analysis_results):

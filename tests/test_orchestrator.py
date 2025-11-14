@@ -88,9 +88,7 @@ async def test_orchestrator_with_dependencies(mock_table, mock_args):
     mock_table.__getitem__.side_effect = mock_table_dict.__getitem__
 
     # Patch the execution plan to ensure the orchestrator runs exactly what we've mocked.
-    with patch(
-        "modules.orchestrator._create_execution_plan", return_value=["records", "ptr"]
-    ):
+    with patch("modules.orchestrator._create_execution_plan", return_value=["records", "ptr"]):
         await _scan_single_domain("example.com", mock_args, modules_to_run)
 
     mock_records_func.assert_awaited_once()

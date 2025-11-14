@@ -2,6 +2,7 @@
 """
 Zone-Poker - Open Redirect Vulnerability Scanner
 """
+
 import asyncio
 import logging
 from typing import Any, Dict
@@ -51,10 +52,7 @@ async def check_open_redirect(domain: str, timeout: int, **kwargs) -> Dict[str, 
             logger.debug(f"Open redirect check for {url} failed: {e}")
 
     async with httpx.AsyncClient(verify=False) as client:
-        tasks = [
-            test_url(f"https://{domain}{payload}", client)
-            for payload in REDIRECT_PAYLOADS
-        ]
+        tasks = [test_url(f"https://{domain}{payload}", client) for payload in REDIRECT_PAYLOADS]
         await asyncio.gather(*tasks)
 
     return results

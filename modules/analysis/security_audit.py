@@ -2,6 +2,7 @@
 """
 Zone-Poker - Security Audit Module
 """
+
 import datetime
 from typing import Any, Dict, List
 
@@ -28,10 +29,7 @@ AUDIT_CHECKS = [
         "condition": lambda d: d.get("spf", {}).get("all_policy") == "+all",
         "finding": "Overly Permissive SPF Policy (+all)",
         "severity": "Critical",
-        "recommendation": (
-            "Immediately change `+all` to `~all` or `-all`. `+all` allows "
-            "anyone to send email on your behalf."
-        ),
+        "recommendation": ("Immediately change `+all` to `~all` or `-all`. `+all` allows " "anyone to send email on your behalf."),
     },
     {
         "data_key": "mail_info",
@@ -57,8 +55,7 @@ AUDIT_CHECKS = [
     },
     {
         "data_key": "zone_info",
-        "condition": lambda d: d.get("summary")
-        == "Vulnerable (Zone Transfer Successful)",
+        "condition": lambda d: d.get("summary") == "Vulnerable (Zone Transfer Successful)",
         "finding": "Zone Transfer (AXFR) Enabled",
         "severity": "High",
         "recommendation": "Disable zone transfers to untrusted IP addresses on your authoritative nameservers.",
@@ -84,14 +81,12 @@ AUDIT_CHECKS = [
         "finding": "Open Redirect",
         "severity": "Medium",
         "recommendation": lambda d: (
-            f"Found {len(d['vulnerable_urls'])} potential open redirect(s). "
-            "Validate and sanitize all user-supplied URLs in redirects."
+            f"Found {len(d['vulnerable_urls'])} potential open redirect(s). " "Validate and sanitize all user-supplied URLs in redirects."
         ),
     },
     {
         "data_key": "ssl_info",
-        "condition": lambda d: d.get("valid_until")
-        and datetime.datetime.now().timestamp() > d["valid_until"],
+        "condition": lambda d: d.get("valid_until") and datetime.datetime.now().timestamp() > d["valid_until"],
         "finding": "Expired SSL/TLS Certificate",
         "severity": "High",
         "recommendation": "Renew the SSL/TLS certificate immediately to restore trust and encrypted communication.",
@@ -101,10 +96,7 @@ AUDIT_CHECKS = [
         "condition": lambda d: d.get("cipher")
         and isinstance(d["cipher"], (list, tuple))
         and d["cipher"]
-        and any(
-            keyword in d["cipher"][0]
-            for keyword in ["RC4", "3DES", "DES", "MD5", "NULL", "EXPORT"]
-        ),
+        and any(keyword in d["cipher"][0] for keyword in ["RC4", "3DES", "DES", "MD5", "NULL", "EXPORT"]),
         "finding": "Weak SSL/TLS Cipher Suite",
         "severity": "Medium",
         "recommendation": (
@@ -125,10 +117,7 @@ AUDIT_CHECKS = [
     # --- Reputation & Infrastructure ---
     {
         "data_key": "reputation_info",
-        "condition": lambda d: any(
-            isinstance(info, dict) and info.get("abuseConfidenceScore", 0) > 75
-            for info in d.values()
-        ),
+        "condition": lambda d: any(isinstance(info, dict) and info.get("abuseConfidenceScore", 0) > 75 for info in d.values()),
         "finding": "High-Risk IP Reputation",
         "severity": "High",
         "recommendation": lambda d: (
@@ -139,9 +128,7 @@ AUDIT_CHECKS = [
 ]
 
 
-def security_audit(
-    all_data: Dict[str, Any], **kwargs: Any
-) -> Dict[str, List[Dict[str, str]]]:
+def security_audit(all_data: Dict[str, Any], **kwargs: Any) -> Dict[str, List[Dict[str, str]]]:
     """
     Runs a basic audit for DNS and web security misconfigurations.
     """
@@ -155,11 +142,7 @@ def security_audit(
                 {
                     "finding": check["finding"],
                     "severity": check["severity"],
-                    "recommendation": (
-                        recommendation(data)
-                        if callable(recommendation)
-                        else recommendation
-                    ),
+                    "recommendation": (recommendation(data) if callable(recommendation) else recommendation),
                 }
             )
 
@@ -174,8 +157,7 @@ def security_audit(
                     {
                         "finding": f"Insecure Header: {header_name}",
                         "severity": check_config.get("severity", "Low"),
-                        "recommendation": details.get("recommendation")
-                        or check_config.get("recommendation"),
+                        "recommendation": details.get("recommendation") or check_config.get("recommendation"),
                     }
                 )
 

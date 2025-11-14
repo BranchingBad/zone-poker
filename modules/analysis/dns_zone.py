@@ -51,17 +51,13 @@ async def attempt_axfr(
 
     async def try_axfr(ns: str):
         # Concurrently resolve A and AAAA records for the nameserver
-        a_records, aaaa_records = await asyncio.gather(
-            _resolve_ns_ips(ns, "A"), _resolve_ns_ips(ns, "AAAA")
-        )
+        a_records, aaaa_records = await asyncio.gather(_resolve_ns_ips(ns, "A"), _resolve_ns_ips(ns, "AAAA"))
         ns_ips = a_records + aaaa_records
 
         if not ns_ips:
             # Use a lock to safely write to the shared results dictionary
             async with lock:  # noqa
-                axfr_results["servers"][ns] = {
-                    "status": "Failed (No A/AAAA record for NS)"
-                }
+                axfr_results["servers"][ns] = {"status": "Failed (No A/AAAA record for NS)"}
             return
 
         failure_status = {}  # Initialize failure status for the nameserver
@@ -88,11 +84,7 @@ async def attempt_axfr(
                 return  # Success, no need to check other IPs for this NS
             except dns.exception.FormError as e:
                 # A "Refused" error is definitive for this IP. Stop trying other IPs for this NS.
-                status_msg = (
-                    "Failed (Refused)"
-                    if "refused" in str(e).lower()
-                    else "Failed (Protocol Error)"
-                )
+                status_msg = "Failed (Refused)" if "refused" in str(e).lower() else "Failed (Protocol Error)"
                 failure_status = {"status": status_msg, "ip_tried": ns_ip}
                 if verbose:
                     logger.debug(f"AXFR FormError for {ns} at {ns_ip}: {e}")
@@ -106,9 +98,7 @@ async def attempt_axfr(
             except Exception as e:
                 # Only record a generic exception if no other failure has been recorded yet.
                 # This prevents overwriting a more specific error like a Timeout.
-                if not failure_status or "Failed (" not in failure_status.get(
-                    "status", ""
-                ):
+                if not failure_status or "Failed (" not in failure_status.get("status", ""):
                     failure_status = {
                         "status": f"Failed ({type(e).__name__})",
                         "ip_tried": ns_ip,

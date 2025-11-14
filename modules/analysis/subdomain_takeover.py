@@ -2,6 +2,7 @@
 """
 Zone-Poker - Subdomain Takeover Detection Module
 """
+
 import asyncio
 import json
 import logging
@@ -22,15 +23,11 @@ def _load_fingerprints() -> dict:
         with open(fingerprint_path, "r") as f:
             return json.load(f)
     except (IOError, json.JSONDecodeError) as e:
-        logger.warning(
-            f"Could not load takeover fingerprints file (takeover_fingerprints.json): {e}. Takeover scan will be skipped."
-        )
+        logger.warning(f"Could not load takeover fingerprints file (takeover_fingerprints.json): {e}. Takeover scan will be skipped.")
         return {}
 
 
-async def check_subdomain_takeover(
-    records_info: Dict[str, List[Dict[str, Any]]], **kwargs
-) -> Dict[str, Any]:
+async def check_subdomain_takeover(records_info: Dict[str, List[Dict[str, Any]]], **kwargs) -> Dict[str, Any]:
     """
     Checks for potential subdomain takeovers by matching CNAME records against a list
     of vulnerable services and their fingerprints.
@@ -38,21 +35,13 @@ async def check_subdomain_takeover(
     cname_records = records_info.get("CNAME", []) or []
     takeover_fingerprints = _load_fingerprints()
 
-    if (
-        not cname_records
-        or not takeover_fingerprints
-        or not isinstance(cname_records, list)
-    ):
+    if not cname_records or not takeover_fingerprints or not isinstance(cname_records, list):
         return {"vulnerable": []}
 
     results: Dict[str, Any] = {"vulnerable": []}
-    logger.debug(
-        f"Checking {len(cname_records)} CNAME records for takeover vulnerabilities."
-    )
+    logger.debug(f"Checking {len(cname_records)} CNAME records for takeover vulnerabilities.")
 
-    async def check_record(
-        record: Dict[str, Any], client: httpx.AsyncClient
-    ) -> Dict[str, Any] | None:
+    async def check_record(record: Dict[str, Any], client: httpx.AsyncClient) -> Dict[str, Any] | None:
         subdomain = record.get("name")
         cname_target = record.get("value")
 
@@ -73,9 +62,7 @@ async def check_subdomain_takeover(
                         fingerprints = details.get("fingerprints", [])
                         for fingerprint in fingerprints:
                             if fingerprint.lower() in response_text_lower:
-                                logger.info(
-                                    f"Potential takeover found for {subdomain} pointing to {service}"
-                                )
+                                logger.info(f"Potential takeover found for {subdomain} pointing to {service}")
                                 return {
                                     "subdomain": subdomain,
                                     "cname_target": cname_target,
@@ -88,9 +75,7 @@ async def check_subdomain_takeover(
                 break
         return None
 
-    async with httpx.AsyncClient(
-        verify=False, follow_redirects=True, timeout=10
-    ) as client:
+    async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=10) as client:
         tasks = [check_record(rec, client) for rec in cname_records]
         task_results = await asyncio.gather(*tasks)
 

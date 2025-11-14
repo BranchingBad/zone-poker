@@ -37,9 +37,7 @@ async def whois_lookup(domain: str, verbose: bool, **kwargs) -> Dict[str, Any]:
             return {"error": "No WHOIS data returned from server."}
 
         # Normalize all values to be JSON-serializable and consistent
-        cleaned_data = {
-            k: _normalize_whois_value(v) for k, v in whois_data.items() if v is not None
-        }
+        cleaned_data = {k: _normalize_whois_value(v) for k, v in whois_data.items() if v is not None}
         return cleaned_data
 
     except WhoisError as e:

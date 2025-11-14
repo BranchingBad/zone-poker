@@ -68,12 +68,8 @@ async def test_get_dns_records_success(mock_format, mock_resolver):
     outcomes = {"A": ["1.2.3.4"]}
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
-            mock_resolver, outcomes
-        )
-        result = await get_dns_records(
-            "example.com", mock_resolver, verbose=False, record_types=["A"]
-        )
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(mock_resolver, outcomes)
+        result = await get_dns_records("example.com", mock_resolver, verbose=False, record_types=["A"])
 
     # Verify the result
     assert "A" in result
@@ -91,12 +87,8 @@ async def test_get_dns_records_no_answer(mock_format, mock_print, mock_resolver)
     # Simulate a NoAnswer exception
     outcomes = {"A": dns.resolver.NoAnswer}
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
-            mock_resolver, outcomes
-        )
-        result = await get_dns_records(
-            "example.com", mock_resolver, verbose=True, record_types=["A"]
-        )
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(mock_resolver, outcomes)
+        result = await get_dns_records("example.com", mock_resolver, verbose=True, record_types=["A"])
 
     # Verify the result is an empty list for the given type
     assert "A" in result
@@ -105,8 +97,7 @@ async def test_get_dns_records_no_answer(mock_format, mock_print, mock_resolver)
     # Verify the error message was printed to the console
     mock_print.assert_called_once()
     assert (
-        "Error querying A for example.com: The DNS response does not contain an answer to the question."
-        in mock_print.call_args[0][0]  # type: ignore
+        "Error querying A for example.com: The DNS response does not contain an answer to the question." in mock_print.call_args[0][0]  # type: ignore
     )
 
 
@@ -119,12 +110,8 @@ async def test_get_dns_records_timeout(mock_format, mock_resolver):
     # Simulate a Timeout exception
     outcomes = {"MX": dns.exception.Timeout}
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
-            mock_resolver, outcomes
-        )
-        result = await get_dns_records(
-            "example.com", mock_resolver, verbose=False, record_types=["MX"]
-        )
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(mock_resolver, outcomes)
+        result = await get_dns_records("example.com", mock_resolver, verbose=False, record_types=["MX"])
 
     assert "MX" in result
     assert result["MX"] == []
@@ -144,12 +131,8 @@ async def test_get_dns_records_specific_types(mock_format, mock_resolver):
     outcomes = {"MX": [], "TXT": ["some text"]}
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = create_dns_records_mock_side_effect(
-            mock_resolver, outcomes
-        )
-        result = await get_dns_records(
-            "example.com", mock_resolver, verbose=False, record_types=types_to_query
-        )
+        mock_to_thread.side_effect = create_dns_records_mock_side_effect(mock_resolver, outcomes)
+        result = await get_dns_records("example.com", mock_resolver, verbose=False, record_types=types_to_query)
 
         # Check that resolve was called for each specified type
         assert mock_to_thread.call_count == 2

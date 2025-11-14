@@ -8,9 +8,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-async def osint_enrichment(
-    domain: str, timeout: int, verbose: bool, args: argparse.Namespace, **kwargs
-) -> Dict[str, Any]:
+async def osint_enrichment(domain: str, timeout: int, verbose: bool, args: argparse.Namespace, **kwargs) -> Dict[str, Any]:
     """
     Enriches data with passive DNS (AlienVault OTX).
     Checks for 'otx' API key in config.
@@ -44,11 +42,7 @@ async def osint_enrichment(
                     )
                     seen_ips.add(record["address"])
 
-            subdomains = {
-                record["hostname"]
-                for record in passive_dns
-                if record["hostname"].endswith(f".{domain}")
-            }
+            subdomains = {record["hostname"] for record in passive_dns if record["hostname"].endswith(f".{domain}")}
             osint_data["subdomains"] = list(subdomains)
         else:
             osint_data["error"] = f"OTX query failed (Status: {response.status_code})"

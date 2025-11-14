@@ -4,6 +4,7 @@ Zone-Poker - Orchestrator Module
 Handles the logic for running analysis, managing data dependencies,
 and displaying results.
 """
+
 import asyncio
 import inspect
 import logging
@@ -82,18 +83,13 @@ def _create_execution_plan(initial_modules: List[str]) -> List[str]:
 
     # 3. Check for cycles
     if len(sorted_order) != len(modules_to_run):
-        msg = (
-            "Circular dependency detected in modules. Please check the "
-            "`dependencies` in `dispatch_table.py`."
-        )
+        msg = "Circular dependency detected in modules. Please check the " "`dependencies` in `dispatch_table.py`."
         raise ValueError(msg)
 
     return sorted_order
 
 
-async def _scan_single_domain(
-    domain: str, args: Any, modules_to_run: List[str]
-) -> Dict[str, Any]:
+async def _scan_single_domain(domain: str, args: Any, modules_to_run: List[str]) -> Dict[str, Any]:
     """Scan a single domain.
 
     Orchestrates the scanning process for a single domain by executing the necessary
@@ -182,10 +178,7 @@ async def _scan_single_domain(
                 # running in the thread.
                 result = await asyncio.to_thread(analysis_func, **func_kwargs)
         except Exception as e:
-            console.print(
-                f"[bold red]Error in module '{module_name}': "
-                f"{type(e).__name__} - {e}[/bold red]"
-            )
+            console.print(f"[bold red]Error in module '{module_name}': " f"{type(e).__name__} - {e}[/bold red]")
 
             if args.verbose:
                 console.print_exception(show_locals=True)
@@ -194,11 +187,7 @@ async def _scan_single_domain(
         all_data[data_key] = result
 
         # Display results immediately after analysis if not in quiet mode.
-        if (
-            not args.quiet
-            and args.output == "table"
-            and (display_func := module_info.get("display_func"))
-        ):
+        if not args.quiet and args.output == "table" and (display_func := module_info.get("display_func")):
             renderable = display_func(result, quiet=False)
             if renderable:
                 console.print(renderable)  # type: ignore
@@ -237,9 +226,7 @@ async def _scan_single_domain(
 
         # Generate a base filename from the template
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename_template = getattr(
-            args, "filename_template", "{domain}_dnsint_{timestamp}"
-        )
+        filename_template = getattr(args, "filename_template", "{domain}_dnsint_{timestamp}")
         base_filename = filename_template.format(domain=domain, timestamp=timestamp)
 
         for fmt in set(export_formats):
@@ -262,11 +249,7 @@ async def run_scans(domains_to_scan: List[str], args: Any):
     from .dispatch_table import MODULE_DISPATCH_TABLE
 
     # Determine which modules to run based on the final merged arguments
-    modules_to_run = [
-        name
-        for name, details in MODULE_DISPATCH_TABLE.items()
-        if getattr(args, name, False)
-    ]
+    modules_to_run = [name for name, details in MODULE_DISPATCH_TABLE.items() if getattr(args, name, False)]
 
     if getattr(args, "all", False) or not modules_to_run:
         modules_to_run = list(MODULE_DISPATCH_TABLE.keys())
@@ -276,22 +259,14 @@ async def run_scans(domains_to_scan: List[str], args: Any):
         try:
             await _scan_single_domain(domains_to_scan[0], args, modules_to_run)
         except dns.resolver.NXDOMAIN:
-            logger.error(
-                f"Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN)."
-            )
-            console.print(
-                f"[bold red]Error: The domain '{domains_to_scan[0]}' "
-                "does not exist (NXDOMAIN).[/bold red]"
-            )
+            logger.error(f"Error: The domain '{domains_to_scan[0]}' does not exist (NXDOMAIN).")
+            console.print(f"[bold red]Error: The domain '{domains_to_scan[0]}' " "does not exist (NXDOMAIN).[/bold red]")
         except Exception as e:
             logger.error(
                 f"An unexpected error occurred while scanning '{domains_to_scan[0]}': {e}",
                 exc_info=args.verbose,
             )
-            console.print(
-                f"[bold red]An unexpected error occurred while scanning "
-                f"'{domains_to_scan[0]}': {e}[/bold red]"
-            )
+            console.print(f"[bold red]An unexpected error occurred while scanning " f"'{domains_to_scan[0]}': {e}[/bold red]")
             if args.verbose:
                 console.print(f"\n[dim]{traceback.format_exc()}[/dim]")
         return
@@ -307,9 +282,7 @@ async def run_scans(domains_to_scan: List[str], args: Any):
         console=console,
         disable=args.quiet,
     ) as progress:
-        main_task_id = progress.add_task(
-            "[cyan]Scanning domains...", total=len(domains_to_scan)
-        )
+        main_task_id = progress.add_task("[cyan]Scanning domains...", total=len(domains_to_scan))
 
         for attempt in range(num_retries + 1):
             if not domains_to_retry:
@@ -326,32 +299,19 @@ async def run_scans(domains_to_scan: List[str], args: Any):
                 await asyncio.sleep(2)
 
             for domain in domains_to_retry:
-                task = asyncio.create_task(
-                    _scan_single_domain(domain, args, modules_to_run)
-                )
+                task = asyncio.create_task(_scan_single_domain(domain, args, modules_to_run))
                 current_tasks.append(task)
 
             results = await asyncio.gather(*current_tasks, return_exceptions=True)
 
             failed_this_round = []
             for i, result in enumerate(results):
-                domain_name = (
-                    domains_to_retry[i]
-                    if isinstance(result, Exception)
-                    else result.get("domain")
-                )
+                domain_name = domains_to_retry[i] if isinstance(result, Exception) else result.get("domain")
                 if isinstance(result, Exception):
                     failed_this_round.append(domain_name)
                     if attempt == num_retries:  # Final attempt
-                        logger.error(
-                            f"Scan for '{domain_name}' failed permanently after "
-                            f"{num_retries + 1} attempts: {result}"
-                        )
-                        console.print(
-                            "[bold red]Scan for domain "
-                            f"'{domain_name}' failed permanently."
-                            "[/bold red]"
-                        )
+                        logger.error(f"Scan for '{domain_name}' failed permanently after " f"{num_retries + 1} attempts: {result}")
+                        console.print("[bold red]Scan for domain " f"'{domain_name}' failed permanently." "[/bold red]")
                 elif domain_name and domain_name not in successful_domains:
                     successful_domains.append(domain_name)
                     progress.advance(main_task_id)

@@ -3,6 +3,7 @@
 Zone-Poker - robots.txt Analysis Module
 This module checks for the presence and content of a robots.txt file.
 """
+
 import logging
 from typing import Any, Dict
 
@@ -68,9 +69,7 @@ async def analyze_robots_txt(domain: str, timeout: int, **kwargs) -> Dict[str, A
     results["url"] = url
 
     try:
-        async with httpx.AsyncClient(
-            timeout=timeout, verify=False, follow_redirects=True
-        ) as client:
+        async with httpx.AsyncClient(timeout=timeout, verify=False, follow_redirects=True) as client:
             response = await client.get(url)
             if response.status_code == 200:
                 results["found"] = True

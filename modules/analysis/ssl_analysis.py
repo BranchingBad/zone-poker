@@ -2,15 +2,14 @@
 """
 Zone-Poker - SSL/TLS Analysis Module
 """
+
 import asyncio
 import socket
 import ssl
 from urllib.parse import urlparse
 
 
-async def analyze_ssl_certificate(
-    domain: str, timeout: int, all_data: dict, **kwargs
-) -> dict:
+async def analyze_ssl_certificate(domain: str, timeout: int, all_data: dict, **kwargs) -> dict:
     """
     Connects to a domain over HTTPS to retrieve and analyze its SSL/TLS certificate.
     It will prioritize the final redirected URL from the http_headers module if available.
@@ -37,9 +36,7 @@ async def analyze_ssl_certificate(
         # This ensures asyncio manages the SSL transport layer correctly,
         # preventing the resource warning on exit.
         reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(
-                hostname, port, ssl=context, server_hostname=hostname
-            ),
+            asyncio.open_connection(hostname, port, ssl=context, server_hostname=hostname),
             timeout=timeout,
         )
         try:

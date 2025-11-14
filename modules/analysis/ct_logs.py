@@ -2,6 +2,7 @@
 """
 Zone-Poker - Certificate Transparency Log Analysis Module
 """
+
 import asyncio
 import json
 from typing import Any, Dict
@@ -41,12 +42,7 @@ async def search_ct_logs(domain: str, timeout: int, **kwargs) -> Dict[str, Any]:
                         names = entry.get("name_value", "").split("\n")
                         for name in names:
                             # Filter out wildcards, the domain itself, and ensure it's a valid subdomain
-                            if (
-                                name
-                                and not name.startswith("*.")
-                                and name.endswith(f".{domain}")
-                                and name != domain
-                            ):
+                            if name and not name.startswith("*.") and name.endswith(f".{domain}") and name != domain:
                                 unique_subdomains.add(name.lower())
                 except json.JSONDecodeError:
                     # Silently ignore responses that aren't valid JSON (e.g., crt.sh error pages)

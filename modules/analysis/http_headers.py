@@ -2,6 +2,7 @@
 """
 Zone-Poker - In-depth HTTP Security Headers Analysis Module
 """
+
 import logging
 from typing import Any, Dict
 
@@ -48,17 +49,11 @@ def _evaluate_hsts(value: str) -> Dict[str, Any]:
 
     # Recommendations based on parsed values
     if max_age < 31536000:  # 1 year
-        recommendations.append(
-            "HSTS 'max-age' is less than one year (31536000 seconds)."
-        )
+        recommendations.append("HSTS 'max-age' is less than one year (31536000 seconds).")
     if not has_subdomains:
-        recommendations.append(
-            "HSTS is missing the 'includeSubDomains' directive, which is required for preloading."
-        )
+        recommendations.append("HSTS is missing the 'includeSubDomains' directive, which is required for preloading.")
     if not has_preload and has_subdomains and max_age >= 31536000:
-        recommendations.append(
-            "The policy is eligible for HSTS preloading. Consider adding the 'preload' directive."
-        )
+        recommendations.append("The policy is eligible for HSTS preloading. Consider adding the 'preload' directive.")
 
     status = "Strong" if max_age >= 31536000 and has_subdomains else "Weak"
     return {
@@ -90,9 +85,7 @@ def _evaluate_csp(value: str) -> Dict[str, Any]:
     if "'unsafe-inline'" in script_src:
         is_weak = True
         # Check if it's mitigated by a nonce or hash
-        if not any(s.startswith("'nonce-") for s in script_src) and not any(
-            s.startswith("'sha") for s in script_src
-        ):
+        if not any(s.startswith("'nonce-") for s in script_src) and not any(s.startswith("'sha") for s in script_src):
             recommendations.append(
                 "CSP: 'script-src' contains 'unsafe-inline' without a nonce or hash, which completely bypasses protection against XSS."
             )
@@ -116,9 +109,7 @@ def _evaluate_csp(value: str) -> Dict[str, Any]:
         )
     elif object_src and object_src != ["'none'"]:
         is_weak = True
-        recommendations.append(
-            "CSP: 'object-src' is not set to 'none'. Disabling plugins via `object-src 'none'` is recommended."
-        )
+        recommendations.append("CSP: 'object-src' is not set to 'none'. Disabling plugins via `object-src 'none'` is recommended.")
 
     status = "Weak" if is_weak or not recommendations else "Strong"
 
@@ -159,8 +150,7 @@ def _evaluate_xxss(value: str) -> Dict[str, Any]:
             "status": "Disabled",
             "value": value,
             "recommendation": (
-                "X-XSS-Protection is disabled. While modern browsers have built-in "
-                "protection, ensure CSP is properly configured."
+                "X-XSS-Protection is disabled. While modern browsers have built-in " "protection, ensure CSP is properly configured."
             ),
         }
     if value.startswith("1"):
@@ -168,8 +158,7 @@ def _evaluate_xxss(value: str) -> Dict[str, Any]:
             "status": "Enabled",
             "value": value,
             "recommendation": (
-                "X-XSS-Protection is enabled. Note that this header is deprecated in "
-                "favor of a strong Content-Security-Policy."
+                "X-XSS-Protection is enabled. Note that this header is deprecated in " "favor of a strong Content-Security-Policy."
             ),
         }
     return {"status": "Invalid", "value": value}
@@ -189,18 +178,12 @@ HEADER_CHECKS = {
     "Content-Security-Policy": {
         "eval_func": _evaluate_csp,
         "severity": "High",
-        "recommendation": (
-            "Implement a Content-Security-Policy (CSP) to mitigate XSS and other "
-            "injection attacks."
-        ),
+        "recommendation": ("Implement a Content-Security-Policy (CSP) to mitigate XSS and other " "injection attacks."),
     },
     "X-Frame-Options": {
         "eval_func": _evaluate_xfo,
         "severity": "Medium",
-        "recommendation": (
-            "Implement X-Frame-Options or CSP 'frame-ancestors' to prevent "
-            "clickjacking."
-        ),
+        "recommendation": ("Implement X-Frame-Options or CSP 'frame-ancestors' to prevent " "clickjacking."),
     },
     "X-Content-Type-Options": {
         "eval_func": _evaluate_xcto,
@@ -215,10 +198,7 @@ HEADER_CHECKS = {
     "Permissions-Policy": {
         "eval_func": _evaluate_generic,
         "severity": "Low",
-        "recommendation": (
-            "Implement a Permissions-Policy (formerly Feature-Policy) to control "
-            "browser feature access."
-        ),
+        "recommendation": ("Implement a Permissions-Policy (formerly Feature-Policy) to control " "browser feature access."),
     },
     "X-XSS-Protection": {
         "eval_func": _evaluate_xxss,
@@ -228,9 +208,7 @@ HEADER_CHECKS = {
 }
 
 
-async def analyze_http_headers(
-    domain: str, verify_ssl: bool = True, **kwargs
-) -> Dict[str, Any]:
+async def analyze_http_headers(domain: str, verify_ssl: bool = True, **kwargs) -> Dict[str, Any]:
     """
     Performs a detailed analysis of HTTP security headers.
     Args:
@@ -260,19 +238,13 @@ async def analyze_http_headers(
                         analysis_result = check_config["eval_func"](header_value)
                         results["analysis"][header_name] = analysis_result
                         if analysis_result.get("recommendation"):
-                            results["recommendations"].append(
-                                analysis_result["recommendation"]
-                            )
+                            results["recommendations"].append(analysis_result["recommendation"])
                     else:
                         results["analysis"][header_name] = {"status": "Missing"}
-                        results["recommendations"].append(
-                            check_config["recommendation"]
-                        )
+                        results["recommendations"].append(check_config["recommendation"])
 
                 # If we get a successful response, we can stop.
-                results["error"] = (
-                    None  # Clear any previous error from a failed HTTPS attempt
-                )
+                results["error"] = None  # Clear any previous error from a failed HTTPS attempt
                 return results
 
             except httpx.RequestError as e:
@@ -280,8 +252,6 @@ async def analyze_http_headers(
                 results["error"] = error_message
                 logger.debug(error_message)
             except Exception as e:
-                results["error"] = (
-                    f"An unexpected error occurred while checking {url}: {e}"
-                )
+                results["error"] = f"An unexpected error occurred while checking {url}: {e}"
 
     return results

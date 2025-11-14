@@ -3,6 +3,7 @@
 Zone-Poker - Display Module
 Handles all console output formatting using the 'rich' library.
 """
+
 import datetime
 from typing import Any, Dict, List, Optional
 
@@ -56,9 +57,7 @@ def _create_generic_table(
 # --- Display Functions ---
 
 
-def display_dns_records_table(
-    records_info: Dict[str, Any], quiet: bool, **kwargs
-) -> Optional[Table]:
+def display_dns_records_table(records_info: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Table]:
     """Displays all found DNS records in a single, consolidated table."""
     if quiet:
         return None
@@ -86,9 +85,7 @@ def display_dns_records_table(
     )
 
 
-def display_ptr_lookups(
-    ptr_info: Dict[str, Any], quiet: bool, **kwargs
-) -> Optional[Table]:
+def display_ptr_lookups(ptr_info: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Table]:
     """Displays PTR lookup results using the generic table builder."""
     if quiet or not ptr_info or not ptr_info.get("ptr_records"):
         return None
@@ -105,9 +102,7 @@ def display_ptr_lookups(
     )
 
 
-def display_security_audit(
-    security_info: Dict[str, Any], quiet: bool, **kwargs
-) -> Optional[Panel]:
+def display_security_audit(security_info: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Panel]:
     """Displays security audit findings in a Tree structure."""
     if quiet:
         return None
@@ -134,16 +129,12 @@ def display_security_audit(
             branch = tree.add(f"{style}{severity_name} Severity Findings")
             for finding in severity_findings:
                 finding_branch = branch.add(f"[bold]{finding['finding']}[/bold]")
-                finding_branch.add(
-                    f"[dim]Recommendation:[/dim] {finding['recommendation']}"
-                )
+                finding_branch.add(f"[dim]Recommendation:[/dim] {finding['recommendation']}")
 
     return Panel(tree, title="[bold]Security Audit[/bold]", border_style="red")
 
 
-def display_subdomain_takeover(
-    takeover_info: Dict[str, Any], quiet: bool, **kwargs
-) -> Optional[Panel]:
+def display_subdomain_takeover(takeover_info: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Panel]:
     """Displays subdomain takeover results."""
     if quiet:
         return None
@@ -202,10 +193,8 @@ def display_summary(all_data: Dict[str, Any], quiet: bool, **kwargs) -> Optional
             "label": "Email Security",
             "func": lambda d: (
                 "Secure"
-                if d.get("mail_info", {}).get("dmarc", {}).get("p")
-                in ("reject", "quarantine")
-                and d.get("mail_info", {}).get("spf", {}).get("all_policy")
-                in ("-all", "~all")
+                if d.get("mail_info", {}).get("dmarc", {}).get("p") in ("reject", "quarantine")
+                and d.get("mail_info", {}).get("spf", {}).get("all_policy") in ("-all", "~all")
                 else "Misconfigured"
             ),
             "styles": {"Misconfigured": "[yellow]"},
@@ -225,11 +214,7 @@ def display_summary(all_data: Dict[str, Any], quiet: bool, **kwargs) -> Optional
         result_text = "Not Scanned"
         if "func" in check:
             result_text = check["func"](all_data)
-        elif (
-            (data := all_data.get(check["data_key"]))
-            and isinstance(data, dict)
-            and (val := data.get(check["value_path"]))
-        ):
+        elif (data := all_data.get(check["data_key"])) and isinstance(data, dict) and (val := data.get(check["value_path"])):
             result_text = str(val)
 
         # Apply styling
@@ -259,9 +244,7 @@ def display_axfr_results(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
     for server, info in servers.items():
         status = info.get("status", "Unknown")
         if status == "Successful":
-            tree.add(
-                f"✓ [green]{server}: {status} ({info.get('record_count', 0)} records via {info.get('ip_used')})[/green]"
-            )
+            tree.add(f"✓ [green]{server}: {status} ({info.get('record_count', 0)} records via {info.get('ip_used')})[/green]")
         elif "Refused" in status:
             tree.add(f"✗ [yellow]{server}: {status}[/yellow]")
         else:
@@ -275,9 +258,7 @@ def display_email_security(data: dict, quiet: bool, **kwargs) -> Optional[Table]
     if quiet:
         return None
 
-    table = Table(
-        title="[bold]Email Security Analysis[/bold]", show_header=False, box=None
-    )
+    table = Table(title="[bold]Email Security Analysis[/bold]", show_header=False, box=None)
     table.add_column("Check", style="bold cyan", width=10)
     table.add_column("Result")
 
@@ -301,9 +282,7 @@ def display_email_security(data: dict, quiet: bool, **kwargs) -> Optional[Table]
     elif dmarc_data.get("raw"):
         policy = dmarc_data.get("p", "N/A")
         color = "red" if policy == "none" else "green"
-        table.add_row(
-            "DMARC", f"{dmarc_data['raw']}\nPolicy: [{color}]{policy}[/{color}]"
-        )
+        table.add_row("DMARC", f"{dmarc_data['raw']}\nPolicy: [{color}]{policy}[/{color}]")
 
     # DKIM
     table.add_row("DKIM", data.get("dkim", {}).get("status", "N/A"))
@@ -394,22 +373,16 @@ def display_propagation(data: dict, quiet: bool, **kwargs) -> Optional[Table]:
 
     # Determine if propagation is consistent
     if not all_ip_sets:
-        table.caption = (
-            "[yellow]Domain did not resolve on any public resolver.[/yellow]"
-        )
+        table.caption = "[yellow]Domain did not resolve on any public resolver.[/yellow]"
     elif len(set(all_ip_sets)) > 1:
-        table.caption = (
-            "[bold red]Propagation is inconsistent across resolvers.[/bold red]"
-        )
+        table.caption = "[bold red]Propagation is inconsistent across resolvers.[/bold red]"
     else:
         table.caption = "[green]Propagation appears consistent.[/green]"
 
     return table
 
 
-def display_critical_findings(
-    all_data: Dict[str, Any], quiet: bool, **kwargs
-) -> Optional[Panel]:
+def display_critical_findings(all_data: Dict[str, Any], quiet: bool, **kwargs) -> Optional[Panel]:
     """
     Displays a summary of critical and high-severity findings.
     """
@@ -423,9 +396,7 @@ def display_critical_findings(
     if not findings:
         return None  # Don't display anything if there are no critical findings
 
-    tree = Tree(
-        f"[bold red]✗ Found {len(findings)} Critical/High Severity Issues[/bold red]"
-    )
+    tree = Tree(f"[bold red]✗ Found {len(findings)} Critical/High Severity Issues[/bold red]")
     for finding in findings:
         tree.add(f"[yellow]• {finding}[/yellow]")
 
@@ -507,15 +478,11 @@ def display_ssl_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
     table.add_row("Issuer:", data.get("issuer", "N/A"))
 
     if valid_from := data.get("valid_from"):
-        from_date = datetime.datetime.fromtimestamp(valid_from).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        from_date = datetime.datetime.fromtimestamp(valid_from).strftime("%Y-%m-%d %H:%M:%S")
         table.add_row("Valid From:", from_date)
 
     if valid_until := data.get("valid_until"):
-        until_date = datetime.datetime.fromtimestamp(valid_until).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        until_date = datetime.datetime.fromtimestamp(valid_until).strftime("%Y-%m-%d %H:%M:%S")
         table.add_row("Valid Until:", until_date)
 
     table.add_row("TLS Version:", data.get("tls_version", "N/A"))
@@ -555,9 +522,7 @@ def display_smtp_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
                 cert_node = node.add("Certificate")
                 cert_node.add(f"Subject: {cert_info.get('subject', 'N/A')}")
                 if valid_until := cert_info.get("valid_until"):
-                    valid_until_str = datetime.datetime.fromtimestamp(
-                        valid_until
-                    ).strftime("%Y-%m-%d")
+                    valid_until_str = datetime.datetime.fromtimestamp(valid_until).strftime("%Y-%m-%d")
                     cert_node.add(f"Valid Until: {valid_until_str}")
 
     return Panel(tree, title="[bold]Mail Server (SMTP) Analysis[/bold]")
@@ -589,9 +554,7 @@ def display_reputation_info(data: dict, quiet: bool, **kwargs) -> Optional[Panel
             node = tree.add(f"✓ [{color}]{ip}[/{color}] - Score: {score}")
             node.add(f"Total Reports: {info.get('totalReports', 0)}")
             if last_reported := info.get("lastReportedAt"):
-                last_reported_str = datetime.datetime.fromisoformat(
-                    last_reported.replace("Z", "+00:00")
-                ).strftime("%Y-%m-%d")
+                last_reported_str = datetime.datetime.fromisoformat(last_reported.replace("Z", "+00:00")).strftime("%Y-%m-%d")
                 node.add(f"Last Reported: {last_reported_str}")
 
     if not has_data:
@@ -648,9 +611,7 @@ def display_ct_logs(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
         if i < MAX_DISPLAY_SUBDOMAINS:
             tree.add(f"[green]{sub}[/green]")
         else:
-            tree.add(
-                f"[dim]... and {num_subdomains - MAX_DISPLAY_SUBDOMAINS} more.[/dim]"
-            )
+            tree.add(f"[dim]... and {num_subdomains - MAX_DISPLAY_SUBDOMAINS} more.[/dim]")
             break
 
     return Panel(tree, title="[bold]Certificate Transparency Log Search[/bold]")
@@ -797,9 +758,7 @@ def display_cloud_enum(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
             status = bucket.get("status", "unknown")
             color = "green" if status == "public" else "yellow"
             icon = "✓" if status == "public" else "✗"
-            s3_branch.add(
-                f"{icon} [{color}]{bucket.get('url')}[/{color}] (Status: {status})"
-            )
+            s3_branch.add(f"{icon} [{color}]{bucket.get('url')}[/{color}] (Status: {status})")
 
     if azure_blobs:
         azure_branch = tree.add(f"Found {len(azure_blobs)} Azure Blobs ☁️")
@@ -812,9 +771,7 @@ def display_cloud_enum(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
             else:  # forbidden, etc.
                 color = "yellow"
             icon = "✓" if status == "public" else "✗"
-            azure_branch.add(
-                f"{icon} [{color}]{blob.get('url')}[/{color}] (Status: {status})"
-            )
+            azure_branch.add(f"{icon} [{color}]{blob.get('url')}[/{color}] (Status: {status})")
 
     return Panel(tree, title="[bold]Cloud Service Enumeration[/bold]")
 
@@ -833,16 +790,12 @@ def display_dnsbl_check(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
             border_style="green",
         )
 
-    tree = Tree(
-        f"[bold red]✗ Found {len(listed_ips)} IP(s) on DNS blocklists![/bold red]"
-    )
+    tree = Tree(f"[bold red]✗ Found {len(listed_ips)} IP(s) on DNS blocklists![/bold red]")
     for item in listed_ips:
         node = tree.add(f"[yellow]{item.get('ip', 'N/A')}[/yellow]")
         node.add(f"Listed on: [dim]{', '.join(item.get('listed_on', []))}[/dim]")
 
-    return Panel(
-        tree, title="[bold]DNS Blocklist (DNSBL) Check[/bold]", border_style="red"
-    )
+    return Panel(tree, title="[bold]DNS Blocklist (DNSBL) Check[/bold]", border_style="red")
 
 
 def display_open_redirect(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
@@ -859,9 +812,7 @@ def display_open_redirect(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
             border_style="green",
         )
 
-    tree = Tree(
-        f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]"
-    )
+    tree = Tree(f"[bold red]✗ Found {len(vulnerable_urls)} potential open redirects![/bold red]")
     for item in vulnerable_urls:
         node = tree.add(f"URL: [yellow]{item.get('url', 'N/A')}[/yellow]")
         node.add(f"Redirects To: [dim]{item.get('redirects_to', 'N/A')}[/dim]")
@@ -898,9 +849,7 @@ def display_security_txt(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
                 value_str = str(value)
             table.add_row(f"{key}:", value_str)
 
-    title = (
-        f"[bold]Security.txt Check[/bold] ([green]Found at {data.get('url')}[/green])"
-    )
+    title = f"[bold]Security.txt Check[/bold] ([green]Found at {data.get('url')}[/green])"
     return Panel(table, title=title, box=box.ROUNDED, expand=False)
 
 
@@ -949,15 +898,11 @@ def display_robots_txt(data: dict, quiet: bool, **kwargs) -> Optional[Panel]:
 
     sensitive = data.get("disallowed_sensitive", [])
     if sensitive:
-        sensitive_branch = tree.add(
-            f"[bold yellow]Found {len(sensitive)} potentially sensitive disallowed paths[/bold yellow]"
-        )
+        sensitive_branch = tree.add(f"[bold yellow]Found {len(sensitive)} potentially sensitive disallowed paths[/bold yellow]")
         for path in sensitive:
             sensitive_branch.add(f"[red]{path}[/red]")
 
     if not sitemaps and not sensitive and not wildcards:
-        tree.add(
-            "[dim]No sitemaps or sensitive paths found in disallowed entries.[/dim]"
-        )
+        tree.add("[dim]No sitemaps or sensitive paths found in disallowed entries.[/dim]")
 
     return Panel(tree, title="[bold]robots.txt Analysis[/bold]")

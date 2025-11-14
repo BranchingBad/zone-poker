@@ -49,7 +49,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
 
 4.  **Make your changes**. Please adhere to the existing code style (see Code Style section below).
 
-    - **Code Style**: This project uses `black` for code formatting, `isort` for import sorting, and `flake8` for linting. The pre-commit hooks will automatically enforce this style.
+    - **Code Style**: This project uses `ruff` for ultra-fast code formatting, import sorting, and linting. The pre-commit hooks will automatically enforce this style.
 
 5.  **Add or update tests**.
     - If you're adding a new feature (like an analysis module), please include unit tests in the `tests/` directory.

@@ -131,12 +131,8 @@ def takeover_data_vulnerable() -> Dict[str, Any]:
 def cloud_enum_data() -> Dict[str, Any]:
     """Provides sample cloud enumeration data."""
     return {
-        "s3_buckets": [
-            {"url": "http://assets.example.com.s3.amazonaws.com", "status": "public"}
-        ],
-        "azure_blobs": [
-            {"url": "https://example.blob.core.windows.net", "status": "forbidden"}
-        ],
+        "s3_buckets": [{"url": "http://assets.example.com.s3.amazonaws.com", "status": "public"}],
+        "azure_blobs": [{"url": "https://example.blob.core.windows.net", "status": "forbidden"}],
     }
 
 
@@ -213,9 +209,7 @@ def osint_data() -> Dict[str, Any]:
     """Provides sample OSINT data."""
     return {
         "subdomains": ["blog.example.com", "shop.example.com"],
-        "passive_dns": [
-            {"hostname": "example.com", "ip": "1.2.3.4", "last_seen": "2023-01-01"}
-        ],
+        "passive_dns": [{"hostname": "example.com", "ip": "1.2.3.4", "last_seen": "2023-01-01"}],
     }
 
 
@@ -234,9 +228,7 @@ def ssl_data() -> Dict[str, Any]:
 @pytest.fixture
 def open_redirect_data() -> Dict[str, Any]:
     """Provides sample open redirect data."""
-    return {
-        "vulnerable_urls": [{"url": "http://a.com", "redirects_to": "http://b.com"}]
-    }
+    return {"vulnerable_urls": [{"url": "http://a.com", "redirects_to": "http://b.com"}]}
 
 
 @pytest.fixture
@@ -508,9 +500,7 @@ def test_format_security_txt_not_found(security_txt_data_not_found):
 
 def test_format_security_txt_found_empty():
     """Tests the security.txt formatter when the file is found but empty."""
-    result = _format_security_txt_txt(
-        {"found": True, "url": "https://a.com", "parsed": {}}
-    )
+    result = _format_security_txt_txt({"found": True, "url": "https://a.com", "parsed": {}})
     assert "File was empty or could not be parsed" in "\n".join(result)
 
 

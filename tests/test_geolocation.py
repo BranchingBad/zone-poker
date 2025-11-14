@@ -62,9 +62,7 @@ async def test_geolocate_ips_api_failure():
     records_info = {"records_info": {"A": [{"value": "127.0.0.1"}]}}
 
     # Mock an API response indicating failure (e.g., for a private IP)
-    mock_response_data = [
-        {"query": "127.0.0.1", "status": "fail", "message": "private range"}
-    ]
+    mock_response_data = [{"query": "127.0.0.1", "status": "fail", "message": "private range"}]
     url = f"{IP_API_BATCH_ENDPOINT}?fields=status,message,country,city,isp,query"
     respx.post(url).respond(200, json=mock_response_data)
 

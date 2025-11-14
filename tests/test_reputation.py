@@ -23,9 +23,7 @@ def mock_args(request):
 
 @pytest.mark.asyncio
 @respx.mock
-@pytest.mark.parametrize(
-    "mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True
-)
+@pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_success(mock_args):
     """
     Test successful reputation analysis for given IP addresses.
@@ -36,9 +34,7 @@ async def test_analyze_reputation_success(mock_args):
         "records_info": {
             "A": [{"value": "1.1.1.1"}],
             "AAAA": [{"value": "2606:4700:4700::1111"}],
-            "MX": [
-                {"value": "8.8.8.8"}
-            ],  # Assuming an IP could be in an MX record value
+            "MX": [{"value": "8.8.8.8"}],  # Assuming an IP could be in an MX record value
         },
         "headers_info": {"ip_address": "8.8.8.8"},  # Also check header IP
     }
@@ -47,14 +43,9 @@ async def test_analyze_reputation_success(mock_args):
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=1.1.1.1&maxAgeInDays=90").respond(
         200, json={"data": {"ipAddress": "1.1.1.1", "abuseConfidenceScore": 0}}
     )
-    respx.get(
-        url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111"
-        f"&maxAgeInDays=90"
-    ).respond(
+    respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=2606%3A4700%3A4700%3A%3A1111" f"&maxAgeInDays=90").respond(
         200,
-        json={
-            "data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}
-        },
+        json={"data": {"ipAddress": "2606:4700:4700::1111", "abuseConfidenceScore": 90}},
     )
     respx.get(url=f"{ABUSEIPDB_ENDPOINT}?ipAddress=8.8.8.8&maxAgeInDays=90").respond(
         200, json={"data": {"ipAddress": "8.8.8.8", "abuseConfidenceScore": 5}}
@@ -87,9 +78,7 @@ async def test_analyze_reputation_no_api_key(mock_args):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True
-)
+@pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_no_ip_records(mock_args):
     """
     Test that the function returns an error if no A or AAAA records are found.
@@ -105,9 +94,7 @@ async def test_analyze_reputation_no_ip_records(mock_args):
 
 @pytest.mark.asyncio
 @respx.mock
-@pytest.mark.parametrize(
-    "mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True
-)
+@pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_auth_error(mock_args):
     """
     Test handling of an authentication error (401) from the API.
@@ -116,9 +103,7 @@ async def test_analyze_reputation_auth_error(mock_args):
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
     # Mock a 401 Unauthorized response
-    respx.get(url__regex=r".*").respond(
-        401, json={"errors": [{"detail": "Authentication failed"}]}
-    )
+    respx.get(url__regex=r".*").respond(401, json={"errors": [{"detail": "Authentication failed"}]})
 
     results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 
@@ -129,9 +114,7 @@ async def test_analyze_reputation_auth_error(mock_args):
 
 @pytest.mark.asyncio
 @respx.mock
-@pytest.mark.parametrize(
-    "mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True
-)
+@pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_network_error(mock_args):
     """
     Test handling of a network request error.
@@ -151,9 +134,7 @@ async def test_analyze_reputation_network_error(mock_args):
 
 @pytest.mark.asyncio
 @respx.mock
-@pytest.mark.parametrize(
-    "mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True
-)
+@pytest.mark.parametrize("mock_args", [{"api_keys": {"abuseipdb": "test_api_key"}}], indirect=True)
 async def test_analyze_reputation_rate_limit_error(mock_args):
     """
     Test handling of a rate limit error (429) from the API.
@@ -162,9 +143,7 @@ async def test_analyze_reputation_rate_limit_error(mock_args):
     all_data = {"records_info": {"A": [{"value": "1.1.1.1"}]}}
 
     # Mock a 429 Too Many Requests response
-    respx.get(url__regex=r".*").respond(
-        429, json={"errors": [{"detail": "API rate limit exceeded"}]}
-    )
+    respx.get(url__regex=r".*").respond(429, json={"errors": [{"detail": "API rate limit exceeded"}]})
 
     results = await analyze_reputation(domain=domain, args=mock_args, all_data=all_data)
 

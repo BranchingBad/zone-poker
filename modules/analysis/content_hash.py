@@ -14,9 +14,7 @@ async def get_content_hashes(domain: str, timeout: int, **kwargs) -> Dict[str, A
     results: Dict[str, Any] = {"error": None}
     headers = {"User-Agent": "Zone-Poker/1.0"}
 
-    async with httpx.AsyncClient(
-        timeout=timeout, follow_redirects=True, verify=False
-    ) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
         # 1. Favicon Hashing (MurmurHash3 for Shodan compatibility)
         try:
             favicon_url = f"https://{domain}/favicon.ico"
@@ -36,9 +34,7 @@ async def get_content_hashes(domain: str, timeout: int, **kwargs) -> Dict[str, A
             page_url = f"https://{domain}"
             response = await client.get(page_url, headers=headers)
             if response.status_code == 200 and response.content:
-                results["page_sha256_hash"] = hashlib.sha256(
-                    response.content
-                ).hexdigest()
+                results["page_sha256_hash"] = hashlib.sha256(response.content).hexdigest()
         except httpx.RequestError as e:
             results["error"] = f"Could not fetch main page: {type(e).__name__}"
 

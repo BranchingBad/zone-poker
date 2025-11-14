@@ -3,6 +3,7 @@
 Zone-Poker - Module Dispatch Table
 This file acts as the central configuration for all available modules.
 """
+
 import argparse
 
 from modules.analysis.cloud_enum import enumerate_cloud_services

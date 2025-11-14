@@ -2,6 +2,7 @@
 """
 Zone-Poker - Cloud Service Enumeration Module
 """
+
 import asyncio
 import logging
 import re
@@ -12,9 +13,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-async def enumerate_cloud_services(
-    domain: str, **kwargs
-) -> Dict[str, List[Dict[str, Any]]]:
+async def enumerate_cloud_services(domain: str, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Enumerates potential public cloud storage (e.g., S3 buckets, Azure Blobs) based on the domain name.
     """
@@ -44,10 +43,7 @@ async def enumerate_cloud_services(
         re.sub(r"[^a-z0-9]", "", p.lower()) for p in permutations
     }
 
-    logger.debug(
-        f"Checking {len(permutations)} potential S3 bucket names and "
-        f"{len(sanitized_permutations)} Azure blob containers."
-    )
+    logger.debug(f"Checking {len(permutations)} potential S3 bucket names and " f"{len(sanitized_permutations)} Azure blob containers.")
 
     async def check_s3_bucket(bucket_name: str, client: httpx.AsyncClient):
         url = f"http://{bucket_name}.s3.amazonaws.com"
@@ -72,9 +68,7 @@ async def enumerate_cloud_services(
             if response.status_code != 404:
                 if response.status_code == 200:
                     status = "public"
-                elif (
-                    response.status_code == 400
-                ):  # Azure returns 400 for valid accounts without a container
+                elif response.status_code == 400:  # Azure returns 400 for valid accounts without a container
                     status = "valid_account"
                 else:
                     status = "forbidden"
@@ -83,9 +77,7 @@ async def enumerate_cloud_services(
             logger.debug(f"Azure Blob check for '{account_name}' failed: {e}")
 
     async with httpx.AsyncClient() as client:
-        tasks = [check_s3_bucket(p, client) for p in permutations] + [
-            check_azure_blob(p, client) for p in sanitized_permutations
-        ]
+        tasks = [check_s3_bucket(p, client) for p in permutations] + [check_azure_blob(p, client) for p in sanitized_permutations]
         await asyncio.gather(*tasks)
 
     # Sort by URL

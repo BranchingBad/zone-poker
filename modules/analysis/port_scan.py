@@ -2,6 +2,7 @@
 """
 Zone-Poker - Port Scan Module
 """
+
 import asyncio
 import logging
 from typing import Any, Dict, List
@@ -37,9 +38,7 @@ COMMON_PORTS = [
 ]
 
 
-async def scan_ports(
-    all_data: Dict[str, Any], timeout: int, verbose: bool, **kwargs
-) -> Dict[str, List[Dict[str, Any]]]:
+async def scan_ports(all_data: Dict[str, Any], timeout: int, verbose: bool, **kwargs) -> Dict[str, List[Dict[str, Any]]]:
     """
     Scans for common open TCP ports on discovered IP addresses.
     """

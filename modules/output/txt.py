@@ -2,6 +2,7 @@
 """
 Zone-Poker - TXT Output Module
 """
+
 import builtins
 from datetime import datetime
 from typing import Any, Dict, Optional

@@ -2,6 +2,7 @@
 """
 Zone-Poker - HTML Output Module
 """
+
 import builtins
 from typing import Any, Dict, Optional
 
@@ -124,8 +125,6 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
         except IOError as e:
-            console.print(
-                f"[bold red]Error writing HTML file to {output_path}: {e}[/bold red]"
-            )
+            console.print(f"[bold red]Error writing HTML file to {output_path}: {e}[/bold red]")
     else:
         builtins.print(html_content)
