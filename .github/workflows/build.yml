@@ -281,48 +281,6 @@ jobs:
         if: github.event_name != 'pull_request'
         run: docker push --all-tags ${{ env.IMAGE_NAME }}
 
-  publish-to-pypi:
-    name: Publish to PyPI
-    needs: [build-and-validate] # Ensure package builds and validates before publishing
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi-publish
-      url: https://pypi.org/p/zone-poker
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-
-    permissions:
-      id-token: write # Required for trusted publishing
-      attestations: write # Required for generating SLSA attestations
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Download the distribution packages
-        uses: actions/download-artifact@v4
-        with:
-          pattern: python-package-distributions-*
-          path: dist/
-
-      - name: Move packages and clean up
-        run: |
-          # Move all package files from subdirectories up to the main dist/ folder
-          find dist/ -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
-
-          # [FIX] Remove the empty subdirectories left by download-artifact
-          find dist/ -type d -name "python-package-distributions-*" -exec rm -rf {} +
-
-          echo "Files in dist/ after move and cleanup:"
-          ls -lR dist/
-
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-
   release:
     name: Create GitHub Release
     needs: [build-and-validate] # Ensure package builds and validates before creating a release
