@@ -39,10 +39,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.10
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -52,7 +52,7 @@ jobs:
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache pip dependencies
-        uses: actions/cache@v4.2.4
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           # Include python-version in the key for the matrix
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         # Use v5 for the latest features, including OIDC support
-        uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003067d60C5c6739b3 # v4.5.0
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # Recommended for reliable uploads
           use_oidc: true # Use OIDC for more secure authentication
@@ -101,10 +101,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.10
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -116,7 +116,7 @@ jobs:
         run: python -m build
 
       - name: Store the distribution packages
-        uses: actions/upload-artifact@26f96dfa697d78e8abb01189b256792ad7217427 # v4.3.4
+        uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions-${{ matrix.python-version }}
           path: dist/
@@ -146,7 +146,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.10
+        uses: actions/checkout@v4
 
       # FIX: Explicitly set image name to environment variable to handle case sensitivity
       - name: Set up Image Name
@@ -157,7 +157,7 @@ jobs:
 
       - name: Log in to the GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@0d4c9c5ea76932b763ae5b565025254271331186 # v3.2.0
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -165,7 +165,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+        uses: docker/metadata-action@v5
         with:
           # The `lowercase` input ensures the repository name is always lowercase.
           flavor: |
@@ -181,11 +181,11 @@ jobs:
             type=raw,value=ci-scan
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d70bba72b6f3e222a0464b2732732732732739b7 # v3.3.0
+        uses: docker/setup-buildx-action@v3
 
       - name: Build image for scanning and potential push
         id: docker_build
-        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        uses: docker/build-push-action@v5
         with:
           context: .
           # Do not push yet, just build and load into the local Docker daemon.
@@ -199,7 +199,7 @@ jobs:
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
 
       - name: Scan container image for vulnerabilities with Trivy
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4f266f288864da01826240aa01831 # v0.24.0
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           # Scan the image using the specific 'ci-scan' tag for predictability
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[1] }}
@@ -232,22 +232,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.10
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Download the distribution packages
-        uses: actions/download-artifact@26f96dfa697d78e8abb01189b256792ad7217427 # v4.3.4
+        uses: actions/download-artifact@v4
         with:
           # Download all distribution artifacts from the validation job
           pattern: python-package-distributions-*
           path: dist/
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@2f0f52333e622a2421438232f1f25979a457a4b2 # v1.9.0
+        uses: pypa/gh-action-pypi-publish@v1
 
   release:
     name: Create GitHub Release
@@ -261,17 +261,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.1.10
+        uses: actions/checkout@v4
 
       - name: Download all distribution packages
-        uses: actions/download-artifact@26f96dfa697d78e8abb01189b256792ad7217427 # v4.3.4
+        uses: actions/download-artifact@v4
         with:
           path: dist/
           pattern: python-package-distributions-*
           merge-multiple: true # Merge artifacts from different python versions into one directory
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@c0b2f3b33a55549202b39730598805914c45851b # v2.0.8
+        uses: softprops/action-gh-release@v2
         with:
           # This finds the draft release created by the release-drafter workflow,
           # updates it with the final tag, and publishes it.
