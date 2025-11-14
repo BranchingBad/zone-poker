@@ -38,6 +38,6 @@ repos:
         name: Update requirements.txt
         language: python
         additional_dependencies: ["pip-tools"]
-        entry: bash -c "pip-compile --output-file=requirements.txt pyproject.toml --extra=dev --generate-hashes && git add requirements.txt"
+        entry: bash -c "pip-compile --python-version 3.10 --output-file=requirements.txt pyproject.toml --extra=dev --generate-hashes && git add requirements.txt"
         files: ^pyproject\.toml$
         stages: [pre-commit]
