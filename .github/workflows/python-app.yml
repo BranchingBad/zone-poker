@@ -263,7 +263,7 @@ jobs:
           # otherwise use the dev fallback version. This prevents the action from
           # incorrectly using a docker tag like 'latest' as the version.
           build-args: |
-            APP_VERSION=${{ steps.meta.outputs.version || steps.fallback_version.outputs.version }}
+            APP_VERSION=${{ startsWith(github.ref, 'refs/tags/') && steps.meta.outputs.version || steps.fallback_version.outputs.version }}
 
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.24.0
