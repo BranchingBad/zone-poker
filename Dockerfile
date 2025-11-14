@@ -1,54 +1,48 @@
-# --- Stage 1: Builder ---
-# This stage builds the Python wheel for the project.
-FROM python:3.11-slim as builder
+# Dockerfile
 
+# --- Builder Stage ---
+# This stage builds the Python wheels for the project and its dependencies.
+FROM python:3.11-slim-bookworm as builder
+
+# Set the working directory
 WORKDIR /app
 
-# Install build and wheel dependencies
-RUN pip install --no-cache-dir build wheel
+# [FIX] Accept a build argument for the application version
+ARG APP_VERSION=0.0.0-local
 
-# --- Optimized Caching ---
-# Copy only the dependency files first. This layer is only invalidated if
-# the requirements or project definition change.
-COPY pyproject.toml requirements.txt ./
+# Install build dependencies
+RUN pip install --no-cache-dir build pip-tools
 
-# Download all runtime dependencies as wheels into the /wheels directory.
-# This step is cached as long as requirements.txt doesn't change.
-RUN pip wheel --wheel-dir=/wheels -r requirements.txt
+# Copy dependency definition files
+COPY pyproject.toml poetry.lock* pyproject.lock* requirements.txt* ./
 
-# Now, copy the rest of the application source code. Changes to source files
-# will only invalidate the cache from this point forward.
+# Generate and install dependencies into a temporary location
+# This creates a layer that is cached as long as dependencies don't change
+RUN pip-compile --output-file=requirements.txt pyproject.toml && \
+    pip install --no-cache-dir --prefix="/install" -r requirements.txt
+
+# Copy the rest of the application source code
 COPY . .
 
-# Build the wheel for the project itself and add it to the /wheels directory.
+# [FIX] Set the environment variable for setuptools-scm to use the provided version
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=$APP_VERSION
+
+# Build the wheel for the project itself and add it to the /wheels directory
 RUN python -m build --wheel --outdir /wheels
 
 
-# --- Stage 2: Runtime ---
-# This is the final, optimized image.
-FROM python:3.11-slim as runtime
+# --- Final Stage ---
+# This stage creates the final, slim production image.
+FROM python:3.11-slim-bookworm as final
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Create a non-root user for security
-RUN useradd --create-home appuser
-USER appuser
-
-# Copy the built wheel from the builder stage
+# Copy the installed dependencies and the project wheel from the builder stage
+COPY --from=builder /install /usr/local
 COPY --from=builder /wheels /wheels
 
-# Install the project and its dependencies from the local wheels.
-# --no-cache-dir reduces image size, and --no-index prevents reaching out to PyPI.
-# The glob pattern ensures we install the project wheel along with its dependencies.
-RUN pip install --no-cache-dir --no-index --find-links=/wheels "zone-poker"
+# Install the project wheel
+RUN pip install --no-cache-dir /wheels/zone_poker-*.whl
 
-# Set the entrypoint to the zone-poker executable
+# Set the entrypoint for the container
 ENTRYPOINT ["zone-poker"]
-
-# Add a healthcheck to verify the application is runnable
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD ["zone-poker", "--version"]
-
-# Default command to run when the container starts (e.g., show help)
-CMD ["--help"]
