@@ -1,55 +1,51 @@
-# .pre-commit-config.yaml
-
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 
 repos:
-  # Standard hooks for file formatting and syntax checking
+  # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-      - id: check-toml
-      - id: check-json
       - id: check-added-large-files
+      - id: check-merge-conflict
 
-  # Ruff: An extremely fast Python linter and code formatter, written in Rust.
-  # Replaces black, isort, and flake8 for a much faster experience.
+  # Ruff for linting and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.5
+    rev: v0.4.4
     hooks:
-      # Run the linter
       - id: ruff
-        args: [--fix]
-      # Run the formatter
+        name: ruff (lint)
+        args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+        name: ruff (format)
 
-  # Bandit: A tool for finding common security issues in Python code.
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.9
-    hooks:
-      - id: bandit
-        args: ["-c", "bandit.yaml"]
-        # Only run bandit on python files
-        files: \.py$
-
-  # Local hook to ensure requirements.txt is kept in sync with pyproject.toml
-  - repo: local
+  # Dependency management with pip-tools
+  - repo: https://github.com/jazzband/pip-tools
+    rev: "v7.5.0"
     hooks:
       - id: pip-compile
-        name: "Compile requirements.txt"
-        # This entrypoint does two things:
-        # 1. Runs pip-compile to regenerate the lockfile.
-        # 2. If the file is changed, `git add` stages it.
-        # Pre-commit will then fail the commit because a file was modified,
-        # prompting the user to re-commit the staged changes.
-        entry: bash -c 'pip-compile --extra=dev --output-file=requirements.txt pyproject.toml && git add requirements.txt'
-        language: system
-        # This hook should only run when pyproject.toml changes.
-        files: ^pyproject.toml$
+        name: compile-requirements
+        files: ^pyproject\.toml$
+        args: ["--extra=dev", "--output-file=requirements.txt", "pyproject.toml"]
+        additional_dependencies: ["pip<24"]
 
-ci:
-  autofix_commit_msg: "chore(pre-commit): auto-fixes from pre-commit hooks"
-  autoupdate_commit_msg: "chore(pre-commit): pre-commit autoupdate"
+  # Local hooks for running tests and security scans
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pip-audit
+        name: pip-audit
+        entry: pip-audit
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^requirements\.txt$

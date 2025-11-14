@@ -33,12 +33,9 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     python3 -m venv venv
     source venv/bin/activate
 
-    # This project uses pip-tools to lock dependencies for reproducible builds.
-    # First, install pip-tools.
-    pip install pip-tools
-
-    # Then, install the dependencies from the lock file and the project in editable mode.
+    # Install development dependencies from the lock file.
     pip install -r requirements.txt
+    # Install the project in editable mode.
     pip install -e .
     ```
 
@@ -48,6 +45,8 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     ```
 
 4.  **Make your changes**. Please adhere to the existing code style (see Code Style section below).
+    - When you commit, the pre-commit hooks will automatically format your code, check for issues, and even validate your dependencies.
+    - If a hook modifies a file (like `ruff format` or `compile-requirements`), you will need to `git add` the changed files and commit again.
 
     - **Code Style**: This project uses `ruff` for ultra-fast code formatting, import sorting, and linting. The pre-commit hooks will automatically enforce this style.
 
@@ -87,7 +86,7 @@ This project uses `pip-tools` to manage dependencies via a `requirements.txt` lo
     pip-compile --extra=dev --output-file=requirements.txt pyproject.toml
     ```
 
-3.  **Commit both files**: Add both `pyproject.toml` and the regenerated `requirements.txt` to your commit.
+3.  **Commit both files**: Add both `pyproject.toml` and the regenerated `requirements.txt` to your commit. The `compile-requirements` pre-commit hook will automatically run this for you if it detects changes in `pyproject.toml`. You will just need to stage the updated `requirements.txt`.
     > **Why?** Committing the lock file ensures that every developer, as well as the CI pipeline, uses the exact same versions of all dependencies. This prevents "it works on my machine" issues. Our CI includes a `validate-lockfile` job that will fail if `requirements.txt` is not kept in sync with `pyproject.toml`.
     > If you have pre-commit hooks installed, this process is automated. The hook will regenerate `requirements.txt` for you and ask you to stage the changes.
 
