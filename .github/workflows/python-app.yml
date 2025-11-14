@@ -268,8 +268,8 @@ jobs:
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          # FIX: Reliably reference the static 'ci-scan' tag
-          image-ref: ${{ steps.meta.outputs.images }}:ci-scan
+          # FIX: Reliably reference the image using the IMAGE_NAME env var and the static 'ci-scan' tag.
+          image-ref: ${{ env.IMAGE_NAME }}:ci-scan
           format: 'table'
           exit-code: '1' # Fail the build if CRITICAL or HIGH vulnerabilities are found
           ignore-unfixed: true
