@@ -153,10 +153,11 @@ Before submitting a pull request, especially if you've made changes to `pyprojec
 
 #### Adding a New Output Format
 To add a new console or file output format (e.g., `yaml`):
-    1.  **Create a Formatter**: In `modules/output/`, create a new file (e.g., `yaml.py`) with a function like `format_yaml(data: dict) -> str` that converts the data dictionary into a string.
-    2.  **Update the Handler**: In `modules/export.py`, import your new function and add a case for it in the `handle_output` function.
-    3.  **Update the Parser**: In `modules/parser_setup.py`, add your new format's name to the `choices` list for the `--output` argument.
-    4.  **Update Documentation**: Add the new format to the `README.md` in the "Output Formats" section.
+    1.  **Create an Output Module**: In `modules/output/`, create a new file (e.g., `yaml.py`) with an `output(all_data: dict, output_path: str)` function. This function will handle both formatting the data and writing to a file or standard output.
+    2.  **Update `__init__.py`**: Add your new module to `modules/output/__init__.py` to make it easily importable.
+    3.  **Update Main Script**: In your main script, import the new output module and add it to the output handling logic (e.g., a dictionary of output functions) and the `argparse` choices for the `--output` flag.
+    4.  **Add Dependencies**: If your new module has dependencies, add them to the `requirements.txt` file.
+    5.  **Update Documentation**: Add the new format to the `README.md` in the "Output Formats" section.
 
 ---
 

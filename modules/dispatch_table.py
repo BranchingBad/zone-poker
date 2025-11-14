@@ -234,6 +234,19 @@ MODULE_DISPATCH_TABLE = {
             "help": "Detect web technologies, CMS, and security headers.",
         },
     },
+    "reputation": {
+        "data_key": "reputation_info",
+        "analysis_func": analyze_reputation,
+        "display_func": display_reputation_info,
+        "export_func": export_txt_reputation,
+        "description": "Checking IP reputation (AbuseIPDB)...",
+        "dependencies": ["records"],
+        "arg_info": {
+            "short": None,
+            "long": "--reputation",
+            "help": "Check IP reputation using AbuseIPDB.",
+        },
+    },
     "osint": {
         "data_key": "osint_info",
         "analysis_func": osint_enrichment,
@@ -241,8 +254,8 @@ MODULE_DISPATCH_TABLE = {
         "export_func": export_txt_osint,
         "description": "Gathering OSINT data...",
         "arg_info": {
-            "short": "-o",
-            "long": "--osint",
+            "short": None,
+            "long": "--osint",  # Changed from -o to avoid conflict
             "help": "Enrich data with passive DNS and other OSINT sources.",
         },
     },
@@ -270,19 +283,6 @@ MODULE_DISPATCH_TABLE = {
             "short": None,
             "long": "--smtp",
             "help": "Analyze mail servers (banner, STARTTLS).",
-        },
-    },
-    "reputation": {
-        "data_key": "reputation_info",  # This one already follows the convention
-        "analysis_func": analyze_reputation,
-        "display_func": display_reputation_info,
-        "export_func": export_txt_reputation,
-        "description": "Checking IP reputation (AbuseIPDB)...",
-        "dependencies": ["records"],
-        "arg_info": {
-            "short": None,
-            "long": "--reputation",
-            "help": "Check IP reputation using AbuseIPDB.",
         },
     },
     "hashes": {

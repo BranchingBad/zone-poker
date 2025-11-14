@@ -11,7 +11,7 @@ from modules.dispatch_table import MODULE_DISPATCH_TABLE
 from modules.export_txt import export_txt_critical_findings, export_txt_summary
 
 
-def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
+def output(all_data: Dict[str, Any], output_path: Optional[str] = None, dispatch_table: Optional[Dict] = None):
     """
     Generates and prints a comprehensive TXT report to standard output or a file.
     """
@@ -26,7 +26,10 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
         export_txt_summary(all_data),
     ]
 
-    for module_name, details in MODULE_DISPATCH_TABLE.items():
+    # Use the provided dispatch_table for testing, or the default one for production.
+    table = dispatch_table if dispatch_table is not None else MODULE_DISPATCH_TABLE
+
+    for module_name, details in table.items():
         if getattr(args, module_name, False) or getattr(args, "all", False):
             if export_func := details.get("export_func"):
                 module_data = all_data.get(details["data_key"], {})

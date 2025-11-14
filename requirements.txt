@@ -8,13 +8,13 @@ anyio==4.11.0
     # via httpx
 bandit==1.8.6
     # via zone-poker (pyproject.toml)
-beautifulsoup4==4.12.3
+beautifulsoup4==4.14.2
     # via zone-poker (pyproject.toml)
 boolean-py==5.0
     # via license-expression
 build==1.3.0
     # via pip-tools
-cachecontrol[filecache]==0.14.3
+cachecontrol[filecache]==0.14.4
     # via
     #   cachecontrol
     #   pip-audit
@@ -39,7 +39,7 @@ defusedxml==0.7.1
     #   py-serializable
 distlib==0.4.0
     # via virtualenv
-dnspython==2.6.1
+dnspython==2.8.0
     # via
     #   ipwhois
     #   zone-poker (pyproject.toml)
@@ -48,9 +48,9 @@ filelock==3.20.0
     #   cachecontrol
     #   tldextract
     #   virtualenv
-h11==0.14.0
+h11==0.16.0
     # via httpcore
-httpcore==1.0.5
+httpcore==1.0.9
     # via httpx
 httpx==0.28.1
     # via
@@ -58,7 +58,7 @@ httpx==0.28.1
     #   zone-poker (pyproject.toml)
 identify==2.6.15
     # via pre-commit
-idna==3.7
+idna==3.11
     # via
     #   anyio
     #   httpx
@@ -151,7 +151,7 @@ rich==14.2.0
     #   bandit
     #   pip-audit
     #   zone-poker (pyproject.toml)
-ruff==0.5.5
+ruff==0.14.5
     # via zone-poker (pyproject.toml)
 six==1.17.0
     # via python-dateutil
@@ -167,7 +167,9 @@ tldextract==5.3.0
     # via zone-poker (pyproject.toml)
 toml==0.10.2
     # via pip-audit
-urllib3==2.2.2
+typing-extensions==4.15.0
+    # via beautifulsoup4
+urllib3==2.5.0
     # via requests
 virtualenv==20.35.4
     # via pre-commit

@@ -31,6 +31,7 @@ async def detect_technologies(domain: str, timeout: int, verbose: bool, **kwargs
         for url in urls_to_check:
             try:
                 response = await client.get(url)
+                tech_data["error"] = None  # Clear previous errors on success
                 tech_data["status_code"] = response.status_code
                 tech_data["server"] = response.headers.get("Server", "N/A")
 

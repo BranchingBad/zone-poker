@@ -234,6 +234,11 @@ def export_txt_security(data: Dict[str, Any]) -> str:
     return _create_report_section("Security Audit", data, _format_security_audit_txt)
 
 
+def export_txt_critical_findings(data: Dict[str, Any]) -> str:
+    """DEPRECATED: Formats Security Audit for the text report. Use export_txt_security."""
+    return export_txt_security(data)
+
+
 def _format_tech_txt(data: Dict[str, Any]) -> List[str]:
     report = []
     if technologies := data.get("technologies"):

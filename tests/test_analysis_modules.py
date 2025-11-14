@@ -14,6 +14,7 @@ from modules.analysis.critical_findings import aggregate_critical_findings
 from modules.analysis.ct_logs import search_ct_logs
 from modules.analysis.open_redirect import check_open_redirect
 from modules.analysis.tech import detect_technologies
+from modules.analysis.waf_detection import detect_waf
 from modules.analysis.whois import whois_lookup
 
 
@@ -53,6 +54,33 @@ async def test_detect_technologies_found():
     assert "Joomla" in result["technologies"]
     assert "React" in result["technologies"]
     assert any(tech.startswith("PHP") for tech in result["technologies"])
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_detect_technologies_clears_error_on_fallback_success():
+    """
+    Tests that if the initial HTTPS request fails but the fallback HTTP request
+    succeeds, the final result does not contain an error message. This is a
+    regression test for the bug where an initial error was not cleared.
+    """
+    domain = "fallback-success.com"
+    https_url = f"https://{domain}"
+    http_url = f"http://{domain}"
+
+    # 1. Mock the first (HTTPS) request to fail with a connection error.
+    respx.get(https_url).mock(side_effect=RequestError("Connection failed"))
+
+    # 2. Mock the second (HTTP) request to succeed and contain a fingerprint.
+    respx.get(http_url).respond(200, html="<html><body>wp-content</body></html>")
+
+    # 3. Run the detection logic.
+    result = await detect_technologies(domain=domain, timeout=5, verbose=False)
+
+    # 4. Assert that the error is None and the technology was still detected.
+    assert result["error"] is None, "Error should be cleared after a successful fallback."
+    assert "WordPress" in result["technologies"]
+    assert result["status_code"] == 200
 
 
 @pytest.mark.asyncio
@@ -319,3 +347,27 @@ async def test_search_ct_logs_one_query_fails():
     # The function should not report an error and should return the valid results.
     assert "error" not in result or result["error"] is None
     assert result["subdomains"] == ["one.example.com"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_detect_waf_handles_fingerprints_without_server_key():
+    """
+    Tests that detect_waf handles WAF fingerprints that do not have a 'server'
+    header defined, preventing a TypeError. This simulates the bug where
+    `fp["headers"].get("server")` returns None.
+    """
+    domain = "no-waf-server-header.com"
+    # Mock a simple response with no WAF indicators. The malicious URL is also
+    # mocked to return a normal response to avoid a generic WAF detection.
+    respx.get(f"https://{domain}").respond(200, html="<html><body>OK</body></html>")
+    respx.get(f"https://{domain}/?s=<script>alert('xss')</script>").respond(200, html="<html><body>OK</body></html>")
+
+    # The function should complete without raising a TypeError. The bug was
+    # triggered when iterating fingerprints like Wordfence or Imperva which do
+    # not have a 'server' key in their header fingerprints.
+    result = await detect_waf(domain=domain, timeout=5)
+
+    # The main assertion is that no error occurred during the process.
+    assert result["error"] is None, "detect_waf should not produce an error when a fingerprint is missing a 'server' key."
+    assert result["detected_waf"] == "None"

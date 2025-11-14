@@ -3,16 +3,11 @@
 Zone-Poker - XML Output Module
 """
 
-import builtins
 from typing import Any, Dict, Optional
 from xml.dom import minidom
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from rich.console import Console
-
-from modules.dispatch_table import MODULE_DISPATCH_TABLE
-
-console = Console()
+from ._base import get_export_data, write_output
 
 
 def _dict_to_xml(parent: Element, data: Dict[str, Any]):
@@ -60,22 +55,8 @@ def _dict_to_xml(parent: Element, data: Dict[str, Any]):
 def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     """
     Generates and prints an XML report to standard output or a file.
-
-    Args:
-        all_data: The dictionary containing all scan data.
-        output_path: If provided, the output is written to this file path.
     """
-    export_data = {
-        "domain": all_data.get("domain"),
-        "scan_timestamp": all_data.get("scan_timestamp"),
-    }
-
-    # Add data from each module, using the data_key from the dispatch table
-    for module_name, config in MODULE_DISPATCH_TABLE.items():
-        data_key = config["data_key"]
-        # Only add data if it exists and is not empty
-        if data_key in all_data and all_data[data_key]:
-            export_data[data_key] = all_data[data_key]
+    export_data = get_export_data(all_data)
 
     root = Element("scan_results")
     _dict_to_xml(root, export_data)
@@ -85,11 +66,4 @@ def output(all_data: Dict[str, Any], output_path: Optional[str] = None):
     reparsed = minidom.parseString(rough_string)
     pretty_xml = reparsed.toprettyxml(indent="  ")
 
-    if output_path:
-        try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(pretty_xml)
-        except IOError as e:
-            console.print(f"[bold red]Error writing XML file to {output_path}: {e}[/bold red]")
-    else:
-        builtins.print(pretty_xml)
+    write_output(pretty_xml, output_path, "XML")
