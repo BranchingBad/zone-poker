@@ -77,6 +77,11 @@ write_to = "modules/_version.py"
 [tool.ruff]
 # Set the maximum line length.
 line-length = 140
+exclude = [
+    ".git",
+    ".ruff_cache",
+    "modules/_version.py", # Exclude the auto-generated version file
+]
 
 [tool.ruff.lint]
 # Enable the same rule set as flake8.
