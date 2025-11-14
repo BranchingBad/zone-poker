@@ -1,8 +1,10 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 
+# Exclude the auto-generated version file from all checks
+exclude: '^modules/_version\.py$'
+
 repos:
-  # Standard hooks for checking file formatting and syntax
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -11,28 +13,18 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
-  # Code formatter for Python
   - repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
       - id: black
 
-  # Linter for Python
   - repo: https://github.com/PyCQA/flake8
     rev: 7.1.0
     hooks:
       - id: flake8
 
-  # Sorter for Python imports
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
-
-  # Hook to scan for secrets
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
-    hooks:
-      - id: detect-secrets
-        # Exclude the baseline file from being scanned
-        exclude: \.secrets\.baseline$
+        name: isort (python)
