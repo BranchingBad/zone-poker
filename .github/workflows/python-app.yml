@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@a44c2b73039006385748c0630d11759b441571f2 # v4.1.7
+        uses: actions/checkout@v4.1.9
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -101,7 +101,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@a44c2b73039006385748c0630d11759b441571f2 # v4.1.7
+        uses: actions/checkout@v4.1.9
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -146,7 +146,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@a44c2b73039006385748c0630d11759b441571f2 # v4.1.7
+        uses: actions/checkout@v4.1.9
 
       # FIX: Explicitly set image name to environment variable to handle case sensitivity
       - name: Set up Image Name
@@ -232,7 +232,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@a44c2b73039006385748c0630d11759b441571f2 # v4.1.7
+        uses: actions/checkout@v4.1.9
 
       - name: Set up Python
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -261,7 +261,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@a44c2b73039006385748c0630d11759b441571f2 # v4.1.7
+        uses: actions/checkout@v4.1.9
 
       - name: Download all distribution packages
         uses: actions/download-artifact@26f96dfa697d78e8abb01189b256792ad7217427 # v4.3.4
