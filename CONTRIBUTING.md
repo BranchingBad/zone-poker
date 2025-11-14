@@ -79,13 +79,29 @@ This project uses `pip-tools` to manage dependencies via a `requirements.txt` lo
 
 **To add or update a dependency:**
 
-1.  Edit `pyproject.toml` to add or change the desired package version range in the `dependencies` or `dev` section.
-2.  Regenerate the `requirements.txt` lock file by running:
+1.  **Edit `pyproject.toml`**: Add or change the desired package version range in the `[project.dependencies]` or `[project.optional-dependencies.dev]` sections.
+
+2.  **Regenerate the lock file**: Run the `pip-compile` command to update `requirements.txt` based on your changes.
     ```bash
-    pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+    # This command compiles both main and dev dependencies into the lock file
+    pip-compile --extra=dev --output-file=requirements.txt pyproject.toml
     ```
-3.  Commit both the `pyproject.toml` and the updated `requirements.txt` files to your pull request.
-4.  Install the updated packages into your local environment: `pip install -r requirements.txt`
+
+3.  **Commit both files**: Add both `pyproject.toml` and the regenerated `requirements.txt` to your commit.
+    > **Why?** Committing the lock file ensures that every developer, as well as the CI pipeline, uses the exact same versions of all dependencies. This prevents "it works on my machine" issues. Our CI includes a `validate-lockfile` job that will fail if `requirements.txt` is not kept in sync with `pyproject.toml`.
+    > If you have pre-commit hooks installed, this process is automated. The hook will regenerate `requirements.txt` for you and ask you to stage the changes.
+
+4.  **Install the updated packages**: Refresh your local virtual environment with the new set of dependencies.
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Understanding Configuration Precedence
+
+The tool loads settings with a clear priority order, which is important to remember when testing:
+1.  **Defaults**: The application's built-in default values.
+2.  **Config File**: Values from a `.yaml` or `.json` file specified with `--config`. These override the defaults.
+3.  **CLI Arguments**: Any arguments passed on the command line (e.g., `--timeout 30`). These override everything else and have the final say.
 
 ### Validating the Package Build
 Before submitting a pull request, especially if you've made changes to `pyproject.toml` or file structures, it's a good practice to verify that the package builds correctly and includes all necessary files. This process mimics the `validate-package` job in our CI pipeline.
@@ -152,9 +168,9 @@ All contributors are expected to follow our Code of Conduct. Please be respectfu
 
 ## Release Process (For Maintainers)
 
-The release process is highly automated using GitHub Actions. When a new version tag (e.g., `v1.2.3`) is pushed, the CI/CD pipeline will automatically build the package, publish it to PyPI, and create a corresponding GitHub Release with generated release notes.
+The release process is highly automated. Maintainers publish a release on GitHub, which automatically creates a version tag. This tag triggers the CI/CD pipeline to build the package, publish it to PyPI, and attach the built artifacts to the GitHub Release.
 
-For detailed instructions on the release strategy and how to trigger a release, maintainers should refer to the `RELEASING.md` file.
+For detailed instructions on how to perform a release, maintainers should refer to the `RELEASING.md` file.
 
 ---
 *This document is actively maintained. If you find any instructions to be outdated, please open an issue or a pull request.*

@@ -35,6 +35,21 @@ repos:
         # Only run bandit on python files
         files: \.py$
 
+  # Local hook to ensure requirements.txt is kept in sync with pyproject.toml
+  - repo: local
+    hooks:
+      - id: pip-compile
+        name: "Compile requirements.txt"
+        # This entrypoint does two things:
+        # 1. Runs pip-compile to regenerate the lockfile.
+        # 2. If the file is changed, `git add` stages it.
+        # Pre-commit will then fail the commit because a file was modified,
+        # prompting the user to re-commit the staged changes.
+        entry: bash -c 'pip-compile --extra=dev --output-file=requirements.txt pyproject.toml && git add requirements.txt'
+        language: system
+        # This hook should only run when pyproject.toml changes.
+        files: ^pyproject.toml$
+
 ci:
   autofix_commit_msg: "chore(pre-commit): auto-fixes from pre-commit hooks"
   autoupdate_commit_msg: "chore(pre-commit): pre-commit autoupdate"
