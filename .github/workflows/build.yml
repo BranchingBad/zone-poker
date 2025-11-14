@@ -1,0 +1,351 @@
+name: CI / CD
+
+# Controls when the workflow will run
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+    tags:
+      - "v*.*.*" # Trigger on version tags like v1.2.3
+  # Allows manual runs from the Actions tab
+  workflow_dispatch:
+
+# [IMPROVEMENT] Add concurrency to cancel redundant builds
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# [IMPROVEMENT] Set default permissions to read-only for security
+permissions:
+  contents: read
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  lint:
+    name: Lint with Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Use a single Python version for linting
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache pip dependencies for linting
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          # Include python-version in the key for the matrix
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # For reproducible builds, it's recommended to commit requirements.txt
+          # and generate it locally using: pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run ruff format check and linter
+        run: |
+          ruff check .
+          ruff format --check .
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Use a single Python version for scanning
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache pip dependencies for security scan
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-3.11-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-3.11-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Scan for dependency vulnerabilities with pip-audit
+        # Allow this step to fail without failing the workflow
+        continue-on-error: true
+        run: pip-audit
+
+  test:
+    name: Test with Pytest
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC authentication with Codecov
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache pip dependencies for testing
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run tests and generate coverage report
+        run: pytest --cov=modules --cov=zone_poker --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # Recommended for reliable uploads
+          use_oidc: true # Use OIDC for more secure authentication
+          fail_ci_if_error: true
+
+  build-and-validate:
+    name: Build and Validate Package
+    needs: [lint, security-scan, test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache pip dependencies for build
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Install build dependencies and build package
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: "Install and test package in a new virtual environment"
+        run: |
+          python -m venv venv_test
+          source venv_test/bin/activate
+          pip install --upgrade pip
+          WHEEL_FILE=$(find dist -name "*.whl" | head -n 1)
+          echo "Found wheel file: $WHEEL_FILE"
+          pip install "${WHEEL_FILE}[dev]"
+          pytest
+
+      - name: Store the distribution packages
+        # Only upload artifacts from one Python version to avoid duplication in publish jobs
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions-${{ matrix.python-version }}
+          path: dist/
+
+  build-and-push-docker:
+    needs: [build-and-validate] # Run after all validation jobs
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Image Name
+        run: |
+          echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Log in to the GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          flavor: |
+            latest=false
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=
+            type=raw,value=ci-scan
+          version: |
+            type=semver,pattern={{version}}
+
+      # --- [FIX 1] This step creates a valid fallback version ---
+      - name: Set Fallback Version
+        id: fallback_version
+        run: echo "version=0.0.0.dev1+g${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning and potential push
+        id: docker_build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ github.workflow }}
+          cache-to: type=gha,scope=${{ github.workflow }},mode=max
+          # --- [FIX 1] This build-arg uses the correct version ---
+          build-args: |
+            APP_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '0.0.0-dev' }}
+
+      - name: Scan container image for vulnerabilities with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:ci-scan
+          format: 'table'
+          exit-code: '1' # Fail the build if CRITICAL or HIGH vulnerabilities are found
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push image to GHCR
+        if: github.event_name != 'pull_request'
+        run: docker push --all-tags ${{ env.IMAGE_NAME }}
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs: [build-and-validate] # Ensure package builds and validates before publishing
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-publish
+      url: https://pypi.org/p/zone-poker
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+
+    permissions:
+      id-token: write # Required for trusted publishing
+      attestations: write # Required for generating SLSA attestations
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-package-distributions-*
+          path: dist/
+
+      # --- [FIX 2] This step moves the packages to the correct directory ---
+      - name: Move packages to top-level dist directory
+        run: |
+          # Move all wheel/tar.gz files from subdirectories up to the main dist/ folder
+          find dist/ -type f -name "zone_poker-*" -exec mv {} dist/ \;
+          echo "Files in dist/ after move:"
+          ls -lR dist/
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  release:
+    name: Create GitHub Release
+    needs: [build-and-validate] # Ensure package builds and validates before creating a release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+
+    permissions:
+      contents: write # Required to create a release and upload assets
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-package-distributions-*
+          path: dist/
+
+      - name: Generate SHA256 checksums for release assets
+        run: |
+          # Find all package files in the subdirectories, move them to the top-level dist folder,
+          # and then generate checksums.
+          find dist/ -type f -name "zone_poker-*" -exec mv {} dist/ \;
+          cd dist && sha256sum zone_poker-* > sha256sums.txt && cd ..
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            dist/zone_poker-*.whl
+            dist/zone_poker-*.tar.gz
+            dist/sha256sums.txt
