@@ -108,8 +108,10 @@ jobs:
           pip install -r requirements.txt
       - name: Check if requirements.txt is up to date
         run: |
-          # The --resolver=backtracking flag is recommended for complex dependencies
-          pip-compile --extra=dev --output-file=requirements.txt pyproject.toml
+          echo "Checking if requirements.txt is up to date with pyproject.toml..."
+          pip-compile --extra=dev --output-file=requirements.txt pyproject.toml --dry-run > /dev/null
+          echo "Checking for uncommitted changes in requirements.txt..."
+          git diff --exit-code -- requirements.txt
 
   build:
     name: Build Package Distributions
