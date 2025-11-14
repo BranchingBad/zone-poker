@@ -69,7 +69,7 @@ If you'd like to contribute code, we'd love to have your help! Please follow the
     -   `test(orchestrator): Add test for module dependency resolution`
     -   `feat(security): Add support for parsing security.txt files`
 
-9.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues.
+9.  **Push to your fork** and submit a pull request to the `main` branch of the original repository. In your pull request description, please explain the changes and link to any relevant issues. Our `release-drafter` bot will automatically categorize your PR for the release notes based on its label (e.g., `bug`, `feature`).
 
 ## Development Guidelines
 
@@ -82,7 +82,7 @@ This project uses `pip-tools` to manage dependencies via a `requirements.txt` lo
 1.  Edit `pyproject.toml` to add or change the desired package version range in the `dependencies` or `dev` section.
 2.  Regenerate the `requirements.txt` lock file by running:
     ```bash
-    pip-compile --resolver=backtracking --output-file=requirements.txt pyproject.toml --extra=dev
+    pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
     ```
 3.  Commit both the `pyproject.toml` and the updated `requirements.txt` files to your pull request.
 4.  Install the updated packages into your local environment: `pip install -r requirements.txt`
