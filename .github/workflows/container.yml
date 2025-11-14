@@ -83,7 +83,7 @@ jobs:
           cache-to: type=gha,scope=${{ github.workflow }},mode=max
           # --- [FIX] This build-arg uses the correct version ---
           build-args: |
-            APP_VERSION=${{ steps.meta.outputs.version || steps.fallback_version.outputs.version }}
+            APP_VERSION=${{ github.ref_name }}
 
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.24.0
