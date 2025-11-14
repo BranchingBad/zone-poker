@@ -271,7 +271,7 @@ jobs:
           # otherwise use the dev fallback version. This prevents the action from
           # incorrectly using a docker tag like 'latest' as the version.
           build-args: |
-            APP_VERSION=${{ startsWith(github.ref, 'refs/tags/') && steps.meta.outputs.version || steps.fallback_version.outputs.version }}
+            APP_VERSION=${{ steps.meta.outputs.version || steps.fallback_version.outputs.version }}
 
       - name: Scan container image for vulnerabilities with Trivy
         uses: aquasecurity/trivy-action@0.24.0
@@ -322,7 +322,9 @@ jobs:
           path: dist/
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1
+        # [FIX] Use the 'release/v1' branch which is the recommended stable channel
+        # for this action, resolving the "unable to find version v1" error.
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   release:
     name: Create GitHub Release
@@ -347,9 +349,10 @@ jobs:
 
       - name: Generate SHA256 checksums for release assets
         run: |
-          cd dist
-          sha256sum * > sha256sum.txt
-          cd ..
+          # Find all package files in the subdirectories, move them to the top-level dist folder,
+          # and then generate checksums.
+          find dist/ -type f -name "zone_poker-*" -exec mv {} dist/ \;
+          cd dist && sha256sum zone_poker-* > sha256sums.txt && cd ..
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -359,5 +362,9 @@ jobs:
           # If no draft exists, it will create a new release.
           draft: false
           prerelease: false
-          # Attach all files from the dist/ directory as release assets
-          files: dist/*
+          # Attach all package files and the checksums file from the dist/ directory as release assets.
+          # The glob pattern correctly targets the files moved in the previous step.
+          files: |
+            dist/zone_poker-*.whl
+            dist/zone_poker-*.tar.gz
+            dist/sha256sums.txt
