@@ -64,11 +64,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install pip-tools to generate the lockfile if it doesn't exist
-          pip install pip-tools
-          # Generate and install from lockfile for reproducible builds
-          pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
-          pip install -r requirements.txt
+          # For reproducible builds, it's recommended to commit requirements.txt
+          # and generate it locally using: pip-compile --output-file=requirements.txt pyproject.toml --extra=dev
+          pip install -r requirements.txt --require-hashes
           pip install -e .
 
       - name: Run pre-commit checks
@@ -135,7 +133,7 @@ jobs:
           pytest
 
   build-and-push-docker:
-    needs: lint-and-test
+    needs: validate-package # Run after package validation to ensure the code builds correctly
     runs-on: ubuntu-latest
 
     # [IMPROVEMENT] Grant write permissions for packages (GHCR)
@@ -205,7 +203,7 @@ jobs:
           # Scan the image using the specific 'ci-scan' tag for predictability
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[1] }}
           format: 'table'
-          exit-code: '0' # CHANGED: Set to 0 so the build doesn't fail on vulnerabilities
+          exit-code: '1' # Fail the build if CRITICAL or HIGH vulnerabilities are found
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -258,8 +256,8 @@ jobs:
       - name: Download the distribution packages
         uses: actions/download-artifact@v4
         with:
-          # Download the artifacts built on the same python version
-          name: python-package-distributions-3.11
+          # Download all distribution artifacts from the validation job
+          pattern: python-package-distributions-*
           path: dist/
 
       - name: Publish package to PyPI
