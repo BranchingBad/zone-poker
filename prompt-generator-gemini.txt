@@ -1,0 +1,947 @@
+Here is a detailed, comprehensive prompt designed to recreate the "Zone-Poker" software project based on the files provided.
+
+Project Recreation Prompt: Zone-Poker DNS & OSINT Tool
+Your Task: Your task is to recreate a comprehensive, professional-grade Python software project named "Zone-Poker." This is a command-line DNS reconnaissance and OSINT tool designed for security professionals. The tool is built with a modular architecture, uses asyncio for concurrent network operations, provides rich console output via the rich library, and supports multiple export formats (JSON, CSV, HTML, XML, YAML).
+
+You will generate the complete file structure and the exact, production-ready content for each file as specified below.
+
+Project Structure
+Create the following directory structure:
+
+zone-poker/
+├── .github/
+│   ├── workflows/
+│   │   └── build.yml
+│   ├── labeler.yml
+│   ├── release-drafter-config.yml
+│   └── release-drafter.yml
+├── modules/
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   ├── cloud_enum.py
+│   │   ├── content_hash.py
+│   │   ├── critical_findings.py
+│   │   ├── ct_logs.py
+│   │   ├── dane_analysis.py
+│   │   ├── dns_ptr.py
+│   │   ├── dns_records.py
+│   │   ├── dns_zone.py
+│   │   ├── dnsbl.py
+│   │   ├── email_sec.py
+│   │   ├── http_headers.py
+│   │   ├── ip_geolocation.py
+│   │   ├── new_module.py
+│   │   ├── ns_info.py
+│   │   ├── open_redirect.py
+│   │   ├── osint.py
+│   │   ├── port_scan.py
+│   │   ├── propagation.py
+│   │   ├── reputation.py
+│   │   ├── robots_txt.py
+│   │   ├── security_audit.py
+│   │   ├── security_txt.py
+│   │   ├── smtp_analysis.py
+│   │   ├── ssl_analysis.py
+│   │   ├── subdomain_takeover.py
+│   │   ├── takeover_fingerprints.json
+│   │   ├── tech.py
+│   │   ├── waf_detection.py
+│   │   └── whois.py
+│   ├── output/
+│   │   ├── __init__.py
+│   │   ├── _base.py
+│   │   ├── csv.py
+│   │   ├── html.py
+│   │   ├── json.py
+│   │   ├── txt.py
+│   │   ├── xml.py
+│   │   └── yaml.py
+│   ├── __init__.py
+│   ├── _version.py
+│   ├── config.py
+│   ├── config_manager.py
+│   ├── dispatch_table.py
+│   ├── display.py
+│   ├── display_utils.py
+│   ├── export.py
+│   ├── export_txt.py
+│   ├── logger_config.py
+│   ├── orchestrator.py
+│   └── parser_setup.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_analysis_modules.py
+│   ├── test_cloud_enum.py
+│   ├── test_config_manager.py
+│   ├── test_dane_analysis.py
+│   ├── test_display.py
+│   ├── test_dns_records.py
+│   ├── test_dns_zone.py
+│   ├── test_dnsbl.py
+│   ├── test_export_txt.py
+│   ├── test_geolocation.py
+│   ├── test_new_module.py
+│   ├── test_orchestrator.py
+│   ├── test_output_formats.py
+│   ├── test_output_modules.py
+│   ├── test_outputs.py
+│   ├── test_reputation.py
+│   ├── test_security_audit.py
+│   ├── test_subdomain_takeover.py
+│   ├── test_utils.py
+│   └── test_zone_poker.py
+├── .dockerignore
+├── .gitignore
+├── .pre-commit-config.yaml
+├── .python-version
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── RELEASING.md
+├── SECURITY.md
+├── bandit.yaml
+├── pyproject.toml
+├── pytest.ini
+├── requirements.txt
+└── zone_poker.py
+File Content Specifications
+1. Root Directory Files
+zone_poker.py (Main Entry Point)
+
+Imports: asyncio, logging, modules.config.console, modules.config_manager.setup_configuration_and_domains, modules.logger_config.setup_logging, modules.orchestrator.run_scans, modules.parser_setup.setup_parser.
+
+_display_welcome_banner(args): Prints the ASCII art banner (as seen in the file) using console.print if not args.quiet and args.output == "table".
+
+main() (async):
+
+Calls setup_parser().
+
+Calls setup_configuration_and_domains(parser) to get args and domains_to_scan.
+
+Calls setup_logging(args).
+
+Calls _display_welcome_banner(args).
+
+Checks if domains_to_scan is empty; if so, prints help and exits.
+
+await run_scans(domains_to_scan, args).
+
+main_wrapper(): A sync wrapper that calls asyncio.run(main()) and handles KeyboardInterrupt.
+
+if __name__ == "__main__":: Calls main_wrapper().
+
+pyproject.toml (Project Definition)
+
+Create this file exactly as specified.
+
+[build-system]: Requires setuptools>=61.0 and setuptools-scm[toml]>=6.2. Backend is setuptools.build_meta.
+
+[project]:
+
+name = "zone-poker"
+
+dynamic = ["version"]
+
+authors = [{ name="BranchingBad", email="contact@branchingbad.com" }]
+
+description = "A professional DNS reconnaissance and OSINT tool..."
+
+readme = "README.md"
+
+license = { file="LICENSE" }
+
+requires-python = ">=3.10"
+
+classifiers: Include all classifiers from the file (e.g., "Development Status :: 4 - Beta", "Topic :: Security").
+
+dependencies: dnspython>=2.6.1,<3.0, httpx>=0.28,<1.0, python-whois~=0.9, ipwhois~=1.3, rich~=14.2, beautifulsoup4~=4.12, mmh3~=5.2, PyYAML>=6.0.1,<7.0, tldextract>=5.3,<6.0.
+
+[project.scripts]: zone-poker = "zone_poker:main_wrapper".
+
+[project.optional-dependencies.dev]: pytest~=9.0, pre-commit~=4.4, pytest-cov~=7.0, pytest-asyncio>=1.3, bandit~=1.7, pip-audit~=2.9, respx~=0.22, pip-tools>=7.5, ruff.
+
+[tool.setuptools]: py-modules = ["zone_poker"], package-data = { "modules.analysis" = ["*.json"] }.
+
+[tool.setuptools.packages.find]: include = ["modules*"], exclude = ["tests*"].
+
+[tool.setuptools_scm]: write_to = "modules/_version.py".
+
+[tool.ruff]: line-length = 140, exclude = [...].
+
+[tool.ruff.lint]: select = ["E", "F", "W"].
+
+[tool.ruff.format]: quote-style = "double".
+
+Dockerfile (Multi-stage Docker build)
+
+Create this file exactly as specified.
+
+Stage 1: builder
+
+FROM python:3.11-slim-bookworm as builder.
+
+WORKDIR /app.
+
+ARG APP_VERSION=0.0.0-local.
+
+Install build, pip-tools.
+
+Copy pyproject.toml.
+
+Run pip-compile and pip install --prefix="/install".
+
+Copy the rest of the app context.
+
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${APP_VERSION}.
+
+Run python -m build --wheel --outdir /wheels.
+
+Stage 2: final
+
+FROM python:3.11-slim-bookworm as final.
+
+Run apt-get update && apt-get upgrade -y.
+
+WORKDIR /app.
+
+Create non-root user appuser and group appgroup.
+
+Copy /install and /wheels from builder.
+
+pip install the wheel and remove /wheels.
+
+RUN chown -R appuser:appgroup /app.
+
+USER appuser.
+
+ENTRYPOINT ["zone-poker"].
+
+README.md
+
+Create a README file matching the provided content. Include:
+
+Title: "Zone-Poker".
+
+Description: "A professional DNS reconnaissance and OSINT tool..."
+
+Features: List features like "Comprehensive DNS Enumeration," "Security Audits," "OSINT Gathering," etc.
+
+Getting Started: Prerequisites, Installation (clone, pip install -r requirements.txt).
+
+Basic Usage: python zone_poker.py example.com.
+
+Usage: Include the full usage: zone_poker.py [-h] ... block.
+
+Analysis Modules: A markdown table with columns "Flag (Short)", "Flag (Long)", "Description" for all modules (e.g., -r, --records, "Query all standard DNS record types.").
+
+Examples: Provide examples for a full scan, email security, specific records, HTML reports, and scanning from a file.
+
+LICENSE
+
+Copy the exact text of the Apache License, Version 2.0.
+
+CONTRIBUTING.md
+
+Create a comprehensive contributing guide. Include sections for:
+
+"How Can I Contribute?" (Reporting Bugs, Suggesting Enhancements, Submitting Pull Requests).
+
+Pull Request steps: fork, set up dev environment (pip install -r requirements.txt, pip install -e .), set up pre-commit hooks, make changes, add tests (pytest), write conventional commit messages.
+
+"Development Guidelines":
+
+"Managing Dependencies": Explain pip-tools workflow (Edit pyproject.toml, run pip-compile --extra=dev ..., commit both files, pip install -r requirements.txt).
+
+"Separation of Concerns": modules/analysis (data gathering, no prints), modules/display.py (rich output, returns renderables), modules/export_txt.py (text formatting), modules/output/ (file exporters).
+
+"Adding a New Analysis Module": List all 7 steps (Analysis function, Display function, TXT Export, Dispatch Table entry, Arg_info, Unit Tests, Documentation).
+
+"Code of Conduct" link.
+
+"Release Process (For Maintainers)".
+
+Configuration Files
+
+.gitignore: Include patterns for __pycache__, *.pyc, *.so, build/, dist/, .eggs/, *.egg, .tox/, .coverage, .pytest_cache/, *.log, .env, .venv, env/, venv/, site/, .mypy_cache/, .ruff_cache/.
+
+.dockerignore: Include venv/, .venv/, __pycache__/, *.pyc, build/, dist/, *.egg-info/, .pytest_cache/.
+
+.pre-commit-config.yaml:
+
+repo: https://github.com/pre-commit/pre-commit-hooks: hooks for trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files.
+
+repo: https://github.com/astral-sh/ruff-pre-commit: hooks for ruff (lint) and ruff-format.
+
+repo: https://github.com/jazzband/pip-tools: hook pip-compile (args: --extra=dev, --output-file=requirements.txt, pyproject.toml).
+
+repo: local: hooks for pytest and pip-audit.
+
+.python-version: 3.11.
+
+bandit.yaml: tests: - B101, exclude_dirs: ["tests", "venv"].
+
+pytest.ini: markers = asyncio: marks tests as asyncio.
+
+requirements.txt: State that this is autogenerated by pip-compile. Include all packages listed in the file, e.g., anyio==4.11.0, beautifulsoup4==4.14.2, dnspython==2.8.0, httpx==0.28.1, ipwhois==1.3.0, rich==14.2.0, tldextract==5.3.0, pytest==9.0.1, ruff==0.14.5, etc..
+
+RELEASING.md, SECURITY.md, CODE_OF_CONDUCT.md: Recreate these documentation files exactly as provided.
+
+2. modules/ (Core Logic)
+modules/orchestrator.py
+
+Imports: asyncio, inspect, logging, traceback, deque, datetime, Path, dns.resolver, rich.progress, modules.config.PUBLIC_RESOLVERS, console, modules.display.display_critical_findings, display_summary, modules.export.handle_output, modules.utils.get_desktop_path.
+
+_create_execution_plan(initial_modules):
+
+Imports MODULE_DISPATCH_TABLE inside the function.
+
+Logic: Performs a topological sort (Kahn's algorithm) to build a dependency-ordered list of modules to run.
+
+Uses a deque to find all transitive dependencies.
+
+Builds an adjacency list and in-degree map.
+
+Performs the sort and raises a ValueError if a circular dependency is detected.
+
+_scan_single_domain(domain, args, modules_to_run) (async):
+
+Imports MODULE_DISPATCH_TABLE inside the function.
+
+Logic:
+
+Prints banner (if not quiet).
+
+Initializes all_data dict, pre-seeding keys from MODULE_DISPATCH_TABLE.
+
+Creates a shared dns.resolver.Resolver, setting want_dnssec = False and custom nameservers if provided.
+
+Creates analysis_context dict (domain, resolver, all_data, args, etc.).
+
+Calls _create_execution_plan.
+
+Iterates execution_plan:
+
+Gets module_info from MODULE_DISPATCH_TABLE.
+
+Builds func_kwargs by copying analysis_context and adding dependency results from all_data.
+
+Calls the analysis_func: await analysis_func(**func_kwargs) if iscoroutinefunction, else await asyncio.to_thread(analysis_func, **func_kwargs).
+
+Handles exceptions and stores result in all_data[data_key].
+
+Calls display function (if not quiet).
+
+Calls display_critical_findings and display_summary.
+
+Handles console output (e.g., json, xml) by calling handle_output.
+
+Handles file exports (--export, --html-file) by building export_formats list, determining save_path (using get_desktop_path), generating base_filename, and calling handle_output for each format.
+
+run_scans(domains_to_scan, args) (async):
+
+Imports MODULE_DISPATCH_TABLE inside the function.
+
+Logic:
+
+Determines modules_to_run based on args (including --all).
+
+Handles single-domain case (no progress bar, simple try/except).
+
+Handles multi-domain case with rich.progress.Progress:
+
+Implements a retry loop based on args.retries.
+
+Uses asyncio.create_task and asyncio.gather to run scans concurrently.
+
+Tracks successful_domains and domains_to_retry.
+
+modules/dispatch_table.py
+
+Imports: Import all analysis functions from modules.analysis.* (e.g., get_dns_records, attempt_axfr, email_security_analysis, whois_lookup, etc.).
+
+Imports: Import all display functions from modules.display.* (e.g., display_dns_records_table, display_axfr_results, etc.).
+
+Imports: Import all text export functions from modules.export_txt.* (e.g., export_txt_records, export_txt_zone, etc.).
+
+MODULE_DISPATCH_TABLE (dict): This is the central configuration. Define it exactly as in the file. Each entry (e.g., "records", "ptr", "zone", "mail", "whois", "nsinfo", "security", "tech", "ssl", "ct", "waf", "port_scan", "takeover", "critical_findings", etc.) must have:
+
+"data_key" (e.g., "records_info")
+
+"analysis_func" (e.g., get_dns_records)
+
+"display_func" (e.g., display_dns_records_table)
+
+"export_func" (e.g., export_txt_records)
+
+"description" (e.g., "Querying DNS records...")
+
+"arg_info" (dict with "short", "long", "help" or None for internal modules).
+
+"dependencies" (list of module names, e.g., ["records"]).
+
+register_module_args(parser): Iterates MODULE_DISPATCH_TABLE and calls parser.add_argument for each module that has an arg_info dict.
+
+modules/parser_setup.py
+
+Imports: argparse, modules.dispatch_table.register_module_args.
+
+setup_parser():
+
+Creates argparse.ArgumentParser with description and epilog (with examples).
+
+Adds input_group (domain, -f/--file, -c/--config).
+
+Adds scan_group (-a/--all, --timeout, --retries, --types, --resolvers).
+
+Adds output_group (-e/--export, -O/--output-dir, --filename-template, --html-file, --log-file, -v/--verbose, -q/--quiet, --output with choices).
+
+Adds module_group and calls register_module_args(module_group).
+
+modules/config_manager.py
+
+Imports: argparse, json, logging, os, yaml, modules.config.console, modules.utils.is_valid_domain.
+
+deep_merge_dicts(base, new): Recursively merges two dictionaries.
+
+load_data_file(file_path): Opens and loads JSON or YAML files (checking extension).
+
+load_config_file(file_path): Uses load_data_file and validates the result is a dict.
+
+setup_configuration_and_domains(parser):
+
+Logic:
+
+Parses CLI args (parser.parse_args()).
+
+Gets defaults_dict (vars(parser.parse_args([]))).
+
+Loads config file if cli_args.config is set, handling FileNotFoundError and decoding errors.
+
+Identifies CLI overrides by comparing cli_vars to defaults_dict.
+
+Merges configs: final_config = deep_merge_dicts(deep_merge_dicts(defaults_dict, config_from_file_data), cli_overrides).
+
+Loads domains:
+
+If -f/--file is used, calls load_data_file, validates it's a list, and validates each domain using is_valid_domain.
+
+If positional domain is used, validates it.
+
+Returns (final_args, domains_to_scan).
+
+modules/display.py
+
+Imports: datetime, rich.box, rich.panel.Panel, rich.table.Table, rich.tree.Tree.
+
+_create_generic_table(...): A helper to create a rich.Table from a list of dicts and column definitions.
+
+Define all display functions as provided:
+
+display_dns_records_table: Formats records_info into a consolidated table.
+
+display_ptr_lookups: Uses _create_generic_table.
+
+display_security_audit: Uses a rich.Tree to display findings, color-coded by severity.
+
+display_subdomain_takeover: Uses _create_generic_table.
+
+display_summary: Builds a rich.Table with key-value pairs for "Zone Transfer," "DNSSEC," "Email Security," etc.
+
+... and every other display function: display_axfr_results, display_email_security, display_whois_info, display_nameserver_analysis, display_propagation, display_critical_findings, display_technology_info, display_osint_results, display_ssl_info, display_smtp_info, display_reputation_info, display_content_hash_info, display_ct_logs, display_waf_detection, display_dane_analysis, display_http_headers, display_port_scan, display_cloud_enum, display_dnsbl_check, display_open_redirect, display_security_txt, display_ip_geolocation, display_robots_txt.
+
+Each function must accept (data, quiet, **kwargs) and return a rich renderable (Table, Panel, Tree) or None if quiet.
+
+modules/export_txt.py
+
+Imports: datetime, logging, typing.
+
+_create_report_section(title, data, formatter): A helper to create a text section with a header (===== Title =====), error handling (if data['error']), and calls the formatter function.
+
+Define all private formatter functions: _format_summary_txt, _format_records_txt, _format_ptr_txt, _format_zone_txt, _format_mail_txt, _format_whois_txt, _format_nsinfo_txt, _format_propagation_txt, _format_security_audit_txt, _format_tech_txt, _format_osint_txt, _format_ssl_txt, _format_smtp_txt, _format_reputation_txt, _format_content_hash_txt, _format_ct_logs_txt, _format_waf_detection_txt, _format_dane_txt, _format_geolocation_txt, _format_http_headers_txt, _format_port_scan_txt, _format_subdomain_takeover_txt, _format_cloud_enum_txt, _format_dnsbl_check_txt, _format_open_redirect_txt, _format_security_txt_txt, _format_robots_txt_txt.
+
+Each formatter must take (data: dict) and return List[str].
+
+Define all public export functions (e.g., export_txt_records(data), export_txt_ptr(data), etc.) that call _create_report_section with the corresponding formatter.
+
+export_txt_critical_findings should just call export_txt_security.
+
+modules/utils.py
+
+Imports: os, sys, pathlib.Path, tldextract.
+
+get_desktop_path(): Cross-platform logic to find the user's Desktop, falling back to Path.home().
+
+join_txt_chunks(chunks): Returns "".join(chunks).
+
+get_parent_zone(domain): Uses tldextract to find the parent domain.
+
+_format_rdata(rtype, rdata, ...): A large helper function with if/elif logic for different rtypes (e.g., "MX", "SRV", "SOA", "DS", "CAA", "TXT") to format dnspython rdata into a consistent dict.
+
+_parse_spf_record(spf_record): Helper to parse an SPF string.
+
+_parse_dmarc_record(dmarc_record): Helper to parse a DMARC string.
+
+is_valid_domain(domain): Uses tldextract and label checks to validate domain syntax.
+
+Remaining modules/ files:
+
+modules/config.py: from rich.console import Console; console = Console(); RECORD_TYPES = [...] (list of 12 types); PUBLIC_RESOLVERS = {...} (dict of 4 resolvers).
+
+modules/logger_config.py: setup_logging(args): Configures the root logging logger. Uses rich.logging.RichHandler. Sets level based on args.verbose and args.quiet. Adds a FileHandler if args.log_file is set.
+
+modules/display_utils.py: console_display_handler(title): A decorator that wraps display functions, handles quiet mode, checks for data['error'], and returns a Panel on error.
+
+modules/export.py: handle_output(all_data, output_format, output_path): Dynamically importlib.import_module to load the correct output handler (e.g., modules.output.json) and call its output function. Includes special (legacy) handling for txt format.
+
+modules/__init__.py: Empty.
+
+modules/_version.py: Leave this file empty. Add a comment: # file generated by setuptools-scm\n# don't change, don't track in version control. setuptools-scm will populate it during the build.
+
+3. modules/analysis/ (Analysis Modules)
+For each file below, create the specified async function. Each function must accept (..., **kwargs) to handle unused parameters passed by the orchestrator.
+
+modules/analysis/dns_records.py:
+
+get_dns_records(domain, resolver, verbose, record_types, **kwargs) (async):
+
+query_type(rtype) (async inner helper): Calls await asyncio.to_thread(resolver.resolve, domain, rtype), formats results using _format_rdata, and handles dns.resolver.NoAnswer, NXDOMAIN, Timeout exceptions.
+
+Uses asyncio.gather to run query_type for all record_types.
+
+modules/analysis/dns_zone.py:
+
+attempt_axfr(domain, resolver, timeout, verbose, records_info, **kwargs) (async):
+
+Gets nameservers from records_info.get("NS", []).
+
+_resolve_ns_ips(resolver, ns, rtype) (async inner helper): Resolves NS IPs.
+
+try_axfr(ns) (async inner helper):
+
+Resolves A/AAAA records for the nameserver.
+
+Iterates IPs.
+
+_do_xfr_blocking(ns_ip_addr) (sync inner-inner helper): Calls dns.query.xfr and dns.zone.from_xfr.
+
+Runs _do_xfr_blocking in asyncio.to_thread.
+
+Handles dns.exception.FormError (for "refused"), dns.exception.Timeout.
+
+Uses asyncio.gather to run try_axfr for all nameservers.
+
+Sets summary to "Vulnerable" or "Secure".
+
+modules/analysis/security_audit.py:
+
+AUDIT_CHECKS: Define the exact list of check dictionaries. Each dict must have data_key, condition (a lambda function), finding, severity, and recommendation. Include checks for SPF, DMARC, CAA, Zone Transfer, DNSSEC, Open Redirect, SSL Expiry, Weak Ciphers, Subdomain Takeover, and IP Reputation.
+
+security_audit(all_data, **kwargs):
+
+Iterates AUDIT_CHECKS, checks all_data against the condition, and appends findings.
+
+Separately, iterates HEADER_CHECKS (from http_headers.py) and checks all_data.get("headers_info", {}).
+
+Separately, checks all_data.get("robots_info", {}) for disallowed_sensitive.
+
+Sorts findings by severity (Critical, High, Medium, Low).
+
+modules/analysis/subdomain_takeover.py:
+
+_load_fingerprints(): Uses @lru_cache(maxsize=None). Opens takeover_fingerprints.json and returns its JSON content.
+
+check_subdomain_takeover(records_info, **kwargs) (async):
+
+Gets CNAMEs from records_info. Loads fingerprints.
+
+check_record(record, client) (async inner helper):
+
+Iterates takeover_fingerprints.
+
+Checks if cname_target.endswith(service_cname).
+
+If so, await client.get for both http and https schemes.
+
+Checks if any fingerprint.lower() in response_text_lower.
+
+Returns finding dict if match, else None.
+
+Uses asyncio.gather to run check_record for all CNAMEs.
+
+modules/analysis/takeover_fingerprints.json:
+
+Create this JSON file exactly as provided.
+
+{ "Acquia": {"cname": [...], "fingerprints": [...]}, "Agile CRM": {...}, "Amazon S3": {...}, "GitHub Pages": {...}, "Heroku": {...}, ... } (Include all 30+ entries).
+
+modules/analysis/http_headers.py:
+
+Define helper functions: _evaluate_hsts, _evaluate_csp, _evaluate_xcto, _evaluate_xfo, _evaluate_xxss, _evaluate_generic. Each takes (value: str) and returns a dict with status, value, and recommendation.
+
+Define HEADER_CHECKS (dict): Maps header names (e.g., "Strict-Transport-Security") to their eval_func, severity, and default recommendation.
+
+analyze_http_headers(domain, verify_ssl=True, **kwargs) (async):
+
+Tries https://{domain} then http://{domain}.
+
+Uses httpx.AsyncClient(follow_redirects=True).
+
+On success, iterates HEADER_CHECKS, checks response.headers.get(header_name), calls the eval_func or marks as "Missing", and appends recommendations.
+
+Returns results (dict with analysis, recommendations, final_url, error).
+
+modules/analysis/port_scan.py:
+
+COMMON_PORTS: Define the list of ~20 common ports.
+
+scan_ports(all_data, timeout, verbose, **kwargs) (async):
+
+Gets IPs from all_data["records_info"] (A/AAAA) and all_data["headers_info"].
+
+_scan_ip(ip) (async inner helper):
+
+_check_port(ip, port, conn_timeout) (async inner-inner helper): Uses asyncio.wait_for(asyncio.open_connection(ip, port), ...) and handles TimeoutError, ConnectionRefusedError.
+
+Uses asyncio.gather to run _check_port for all COMMON_PORTS.
+
+Uses asyncio.gather to run _scan_ip for all unique IPs.
+
+modules/analysis/ct_logs.py:
+
+search_ct_logs(domain, timeout, **kwargs) (async):
+
+Defines urls for crt.sh (one for %.{domain} and one for {domain}).
+
+Uses httpx.AsyncClient and asyncio.gather(*tasks, return_exceptions=True) to query both URLs.
+
+Processes successful JSON responses, extracts name_value, splits by \n, filters out wildcards and the base domain, and adds to a unique_subdomains set.
+
+modules/analysis/critical_findings.py:
+
+aggregate_critical_findings(all_data, **kwargs):
+
+Gets findings from all_data.get("security_info", {}).
+
+Iterates findings, appends a formatted message to critical_findings list if severity is "Critical" or "High".
+
+Returns {"critical_findings": critical_findings}.
+
+modules/analysis/reputation.py:
+
+ABUSEIPDB_ENDPOINT: Define the constant.
+
+analyze_reputation(domain, args, all_data, **kwargs) (async):
+
+Gets API key from getattr(args, "api_keys", {}).get("abuseipdb").
+
+Gets IPs from records_info (A/AAAA) and headers_info.
+
+check_ip(ip, client) (async inner helper):
+
+await client.get(ABUSEIPDB_ENDPOINT, ...) with API key in headers.
+
+Handles httpx.HTTPStatusError (checking for 401).
+
+Uses asyncio.gather to run check_ip for all IPs.
+
+modules/analysis/whois.py:
+
+Imports: asyncio, datetime, whois as whois_lib.
+
+_normalize_whois_value(value): Handles lists (takes first element) and datetime (converts to isoformat).
+
+whois_lookup(domain, verbose, **kwargs) (async):
+
+whois_data = await asyncio.to_thread(whois_lib.whois, domain).
+
+Checks if not whois_data or not whois_data.text.
+
+Normalizes values using _normalize_whois_value.
+
+Handles WhoisError and general Exception.
+
+modules/analysis/email_sec.py:
+
+email_security_analysis(domain, resolver, all_data, **kwargs) (async):
+
+Analyzes SPF: Gets TXT records from all_data["records_info"] that start with v=spf1. Calls _parse_spf_record.
+
+Analyzes DMARC: await asyncio.to_thread(resolver.resolve, f"_dmarc.{domain}", "TXT"). Calls _parse_dmarc_record.
+
+DKIM: Adds a placeholder status "Cannot check without a selector."
+
+modules/analysis/dns_ptr.py:
+
+reverse_ptr_lookups(resolver, records_info, **kwargs) (async):
+
+Gets IPs from records_info (A/AAAA).
+
+Uses asyncio.Semaphore(10).
+
+query_ptr(ip) (async inner helper):
+
+reversed_ip = dns.reversename.from_address(ip).
+
+await asyncio.to_thread(resolver.resolve, reversed_ip, "PTR").
+
+Handles NoAnswer, NXDOMAIN, Timeout.
+
+Uses asyncio.gather to run query_ptr for all IPs.
+
+modules/analysis/dnsbl.py:
+
+DNSBL_PROVIDERS: Define the list of providers.
+
+check_dnsbl(records_info, resolver, **kwargs) (async):
+
+Gets IPs from records_info (A/AAAA).
+
+check_ip(ip) (async inner helper):
+
+reversed_ip = ".".join(reversed(ip.split("."))).
+
+Iterates DNSBL_PROVIDERS, query = f"{reversed_ip}.{provider}".
+
+await asyncio.to_thread(resolver.resolve, query, "A").
+
+Appends provider to listed_on if query succeeds (doesn't raise NXDOMAIN).
+
+Uses asyncio.gather to run check_ip.
+
+modules/analysis/robots_txt.py:
+
+SENSITIVE_PATHS: Define the list of paths (e.g., "/admin", "/.git").
+
+analyze_robots_txt(domain, timeout, **kwargs) (async):
+
+await client.get(f"https://{domain}/robots.txt").
+
+If 200, splits response by lines, checks for "sitemap:", "disallow: /" or "disallow: *", and checks if any disallow path starts with a path in SENSITIVE_PATHS.
+
+modules/analysis/tech.py:
+
+detect_technologies(domain, timeout, verbose, **kwargs) (async):
+
+Tries https then http.
+
+On success, checks headers (Server, X-Powered-By).
+
+Uses BeautifulSoup to parse HTML for <meta name="generator">.
+
+Checks response.text.lower() for footprints ("wp-content", "cdn.shopify.com", etc.).
+
+Clears error on successful fallback (e.g., HTTP success after HTTPS fail).
+
+modules/analysis/waf_detection.py:
+
+WAF_FINGERPRINTS: Define the dict of fingerprints (e.g., "Cloudflare": {"headers": ..., "body": ...}).
+
+_check_fingerprints(response_headers, response_body): Helper to check headers and body against WAF_FINGERPRINTS.
+
+detect_waf(domain, timeout, **kwargs) (async):
+
+Sends a benign request (/) and a malicious-like request (/?s=<script>...).
+
+Calls _check_fingerprints on both responses.
+
+Checks for behavioral changes (e.g., status code 403, content changes).
+
+Aggregates scores and determines the highest-scoring WAF.
+
+modules/analysis/new_module.py:
+
+analyze_new_module(domain, **kwargs) (async): A placeholder function that logs a debug message and returns {"status": "Not Implemented", "data": None, "error": None}.
+
+And all others...: Create content_hash.py, dane_analysis.py, ip_geolocation.py, ns_info.py, open_redirect.py, osint.py, propagation.py, security_txt.py, smtp_analysis.py, ssl_analysis.py exactly as provided in the file dump, following the same async/asyncio.to_thread patterns.
+
+4. modules/output/ (Export Modules)
+modules/output/_base.py:
+
+get_export_data(all_data): Iterates MODULE_DISPATCH_TABLE, gets data_key, and adds all_data[data_key] to export_data only if it exists and does not contain an error key.
+
+write_output(content, output_path, file_type): Writes content to output_path or builtins.print(content).
+
+modules/output/json.py:
+
+output(all_data, output_path): Calls get_export_data, json.dumps(..., indent=2, default=str), and write_output.
+
+modules/output/xml.py:
+
+_dict_to_xml(parent, data): Recursive helper to build XML ElementTree. Must sanitize keys (e.g., for tags starting with numbers).
+
+output(all_data, output_path): Calls get_export_data, _dict_to_xml, and uses minidom.parseString to pretty-print. Calls write_output.
+
+modules/output/yaml.py:
+
+NoTupleDumper(yaml.Dumper): Custom dumper class to represent_tuple as a list.
+
+output(all_data, output_path): Calls get_export_data, yaml.dump(..., Dumper=NoTupleDumper), and write_output.
+
+modules/output/csv.py:
+
+Define all private writer functions: _write_dns_records_to_csv, _write_whois_to_csv, _write_mail_info_to_csv, _write_http_headers_to_csv, _write_security_audit_to_csv, _write_ssl_info_to_csv, _write_geolocation_to_csv, _write_port_scan_to_csv, _write_subdomain_takeover_to_csv, _write_dnsbl_to_csv, _write_cloud_enum_to_csv, _write_open_redirect_to_csv.
+
+Define CSV_DISPATCH_TABLE mapping data_key (e.g., "records_info") to a title and writer_func.
+
+output(all_data, output_path): Uses io.StringIO and csv.writer. Iterates MODULE_DISPATCH_TABLE, finds matching csv_config, writes the title row, checks for module data/errors, and calls the appropriate writer_func.
+
+modules/output/html.py:
+
+_render_to_html(renderable): Helper that uses Console(record=True) and console.export_html().
+
+output(all_data, output_path):
+
+Calls display_critical_findings and display_summary, passing them to _render_to_html.
+
+Iterates MODULE_DISPATCH_TABLE, calls the display_func for each module, and passes the result to _render_to_html.
+
+Injects all the generated HTML strings into a large, self-contained HTML template string (with <style> block).
+
+Calls write_output.
+
+modules/output/txt.py:
+
+output(all_data, output_path, dispatch_table=None):
+
+Uses dispatch_table or MODULE_DISPATCH_TABLE.
+
+Calls export_txt_critical_findings and export_txt_summary.
+
+Iterates the table, checks if the module was run (via args), finds the export_func, and calls it.
+
+Joins all parts with \n\n and calls write_output (or builtins.open if output_path is set).
+
+modules/output/__init__.py: Import and list in __all__: csv, html, json, txt, xml, yaml.
+
+5. tests/ (Unit & Integration Tests)
+Create all test files. Use pytest and pytest-asyncio (@pytest.mark.asyncio).
+
+tests/conftest.py: Define fixtures SAMPLE_SCAN_DATA and MOCK_DISPATCH_TABLE.
+
+tests/test_orchestrator.py:
+
+Mock modules.dispatch_table.MODULE_DISPATCH_TABLE.
+
+Test _scan_single_domain for dependency resolution (e.g., asking for ptr also runs records).
+
+Test _scan_single_domain for quiet mode (assert display_func is not_called).
+
+tests/test_config_manager.py:
+
+Test priority: CLI args override config file args, which override defaults.
+
+Test loading domains from -f/--file.
+
+Test error handling for file-not-found and invalid domains.
+
+tests/test_utils.py:
+
+Use @pytest.mark.parametrize to test is_valid_domain and get_parent_zone with various inputs.
+
+Test _format_rdata for "A", "MX", and "SOA" types.
+
+tests/test_dns_records.py:
+
+Test get_dns_records. Mock asyncio.to_thread and resolver.resolve.
+
+Create a mock side_effect function that returns mock answers or raises exceptions (dns.resolver.NoAnswer, dns.exception.Timeout) based on the rtype argument.
+
+tests/test_subdomain_takeover.py:
+
+Use respx.mock to mock httpx responses.
+
+Test "found" case: Mock CNAME record and mock HTTP response containing a fingerprint.
+
+Test "not found" case: Mock CNAME record but HTTP response without a fingerprint.
+
+Test _load_fingerprints caching (@lru_cache) by patching builtins.open and asserting it's only called once.
+
+tests/test_security_audit.py:
+
+Create fixtures for different data scenarios: mock_secure_data, mock_weak_data, mock_moderate_data, mock_critical_data (e.g., spf: {"all_policy": "+all"}), mock_robots_txt_data.
+
+Test security_audit with each fixture and assert the correct findings are returned.
+
+Create a meta-test (test_all_security_checks_are_covered) that runs all fixtures and asserts that all checks in AUDIT_CHECKS and HEADER_CHECKS were triggered at least once.
+
+tests/test_analysis_modules.py:
+
+Test detect_technologies: Use respx.mock to provide HTML/headers with fingerprints (e.g., "wp-content", "Joomla"). Test fallback success (HTTPS fails, HTTP works).
+
+Test whois_lookup: Mock asyncio.to_thread and whois_lib.whois. Test data normalization (lists, datetimes). Test error handling.
+
+Test aggregate_critical_findings: Provide mock all_data with "Critical," "High," and "Medium" findings and assert only Critical/High are returned.
+
+Test search_ct_logs: Use respx.mock to mock crt.sh JSON responses for both wildcard and base domain queries. Test duplicate removal and filtering.
+
+Test detect_waf: Test that it handles fingerprints without a 'server' key to prevent TypeError.
+
+tests/test_output_modules.py / tests/test_outputs.py:
+
+Create sample_scan_data fixtures.
+
+Patch builtins.print (for console) or builtins.open (for file).
+
+Test json_output.output: json.loads the output and check keys. Test filtering of empty/error modules.
+
+Test xml_output.output: ET.fromstring the output and check elements. Test filtering.
+
+Test yaml_output.output: yaml.safe_load the output. Test filtering. Test that !!python/tuple tag is not present.
+
+Test csv_output.output: Check for section headers (e.g., "DNS Records") and data.
+
+Test html_output.output: Check for <!DOCTYPE html> and section headers.
+
+Create all other test files (test_cloud_enum.py, test_dane_analysis.py, test_dns_zone.py, test_dnsbl.py, test_export_txt.py, test_geolocation.py, test_new_module.py, test_output_formats.py, test_reputation.py, test_zone_poker.py) and implement their tests as specified in the provided file contents, using pytest, pytest-asyncio, respx, and unittest.mock as appropriate.
+
+6. .github/ (CI/CD and Configuration)
+.github/workflows/build.yml:
+
+name: CI / CD.
+
+on: pull_request (main), push (main, tags: v*.*.*), workflow_dispatch.
+
+concurrency: Set up to cancel in-progress builds.
+
+permissions: contents: read.
+
+jobs:
+
+lint: runs-on: ubuntu-latest. actions/checkout, actions/setup-python@v5 (3.11). Cache pip. pip install -r requirements.txt. Run ruff check . and ruff format --check ..
+
+security-scan: runs-on: ubuntu-latest. Setup Python 3.11, cache, install, pip-audit. continue-on-error: true.
+
+test: runs-on: ubuntu-latest. permissions: id-token: write. strategy: matrix: python-version: ['3.10', '3.11']. Setup Python, cache, install, pytest --cov=modules --cov=zone_poker --cov-report=xml. codecov/codecov-action@v4 (with OIDC).
+
+build-and-validate: needs: [lint, security-scan, test]. Matrix for 3.10, 3.11. Setup Python, cache, install build. Set SETUPTOOLS_SCM_PRETEND_VERSION if it's a tag. Run python -m build. Create new venv, pip install the built wheel, and pytest. actions/upload-artifact@v4 for dist/.
+
+build-and-push-docker: needs: [build-and-validate]. permissions: packages: write, id-token: write. docker/login-action to ghcr.io. docker/metadata-action to get tags. docker/build-push-action@v5 with push: false, load: true, cache-from/to: type=gha, and build-args: APP_VERSION. aquasecurity/trivy-action@0.24.0 to scan the image. docker push --all-tags if not a PR.
+
+release: needs: [build-and-validate]. if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags'). permissions: contents: write. actions/download-artifact for dist/. sha256sum the artifacts. softprops/action-gh-release@v2 to publish the release with dist/ files.
+
+.github/labeler.yml:
+
+'ci/cd': .github/**
+
+'documentation': README.md, LICENSE, 'docs/**'
+
+'dependencies': pyproject.toml, requirements.txt
+
+'docker': Dockerfile
+
+'testing': tests/**
+
+'core-logic': modules/**, zone_poker.py
+
+.github/release-drafter.yml (and release-drafter-config.yml - note, there are two, use the content from release-drafter.yml as it seems to be the active one, or merge them. The .yml one is more complete).
+
+name-template: 'v$RESOLVED_VERSION'
+
+tag-template: 'v$RESOLVED_VERSION'
+
+categories: '🚀 Features' (feature, enhancement), '🐛 Bug Fixes' (fix, bug), etc.
+
+template: Include $CHANGES, Docker Image path, $CONTRIBUTORS, and Full Changelog link.
